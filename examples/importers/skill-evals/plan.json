@@ -1,0 +1,46 @@
+{
+  "schema": "anchorset.judge-change-plan/v1",
+  "barHash": "4f191ee7aa070bc398f55a660e2b3f9b4f8dbc1e0155decf3aa6271a8b367742",
+  "caseSetHash": "bccec4f02ae32993cc7da37cbd96eaa515202e8e52c66fdad0fd0cb0eb873fef",
+  "drawsPerCase": 3,
+  "judges": {
+    "old": {
+      "judgeDefinitionHash": "ebd4c237c7600abf7f1b4854668e2426c98d2e98d3172217d20de615241a78fc",
+      "judgeModelRequested": "fake-judge-old",
+      "judgeModelServed": "fake-judge-old-served-20260101",
+      "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
+      "judgeHarnessVersion": "skill-evals skill-evals/1; anchorset-recording-grader js sha256:c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621; node v25.6.1; max-reasks 0; script-files sha256:4ae74d8a128ede1d7aa8f6ddce4cba1dc24b81d6a7c6fcdff7e7cb9ec6593451",
+      "rubricHash": "67891b37a9e87086905c0aa9621b995946a58b8a22210614a2304260271ecfc2"
+    },
+    "new": {
+      "judgeDefinitionHash": "ebd4c237c7600abf7f1b4854668e2426c98d2e98d3172217d20de615241a78fc",
+      "judgeModelRequested": "fake-judge-strict-new",
+      "judgeModelServed": "fake-judge-strict-new-served-20260101",
+      "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
+      "judgeHarnessVersion": "skill-evals skill-evals/1; anchorset-recording-grader js sha256:c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621; node v25.6.1; max-reasks 0; script-files sha256:4ae74d8a128ede1d7aa8f6ddce4cba1dc24b81d6a7c6fcdff7e7cb9ec6593451",
+      "rubricHash": "67891b37a9e87086905c0aa9621b995946a58b8a22210614a2304260271ecfc2"
+    }
+  },
+  "judgeMoves": [
+    "judgeModelRequested",
+    "judgeModelServed"
+  ],
+  "systems": {
+    "refund-bot": {
+      "old": "4e4152c8d32c79ab874e6eb7aec1c4c0a8678ecff0bdc2ff4375cd4bf2457cca",
+      "new": "01a24b88e8c437fd6b8736b0fdfc3ef9a1e20e434ec01b9283861fb63f04c888"
+    }
+  },
+  "storedOutputs": "system-side-not-compared",
+  "measuredClass": "refund_policy",
+  "cut": "pass",
+  "drawSets": {
+    "estimate": [
+      0,
+      1,
+      2
+    ]
+  },
+  "labelRule": "majority",
+  "pooling": "items-equal"
+}

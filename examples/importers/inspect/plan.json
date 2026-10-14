@@ -1,0 +1,46 @@
+{
+  "schema": "anchorset.judge-change-plan/v1",
+  "barHash": "627f52c5b81b40c1884393438b7adef4ae562dfa862a986ffae65cb65a801183",
+  "caseSetHash": "cef4bcb2f45f30c44ee956e5d6ad68980a435227e2a95f238aaadb575cbee493",
+  "drawsPerCase": 3,
+  "judges": {
+    "old": {
+      "judgeDefinitionHash": "7690de71ae719a4a421773659b1bdb06cf011d470e8b5090aaa821440d326c46",
+      "judgeModelRequested": "fake-judge-old",
+      "judgeModelServed": "fake-judge-old-served-20260101",
+      "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
+      "judgeHarnessVersion": "inspect_ai 0.3.275; anchorset-recording-grader python sha256:344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694; python 3.13.1; max-reasks 0",
+      "rubricHash": "44e2a3d180162d04d6a52c5dd059c2bb61a6866dc3a591fd244e8af733fe48c4"
+    },
+    "new": {
+      "judgeDefinitionHash": "7690de71ae719a4a421773659b1bdb06cf011d470e8b5090aaa821440d326c46",
+      "judgeModelRequested": "fake-judge-strict-new",
+      "judgeModelServed": "fake-judge-strict-new-served-20260101",
+      "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
+      "judgeHarnessVersion": "inspect_ai 0.3.275; anchorset-recording-grader python sha256:344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694; python 3.13.1; max-reasks 0",
+      "rubricHash": "44e2a3d180162d04d6a52c5dd059c2bb61a6866dc3a591fd244e8af733fe48c4"
+    }
+  },
+  "judgeMoves": [
+    "judgeModelRequested",
+    "judgeModelServed"
+  ],
+  "systems": {
+    "refund-bot": {
+      "old": "da4d1937c1ee864b99400d73b83fcae75ff4dfa9c753bc46e679da523fe11c7d",
+      "new": "d39c01ce99182535247a45b4ee79d721489f20e8d7bcf5f15779b733a49177e6"
+    }
+  },
+  "storedOutputs": "system-side-not-compared",
+  "measuredClass": "refund_policy",
+  "cut": "C",
+  "drawSets": {
+    "estimate": [
+      0,
+      1,
+      2
+    ]
+  },
+  "labelRule": "majority",
+  "pooling": "items-equal"
+}

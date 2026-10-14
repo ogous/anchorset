@@ -1,0 +1,7 @@
+{
+  "labels": ["I", "C"],
+  "classes": {
+    "refund_policy": { "direction": "floor", "minPassRate": 0.5 }
+  },
+  "knownFailures": []
+}

@@ -1,0 +1,696 @@
+{
+  "version": 2,
+  "status": "success",
+  "eval": {
+    "eval_id": "fVArcUYTYjUiSQ24pWhsHN",
+    "run_id": "VTuiR5nnEYMFZNqyQzeMJ4",
+    "created": "2026-10-13T17:54:06+00:00",
+    "task": "refund_bot",
+    "task_id": "Y9uAXFuWpmR4cJUN8cULf7",
+    "task_version": 0,
+    "task_display_name": "refund_bot",
+    "task_attribs": {},
+    "task_args": {},
+    "task_args_passed": {},
+    "dataset": {
+      "samples": 3,
+      "sample_ids": [
+        "c1",
+        "c2",
+        "c3"
+      ],
+      "shuffled": false
+    },
+    "model": "mockllm/refund-bot",
+    "model_generate_config": {
+      "max_connections": 1
+    },
+    "model_args": {},
+    "config": {
+      "epochs": 1,
+      "fail_on_error": true,
+      "continue_on_fail": false,
+      "score_on_error": false,
+      "sandbox_cleanup": true,
+      "sandbox_prebuilt": false,
+      "log_samples": true,
+      "log_realtime": true,
+      "log_images": true,
+      "score_display": true
+    },
+    "packages": {
+      "inspect_ai": "0.3.275"
+    }
+  },
+  "plan": {
+    "name": "plan",
+    "steps": [
+      {
+        "solver": "replay_stored",
+        "params": {},
+        "params_passed": {}
+      }
+    ],
+    "config": {
+      "max_connections": 1
+    }
+  },
+  "results": {
+    "total_samples": 3,
+    "completed_samples": 3,
+    "scores": []
+  },
+  "stats": {
+    "started_at": "2026-10-13T17:54:06+00:00",
+    "completed_at": "2026-10-13T17:54:06+00:00",
+    "model_usage": {},
+    "role_usage": {},
+    "connection_limit_history": []
+  },
+  "invalidated": false,
+  "tags": [],
+  "metadata": {},
+  "samples": [
+    {
+      "id": "c1",
+      "epoch": 1,
+      "input": "My blender arrived broken. Can I get my money back?",
+      "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+      "messages": [
+        {
+          "id": "UjAfXrqpizZTd9Dq8s2ETK",
+          "content": "My blender arrived broken. Can I get my money back?",
+          "source": "input",
+          "role": "user"
+        },
+        {
+          "id": "G3NSzSKRDSNaftMFqDKYbP",
+          "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+          "source": "generate",
+          "role": "assistant",
+          "model": "stored-outputs"
+        }
+      ],
+      "output": {
+        "model": "stored-outputs",
+        "choices": [
+          {
+            "message": {
+              "id": "G3NSzSKRDSNaftMFqDKYbP",
+              "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+              "source": "generate",
+              "role": "assistant",
+              "model": "stored-outputs"
+            },
+            "stop_reason": "stop"
+          }
+        ],
+        "completion": "Your order arrived damaged, so you are eligible for a full refund. I have started it."
+      },
+      "scores": {},
+      "metadata": {},
+      "store": {},
+      "events": [
+        {
+          "uuid": "ecDkeixjjJ5oMcew9NBpLP",
+          "span_id": "aQWaHjPjfzqYy7ZyiD8DUQ",
+          "timestamp": "2026-10-13T17:54:06.220022+00:00",
+          "working_start": 3275262.000469875,
+          "event": "span_begin",
+          "id": "aQWaHjPjfzqYy7ZyiD8DUQ",
+          "type": "init",
+          "name": "init"
+        },
+        {
+          "uuid": "AaBdkjqNCLtDRvKPPpCYyU",
+          "span_id": "aQWaHjPjfzqYy7ZyiD8DUQ",
+          "timestamp": "2026-10-13T17:54:06.220552+00:00",
+          "working_start": 3275262.000997458,
+          "event": "sample_init",
+          "sample": {
+            "input": "My blender arrived broken. Can I get my money back?",
+            "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+            "id": "c1"
+          },
+          "state": {
+            "messages": [
+              {
+                "id": "UjAfXrqpizZTd9Dq8s2ETK",
+                "content": "My blender arrived broken. Can I get my money back?",
+                "source": "input",
+                "role": "user"
+              }
+            ],
+            "tools": [],
+            "tool_choice": null,
+            "store": {},
+            "output": {
+              "model": "mockllm/refund-bot",
+              "choices": [],
+              "completion": ""
+            },
+            "completed": false,
+            "metadata": {}
+          }
+        },
+        {
+          "uuid": "XZ2bEC3sNWSjHWb37wu8nL",
+          "span_id": "aQWaHjPjfzqYy7ZyiD8DUQ",
+          "timestamp": "2026-10-13T17:54:06.220785+00:00",
+          "working_start": 3275262.001230791,
+          "event": "span_end",
+          "id": "aQWaHjPjfzqYy7ZyiD8DUQ"
+        },
+        {
+          "uuid": "QHMUyL7x8KPYuxcjsN5rDu",
+          "span_id": "k3dHwwKLsQ6AnotyFZbPeB",
+          "timestamp": "2026-10-13T17:54:06.221149+00:00",
+          "working_start": 0.00024854112416505814,
+          "event": "span_begin",
+          "id": "k3dHwwKLsQ6AnotyFZbPeB",
+          "type": "solvers",
+          "name": "solvers"
+        },
+        {
+          "uuid": "cq4fD5T8neNp7zdjjyPYNs",
+          "span_id": "X8sqXH6t9mdfSnifSsiLnF",
+          "timestamp": "2026-10-13T17:54:06.221605+00:00",
+          "working_start": 0.0007044579833745956,
+          "event": "span_begin",
+          "id": "X8sqXH6t9mdfSnifSsiLnF",
+          "parent_id": "k3dHwwKLsQ6AnotyFZbPeB",
+          "type": "solver",
+          "name": "replay_stored"
+        },
+        {
+          "uuid": "fcNtEfX2d9RjbTa89CXxPm",
+          "span_id": "X8sqXH6t9mdfSnifSsiLnF",
+          "timestamp": "2026-10-13T17:54:06.222500+00:00",
+          "working_start": 0.0016019162721931934,
+          "event": "state",
+          "changes": [
+            {
+              "op": "add",
+              "path": "/messages/1",
+              "value": {
+                "id": "G3NSzSKRDSNaftMFqDKYbP",
+                "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+                "source": "generate",
+                "role": "assistant",
+                "model": "stored-outputs"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/model",
+              "value": "stored-outputs",
+              "replaced": "mockllm/refund-bot"
+            },
+            {
+              "op": "add",
+              "path": "/output/choices/0",
+              "value": {
+                "message": {
+                  "id": "G3NSzSKRDSNaftMFqDKYbP",
+                  "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "stored-outputs"
+                },
+                "stop_reason": "stop"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/completion",
+              "value": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+              "replaced": ""
+            }
+          ]
+        },
+        {
+          "uuid": "GVzhoSGK9bwcjdDTuu6W28",
+          "span_id": "X8sqXH6t9mdfSnifSsiLnF",
+          "timestamp": "2026-10-13T17:54:06.222806+00:00",
+          "working_start": 0.0019064582884311676,
+          "event": "span_end",
+          "id": "X8sqXH6t9mdfSnifSsiLnF"
+        },
+        {
+          "uuid": "iD8GfybdXwx7Bx5MVN535K",
+          "span_id": "k3dHwwKLsQ6AnotyFZbPeB",
+          "timestamp": "2026-10-13T17:54:06.222940+00:00",
+          "working_start": 0.0020405412651598454,
+          "event": "span_end",
+          "id": "k3dHwwKLsQ6AnotyFZbPeB"
+        },
+        {
+          "uuid": "BNRz4Uur4GJkKLBi5k8qUE",
+          "span_id": "8ga9EToqSLRyihffV4adv2",
+          "timestamp": "2026-10-13T17:54:06.223389+00:00",
+          "working_start": 0.002489166334271431,
+          "event": "span_begin",
+          "id": "8ga9EToqSLRyihffV4adv2",
+          "type": "scorers",
+          "name": "scorers"
+        },
+        {
+          "uuid": "BEf864YT6e6bqaX5udr367",
+          "span_id": "8ga9EToqSLRyihffV4adv2",
+          "timestamp": "2026-10-13T17:54:06.223598+00:00",
+          "working_start": 0.002697416115552187,
+          "event": "span_end",
+          "id": "8ga9EToqSLRyihffV4adv2"
+        }
+      ],
+      "model_usage": {},
+      "role_usage": {},
+      "started_at": "2026-10-13T17:54:06.220902+00:00",
+      "completed_at": "2026-10-13T17:54:06.223812+00:00",
+      "total_time": 0.003,
+      "working_time": 0.003,
+      "uuid": "hYfZHYNAzNostbrLzmB25f",
+      "error_retries": [],
+      "attachments": {},
+      "events_data": {
+        "messages": [],
+        "calls": []
+      },
+      "turn_count": 0
+    },
+    {
+      "id": "c2",
+      "epoch": 1,
+      "input": "I bought shoes 45 days ago and want a refund.",
+      "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+      "messages": [
+        {
+          "id": "4EJMrQcMUEHR268yYiwLaS",
+          "content": "I bought shoes 45 days ago and want a refund.",
+          "source": "input",
+          "role": "user"
+        },
+        {
+          "id": "PcwCE7ojQhm6pBeajWMw93",
+          "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+          "source": "generate",
+          "role": "assistant",
+          "model": "stored-outputs"
+        }
+      ],
+      "output": {
+        "model": "stored-outputs",
+        "choices": [
+          {
+            "message": {
+              "id": "PcwCE7ojQhm6pBeajWMw93",
+              "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+              "source": "generate",
+              "role": "assistant",
+              "model": "stored-outputs"
+            },
+            "stop_reason": "stop"
+          }
+        ],
+        "completion": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it."
+      },
+      "scores": {},
+      "metadata": {},
+      "store": {},
+      "events": [
+        {
+          "uuid": "8WGuAvZX9FHsLv9KxneKqF",
+          "span_id": "LUNzr5ymnrn6MHahynAjMR",
+          "timestamp": "2026-10-13T17:54:06.224955+00:00",
+          "working_start": 3275262.005400333,
+          "event": "span_begin",
+          "id": "LUNzr5ymnrn6MHahynAjMR",
+          "type": "init",
+          "name": "init"
+        },
+        {
+          "uuid": "Twa8sEWaGiV3Fg4VGZaVXE",
+          "span_id": "LUNzr5ymnrn6MHahynAjMR",
+          "timestamp": "2026-10-13T17:54:06.225180+00:00",
+          "working_start": 3275262.005625875,
+          "event": "sample_init",
+          "sample": {
+            "input": "I bought shoes 45 days ago and want a refund.",
+            "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+            "id": "c2"
+          },
+          "state": {
+            "messages": [
+              {
+                "id": "4EJMrQcMUEHR268yYiwLaS",
+                "content": "I bought shoes 45 days ago and want a refund.",
+                "source": "input",
+                "role": "user"
+              }
+            ],
+            "tools": [],
+            "tool_choice": null,
+            "store": {},
+            "output": {
+              "model": "mockllm/refund-bot",
+              "choices": [],
+              "completion": ""
+            },
+            "completed": false,
+            "metadata": {}
+          }
+        },
+        {
+          "uuid": "jPTcnkozmG22MLpVsFM4nK",
+          "span_id": "LUNzr5ymnrn6MHahynAjMR",
+          "timestamp": "2026-10-13T17:54:06.225313+00:00",
+          "working_start": 3275262.0057585,
+          "event": "span_end",
+          "id": "LUNzr5ymnrn6MHahynAjMR"
+        },
+        {
+          "uuid": "Jz3JVENfMue8v6FbVgPaUK",
+          "span_id": "44ZZaybH8NVMpRShYaobTw",
+          "timestamp": "2026-10-13T17:54:06.225571+00:00",
+          "working_start": 0.00017729215323925018,
+          "event": "span_begin",
+          "id": "44ZZaybH8NVMpRShYaobTw",
+          "type": "solvers",
+          "name": "solvers"
+        },
+        {
+          "uuid": "kvDXNz9wjHKTAk4Xnapsqb",
+          "span_id": "C5wvKRaMbCY7A8YwghdUKK",
+          "timestamp": "2026-10-13T17:54:06.225676+00:00",
+          "working_start": 0.0002827499993145466,
+          "event": "span_begin",
+          "id": "C5wvKRaMbCY7A8YwghdUKK",
+          "parent_id": "44ZZaybH8NVMpRShYaobTw",
+          "type": "solver",
+          "name": "replay_stored"
+        },
+        {
+          "uuid": "AC5yXL8REuoGJMqxVJwLxy",
+          "span_id": "C5wvKRaMbCY7A8YwghdUKK",
+          "timestamp": "2026-10-13T17:54:06.225952+00:00",
+          "working_start": 0.0005587921477854252,
+          "event": "state",
+          "changes": [
+            {
+              "op": "add",
+              "path": "/messages/1",
+              "value": {
+                "id": "PcwCE7ojQhm6pBeajWMw93",
+                "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+                "source": "generate",
+                "role": "assistant",
+                "model": "stored-outputs"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/model",
+              "value": "stored-outputs",
+              "replaced": "mockllm/refund-bot"
+            },
+            {
+              "op": "add",
+              "path": "/output/choices/0",
+              "value": {
+                "message": {
+                  "id": "PcwCE7ojQhm6pBeajWMw93",
+                  "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "stored-outputs"
+                },
+                "stop_reason": "stop"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/completion",
+              "value": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+              "replaced": ""
+            }
+          ]
+        },
+        {
+          "uuid": "FAp8KKumYtBqiGJQqXPdAK",
+          "span_id": "C5wvKRaMbCY7A8YwghdUKK",
+          "timestamp": "2026-10-13T17:54:06.226077+00:00",
+          "working_start": 0.0006836671382188797,
+          "event": "span_end",
+          "id": "C5wvKRaMbCY7A8YwghdUKK"
+        },
+        {
+          "uuid": "NZNyhgQD4cSQz4RyhfFn8T",
+          "span_id": "44ZZaybH8NVMpRShYaobTw",
+          "timestamp": "2026-10-13T17:54:06.226181+00:00",
+          "working_start": 0.0007875002920627594,
+          "event": "span_end",
+          "id": "44ZZaybH8NVMpRShYaobTw"
+        },
+        {
+          "uuid": "Xjdd5LfkRYFquQ3Bfm39d8",
+          "span_id": "QXmxBUPmjXkuHy6VtNsSWV",
+          "timestamp": "2026-10-13T17:54:06.226438+00:00",
+          "working_start": 0.0010441252961754799,
+          "event": "span_begin",
+          "id": "QXmxBUPmjXkuHy6VtNsSWV",
+          "type": "scorers",
+          "name": "scorers"
+        },
+        {
+          "uuid": "BTqw8rqfLRaWApJKTjJvXm",
+          "span_id": "QXmxBUPmjXkuHy6VtNsSWV",
+          "timestamp": "2026-10-13T17:54:06.226538+00:00",
+          "working_start": 0.0011442922987043858,
+          "event": "span_end",
+          "id": "QXmxBUPmjXkuHy6VtNsSWV"
+        }
+      ],
+      "model_usage": {},
+      "role_usage": {},
+      "started_at": "2026-10-13T17:54:06.225395+00:00",
+      "completed_at": "2026-10-13T17:54:06.226684+00:00",
+      "total_time": 0.001,
+      "working_time": 0.001,
+      "uuid": "X5XxWHABGprYqDaH9AwZN9",
+      "error_retries": [],
+      "attachments": {},
+      "events_data": {
+        "messages": [],
+        "calls": []
+      },
+      "turn_count": 0
+    },
+    {
+      "id": "c3",
+      "epoch": 1,
+      "input": "Please refund my last order.",
+      "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+      "messages": [
+        {
+          "id": "DE6gFdc6PWmsxJRt5qBP3P",
+          "content": "Please refund my last order.",
+          "source": "input",
+          "role": "user"
+        },
+        {
+          "id": "EB89RvszhtoVxzX2bNP9Uc",
+          "content": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+          "source": "generate",
+          "role": "assistant",
+          "model": "stored-outputs"
+        }
+      ],
+      "output": {
+        "model": "stored-outputs",
+        "choices": [
+          {
+            "message": {
+              "id": "EB89RvszhtoVxzX2bNP9Uc",
+              "content": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+              "source": "generate",
+              "role": "assistant",
+              "model": "stored-outputs"
+            },
+            "stop_reason": "stop"
+          }
+        ],
+        "completion": "Sure, I refunded it twice to be safe. [[strict:fail]]"
+      },
+      "scores": {},
+      "metadata": {},
+      "store": {},
+      "events": [
+        {
+          "uuid": "PAbq3VKB6sNibxMLtoh9Mi",
+          "span_id": "MwrGCPM5NrPsdSg9ef8sgA",
+          "timestamp": "2026-10-13T17:54:06.227303+00:00",
+          "working_start": 3275262.00774825,
+          "event": "span_begin",
+          "id": "MwrGCPM5NrPsdSg9ef8sgA",
+          "type": "init",
+          "name": "init"
+        },
+        {
+          "uuid": "HanJd2W2NkWfdutFEyWJsD",
+          "span_id": "MwrGCPM5NrPsdSg9ef8sgA",
+          "timestamp": "2026-10-13T17:54:06.227505+00:00",
+          "working_start": 3275262.007950666,
+          "event": "sample_init",
+          "sample": {
+            "input": "Please refund my last order.",
+            "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+            "id": "c3"
+          },
+          "state": {
+            "messages": [
+              {
+                "id": "DE6gFdc6PWmsxJRt5qBP3P",
+                "content": "Please refund my last order.",
+                "source": "input",
+                "role": "user"
+              }
+            ],
+            "tools": [],
+            "tool_choice": null,
+            "store": {},
+            "output": {
+              "model": "mockllm/refund-bot",
+              "choices": [],
+              "completion": ""
+            },
+            "completed": false,
+            "metadata": {}
+          }
+        },
+        {
+          "uuid": "7FpeRYLpp5V8aQCP6jNhGk",
+          "span_id": "MwrGCPM5NrPsdSg9ef8sgA",
+          "timestamp": "2026-10-13T17:54:06.227615+00:00",
+          "working_start": 3275262.008060416,
+          "event": "span_end",
+          "id": "MwrGCPM5NrPsdSg9ef8sgA"
+        },
+        {
+          "uuid": "hvtb2kFSEAFB6fWKhZqcEC",
+          "span_id": "ejcUFNDAnuwMby6vHyJEyt",
+          "timestamp": "2026-10-13T17:54:06.227840+00:00",
+          "working_start": 0.00014950009062886238,
+          "event": "span_begin",
+          "id": "ejcUFNDAnuwMby6vHyJEyt",
+          "type": "solvers",
+          "name": "solvers"
+        },
+        {
+          "uuid": "83BxHvS6ArmWji7WuSCTV6",
+          "span_id": "ATo5MH6KaQm6yHJswLH4iH",
+          "timestamp": "2026-10-13T17:54:06.227935+00:00",
+          "working_start": 0.0002442500554025173,
+          "event": "span_begin",
+          "id": "ATo5MH6KaQm6yHJswLH4iH",
+          "parent_id": "ejcUFNDAnuwMby6vHyJEyt",
+          "type": "solver",
+          "name": "replay_stored"
+        },
+        {
+          "uuid": "mPAUJSaMVrjFQJxz7Yn5WA",
+          "span_id": "ATo5MH6KaQm6yHJswLH4iH",
+          "timestamp": "2026-10-13T17:54:06.228161+00:00",
+          "working_start": 0.00047008413821458817,
+          "event": "state",
+          "changes": [
+            {
+              "op": "add",
+              "path": "/messages/1",
+              "value": {
+                "id": "EB89RvszhtoVxzX2bNP9Uc",
+                "content": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+                "source": "generate",
+                "role": "assistant",
+                "model": "stored-outputs"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/model",
+              "value": "stored-outputs",
+              "replaced": "mockllm/refund-bot"
+            },
+            {
+              "op": "add",
+              "path": "/output/choices/0",
+              "value": {
+                "message": {
+                  "id": "EB89RvszhtoVxzX2bNP9Uc",
+                  "content": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "stored-outputs"
+                },
+                "stop_reason": "stop"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/completion",
+              "value": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+              "replaced": ""
+            }
+          ]
+        },
+        {
+          "uuid": "RZzLGfERnxaBLdAWhCTT9j",
+          "span_id": "ATo5MH6KaQm6yHJswLH4iH",
+          "timestamp": "2026-10-13T17:54:06.228287+00:00",
+          "working_start": 0.0005959169939160347,
+          "event": "span_end",
+          "id": "ATo5MH6KaQm6yHJswLH4iH"
+        },
+        {
+          "uuid": "6ta3w4txqeuj8Ekg7mBcVY",
+          "span_id": "ejcUFNDAnuwMby6vHyJEyt",
+          "timestamp": "2026-10-13T17:54:06.228379+00:00",
+          "working_start": 0.0006874999962747097,
+          "event": "span_end",
+          "id": "ejcUFNDAnuwMby6vHyJEyt"
+        },
+        {
+          "uuid": "Le2GrXDZxiXyEMmqeB4wef",
+          "span_id": "PT53QVR3GrVym2Y4qCimjV",
+          "timestamp": "2026-10-13T17:54:06.228608+00:00",
+          "working_start": 0.000916709192097187,
+          "event": "span_begin",
+          "id": "PT53QVR3GrVym2Y4qCimjV",
+          "type": "scorers",
+          "name": "scorers"
+        },
+        {
+          "uuid": "Z6XGkzVUREhqBoubAwc5me",
+          "span_id": "PT53QVR3GrVym2Y4qCimjV",
+          "timestamp": "2026-10-13T17:54:06.228695+00:00",
+          "working_start": 0.0010039173066616058,
+          "event": "span_end",
+          "id": "PT53QVR3GrVym2Y4qCimjV"
+        }
+      ],
+      "model_usage": {},
+      "role_usage": {},
+      "started_at": "2026-10-13T17:54:06.227692+00:00",
+      "completed_at": "2026-10-13T17:54:06.228831+00:00",
+      "total_time": 0.001,
+      "working_time": 0.001,
+      "uuid": "j3B9zUseKUqtSpiWWJwduX",
+      "error_retries": [],
+      "attachments": {},
+      "events_data": {
+        "messages": [],
+        "calls": []
+      },
+      "turn_count": 0
+    }
+  ]
+}

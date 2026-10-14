@@ -1,0 +1,16 @@
+{
+  "labels": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+  ],
+  "classes": {
+    "reply_quality": {
+      "direction": "floor",
+      "minPassRate": 0.5
+    }
+  },
+  "knownFailures": []
+}

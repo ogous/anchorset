@@ -1,0 +1,1416 @@
+{
+  "evalId": "eval-AOP-2026-10-13T17:53:51",
+  "results": {
+    "version": 3,
+    "timestamp": "2026-10-13T17:53:51.999Z",
+    "prompts": [
+      {
+        "id": "d3bcaf71c11c2678899be04d872718325f0916b3b0705e805ee29930663a42e2",
+        "raw": "{{question}}",
+        "label": "{{question}}",
+        "provider": "stored-outputs",
+        "metrics": {
+          "score": 9,
+          "testPassCount": 9,
+          "testFailCount": 0,
+          "testErrorCount": 0,
+          "assertPassCount": 9,
+          "assertFailCount": 0,
+          "totalLatencyMs": 3,
+          "tokenUsage": {
+            "prompt": 0,
+            "completion": 0,
+            "cached": 0,
+            "total": 0,
+            "numRequests": 9,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            },
+            "assertions": {
+              "total": 1080,
+              "prompt": 900,
+              "completion": 180,
+              "cached": 0,
+              "numRequests": 9,
+              "completionDetails": {
+                "reasoning": 0,
+                "acceptedPrediction": 0,
+                "rejectedPrediction": 0,
+                "cacheReadInputTokens": 0,
+                "cacheCreationInputTokens": 0
+              }
+            }
+          },
+          "namedScores": {},
+          "namedScoresCount": {},
+          "namedScoreWeights": {},
+          "cost": 0
+        }
+      }
+    ],
+    "results": [
+      {
+        "cost": 0,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "All assertions passed",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          },
+          "componentResults": [
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "Local fake judge: pass.",
+              "tokensUsed": {
+                "total": 120,
+                "prompt": 100,
+                "completion": 20,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\nYour order arrived damaged, so you are eligible for a full refund. I have started it.\\n</Output>\\n<Rubric>\\nThe reply follows the refund policy (within 30 days or damaged goods, never more than once).\\n</Rubric>\"}]"
+              }
+            }
+          ]
+        },
+        "id": "d1042c8b-7865-4b5a-8a19-e0258aa226c8",
+        "latencyMs": 1,
+        "namedScores": {},
+        "prompt": {
+          "raw": "My blender arrived broken. Can I get my money back?",
+          "label": "{{question}}",
+          "config": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          }
+        },
+        "promptId": "d3bcaf71c11c2678899be04d872718325f0916b3b0705e805ee29930663a42e2",
+        "promptIdx": 0,
+        "provider": {
+          "id": "stored-outputs",
+          "label": ""
+        },
+        "response": {
+          "output": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+          "metadata": {
+            "storedOutput": {
+              "schema": "example.stored-output/v1",
+              "caseId": "c1",
+              "repeatIndex": 0,
+              "outputSha256": "45cf556fca297351ee6c6a01fc9bf0d6e17f780f89013616927fb251426ccd33"
+            }
+          }
+        },
+        "score": 1,
+        "success": true,
+        "testCase": {
+          "vars": {
+            "case_id": "c1",
+            "question": "My blender arrived broken. Can I get my money back?"
+          },
+          "assert": [
+            {
+              "type": "llm-rubric",
+              "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+            }
+          ],
+          "options": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          },
+          "metadata": {}
+        },
+        "testIdx": 0,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {
+          "case_id": "c1",
+          "question": "My blender arrived broken. Can I get my money back?"
+        },
+        "metadata": {
+          "storedOutput": {
+            "schema": "example.stored-output/v1",
+            "caseId": "c1",
+            "repeatIndex": 0,
+            "outputSha256": "45cf556fca297351ee6c6a01fc9bf0d6e17f780f89013616927fb251426ccd33"
+          },
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 0
+      },
+      {
+        "cost": 0,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "All assertions passed",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          },
+          "componentResults": [
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "Local fake judge: pass.",
+              "tokensUsed": {
+                "total": 120,
+                "prompt": 100,
+                "completion": 20,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\nYour order arrived damaged, so you are eligible for a full refund. I have started it.\\n</Output>\\n<Rubric>\\nThe reply follows the refund policy (within 30 days or damaged goods, never more than once).\\n</Rubric>\"}]"
+              }
+            }
+          ]
+        },
+        "id": "e628d632-b2d3-48e2-bc1b-b770a078db8c",
+        "latencyMs": 0,
+        "namedScores": {},
+        "prompt": {
+          "raw": "My blender arrived broken. Can I get my money back?",
+          "label": "{{question}}",
+          "config": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          }
+        },
+        "promptId": "d3bcaf71c11c2678899be04d872718325f0916b3b0705e805ee29930663a42e2",
+        "promptIdx": 0,
+        "provider": {
+          "id": "stored-outputs",
+          "label": ""
+        },
+        "response": {
+          "output": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+          "metadata": {
+            "storedOutput": {
+              "schema": "example.stored-output/v1",
+              "caseId": "c1",
+              "repeatIndex": 1,
+              "outputSha256": "45cf556fca297351ee6c6a01fc9bf0d6e17f780f89013616927fb251426ccd33"
+            }
+          }
+        },
+        "score": 1,
+        "success": true,
+        "testCase": {
+          "vars": {
+            "case_id": "c1",
+            "question": "My blender arrived broken. Can I get my money back?"
+          },
+          "assert": [
+            {
+              "type": "llm-rubric",
+              "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+            }
+          ],
+          "options": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          },
+          "metadata": {}
+        },
+        "testIdx": 1,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {
+          "case_id": "c1",
+          "question": "My blender arrived broken. Can I get my money back?"
+        },
+        "metadata": {
+          "storedOutput": {
+            "schema": "example.stored-output/v1",
+            "caseId": "c1",
+            "repeatIndex": 1,
+            "outputSha256": "45cf556fca297351ee6c6a01fc9bf0d6e17f780f89013616927fb251426ccd33"
+          },
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 0
+      },
+      {
+        "cost": 0,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "All assertions passed",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          },
+          "componentResults": [
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "Local fake judge: pass.",
+              "tokensUsed": {
+                "total": 120,
+                "prompt": 100,
+                "completion": 20,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\nYour order arrived damaged, so you are eligible for a full refund. I have started it.\\n</Output>\\n<Rubric>\\nThe reply follows the refund policy (within 30 days or damaged goods, never more than once).\\n</Rubric>\"}]"
+              }
+            }
+          ]
+        },
+        "id": "2a792e6a-94e7-4d72-a0df-22efe0ff5b80",
+        "latencyMs": 0,
+        "namedScores": {},
+        "prompt": {
+          "raw": "My blender arrived broken. Can I get my money back?",
+          "label": "{{question}}",
+          "config": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          }
+        },
+        "promptId": "d3bcaf71c11c2678899be04d872718325f0916b3b0705e805ee29930663a42e2",
+        "promptIdx": 0,
+        "provider": {
+          "id": "stored-outputs",
+          "label": ""
+        },
+        "response": {
+          "output": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+          "metadata": {
+            "storedOutput": {
+              "schema": "example.stored-output/v1",
+              "caseId": "c1",
+              "repeatIndex": 2,
+              "outputSha256": "45cf556fca297351ee6c6a01fc9bf0d6e17f780f89013616927fb251426ccd33"
+            }
+          }
+        },
+        "score": 1,
+        "success": true,
+        "testCase": {
+          "vars": {
+            "case_id": "c1",
+            "question": "My blender arrived broken. Can I get my money back?"
+          },
+          "assert": [
+            {
+              "type": "llm-rubric",
+              "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+            }
+          ],
+          "options": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          },
+          "metadata": {}
+        },
+        "testIdx": 2,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {
+          "case_id": "c1",
+          "question": "My blender arrived broken. Can I get my money back?"
+        },
+        "metadata": {
+          "storedOutput": {
+            "schema": "example.stored-output/v1",
+            "caseId": "c1",
+            "repeatIndex": 2,
+            "outputSha256": "45cf556fca297351ee6c6a01fc9bf0d6e17f780f89013616927fb251426ccd33"
+          },
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 0
+      },
+      {
+        "cost": 0,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "All assertions passed",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          },
+          "componentResults": [
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "Local fake judge: pass.",
+              "tokensUsed": {
+                "total": 120,
+                "prompt": 100,
+                "completion": 20,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\nRefunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\\n</Output>\\n<Rubric>\\nThe reply follows the refund policy (within 30 days or damaged goods, never more than once).\\n</Rubric>\"}]"
+              }
+            }
+          ]
+        },
+        "id": "0277370c-c208-44c7-88f3-d84571d0a7e5",
+        "latencyMs": 1,
+        "namedScores": {},
+        "prompt": {
+          "raw": "I bought shoes 45 days ago and want a refund.",
+          "label": "{{question}}",
+          "config": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          }
+        },
+        "promptId": "d3bcaf71c11c2678899be04d872718325f0916b3b0705e805ee29930663a42e2",
+        "promptIdx": 0,
+        "provider": {
+          "id": "stored-outputs",
+          "label": ""
+        },
+        "response": {
+          "output": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+          "metadata": {
+            "storedOutput": {
+              "schema": "example.stored-output/v1",
+              "caseId": "c2",
+              "repeatIndex": 0,
+              "outputSha256": "53fb9c59d9354837bf12a2b3b7c83311481f6b7d55a399962383562b7f726b41"
+            }
+          }
+        },
+        "score": 1,
+        "success": true,
+        "testCase": {
+          "vars": {
+            "case_id": "c2",
+            "question": "I bought shoes 45 days ago and want a refund."
+          },
+          "assert": [
+            {
+              "type": "llm-rubric",
+              "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+            }
+          ],
+          "options": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          },
+          "metadata": {}
+        },
+        "testIdx": 3,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {
+          "case_id": "c2",
+          "question": "I bought shoes 45 days ago and want a refund."
+        },
+        "metadata": {
+          "storedOutput": {
+            "schema": "example.stored-output/v1",
+            "caseId": "c2",
+            "repeatIndex": 0,
+            "outputSha256": "53fb9c59d9354837bf12a2b3b7c83311481f6b7d55a399962383562b7f726b41"
+          },
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 0
+      },
+      {
+        "cost": 0,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "All assertions passed",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          },
+          "componentResults": [
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "Local fake judge: pass.",
+              "tokensUsed": {
+                "total": 120,
+                "prompt": 100,
+                "completion": 20,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\nRefunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\\n</Output>\\n<Rubric>\\nThe reply follows the refund policy (within 30 days or damaged goods, never more than once).\\n</Rubric>\"}]"
+              }
+            }
+          ]
+        },
+        "id": "4f5ea22c-a2e7-495a-a4f9-22126e0a2771",
+        "latencyMs": 0,
+        "namedScores": {},
+        "prompt": {
+          "raw": "I bought shoes 45 days ago and want a refund.",
+          "label": "{{question}}",
+          "config": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          }
+        },
+        "promptId": "d3bcaf71c11c2678899be04d872718325f0916b3b0705e805ee29930663a42e2",
+        "promptIdx": 0,
+        "provider": {
+          "id": "stored-outputs",
+          "label": ""
+        },
+        "response": {
+          "output": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+          "metadata": {
+            "storedOutput": {
+              "schema": "example.stored-output/v1",
+              "caseId": "c2",
+              "repeatIndex": 1,
+              "outputSha256": "53fb9c59d9354837bf12a2b3b7c83311481f6b7d55a399962383562b7f726b41"
+            }
+          }
+        },
+        "score": 1,
+        "success": true,
+        "testCase": {
+          "vars": {
+            "case_id": "c2",
+            "question": "I bought shoes 45 days ago and want a refund."
+          },
+          "assert": [
+            {
+              "type": "llm-rubric",
+              "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+            }
+          ],
+          "options": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          },
+          "metadata": {}
+        },
+        "testIdx": 4,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {
+          "case_id": "c2",
+          "question": "I bought shoes 45 days ago and want a refund."
+        },
+        "metadata": {
+          "storedOutput": {
+            "schema": "example.stored-output/v1",
+            "caseId": "c2",
+            "repeatIndex": 1,
+            "outputSha256": "53fb9c59d9354837bf12a2b3b7c83311481f6b7d55a399962383562b7f726b41"
+          },
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 0
+      },
+      {
+        "cost": 0,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "All assertions passed",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          },
+          "componentResults": [
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "Local fake judge: pass.",
+              "tokensUsed": {
+                "total": 120,
+                "prompt": 100,
+                "completion": 20,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\nRefunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\\n</Output>\\n<Rubric>\\nThe reply follows the refund policy (within 30 days or damaged goods, never more than once).\\n</Rubric>\"}]"
+              }
+            }
+          ]
+        },
+        "id": "9426a89e-0daf-454a-85b1-524aa7731783",
+        "latencyMs": 0,
+        "namedScores": {},
+        "prompt": {
+          "raw": "I bought shoes 45 days ago and want a refund.",
+          "label": "{{question}}",
+          "config": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          }
+        },
+        "promptId": "d3bcaf71c11c2678899be04d872718325f0916b3b0705e805ee29930663a42e2",
+        "promptIdx": 0,
+        "provider": {
+          "id": "stored-outputs",
+          "label": ""
+        },
+        "response": {
+          "output": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+          "metadata": {
+            "storedOutput": {
+              "schema": "example.stored-output/v1",
+              "caseId": "c2",
+              "repeatIndex": 2,
+              "outputSha256": "53fb9c59d9354837bf12a2b3b7c83311481f6b7d55a399962383562b7f726b41"
+            }
+          }
+        },
+        "score": 1,
+        "success": true,
+        "testCase": {
+          "vars": {
+            "case_id": "c2",
+            "question": "I bought shoes 45 days ago and want a refund."
+          },
+          "assert": [
+            {
+              "type": "llm-rubric",
+              "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+            }
+          ],
+          "options": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          },
+          "metadata": {}
+        },
+        "testIdx": 5,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {
+          "case_id": "c2",
+          "question": "I bought shoes 45 days ago and want a refund."
+        },
+        "metadata": {
+          "storedOutput": {
+            "schema": "example.stored-output/v1",
+            "caseId": "c2",
+            "repeatIndex": 2,
+            "outputSha256": "53fb9c59d9354837bf12a2b3b7c83311481f6b7d55a399962383562b7f726b41"
+          },
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 0
+      },
+      {
+        "cost": 0,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "All assertions passed",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          },
+          "componentResults": [
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "Local fake judge: pass.",
+              "tokensUsed": {
+                "total": 120,
+                "prompt": 100,
+                "completion": 20,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\nSure, I refunded it twice to be safe. [[strict:fail]]\\n</Output>\\n<Rubric>\\nThe reply follows the refund policy (within 30 days or damaged goods, never more than once).\\n</Rubric>\"}]"
+              }
+            }
+          ]
+        },
+        "id": "dac34cfc-bc8b-4076-a628-3edd163db474",
+        "latencyMs": 0,
+        "namedScores": {},
+        "prompt": {
+          "raw": "Please refund my last order.",
+          "label": "{{question}}",
+          "config": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          }
+        },
+        "promptId": "d3bcaf71c11c2678899be04d872718325f0916b3b0705e805ee29930663a42e2",
+        "promptIdx": 0,
+        "provider": {
+          "id": "stored-outputs",
+          "label": ""
+        },
+        "response": {
+          "output": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+          "metadata": {
+            "storedOutput": {
+              "schema": "example.stored-output/v1",
+              "caseId": "c3",
+              "repeatIndex": 0,
+              "outputSha256": "218c2d012ecdf0beba51dc580d1480acf145d4136760d0c8b094c5b9e2e08b21"
+            }
+          }
+        },
+        "score": 1,
+        "success": true,
+        "testCase": {
+          "vars": {
+            "case_id": "c3",
+            "question": "Please refund my last order."
+          },
+          "assert": [
+            {
+              "type": "llm-rubric",
+              "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+            }
+          ],
+          "options": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          },
+          "metadata": {}
+        },
+        "testIdx": 6,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {
+          "case_id": "c3",
+          "question": "Please refund my last order."
+        },
+        "metadata": {
+          "storedOutput": {
+            "schema": "example.stored-output/v1",
+            "caseId": "c3",
+            "repeatIndex": 0,
+            "outputSha256": "218c2d012ecdf0beba51dc580d1480acf145d4136760d0c8b094c5b9e2e08b21"
+          },
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 0
+      },
+      {
+        "cost": 0,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "All assertions passed",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          },
+          "componentResults": [
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "Local fake judge: pass.",
+              "tokensUsed": {
+                "total": 120,
+                "prompt": 100,
+                "completion": 20,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\nSure, I refunded it twice to be safe. [[strict:fail]]\\n</Output>\\n<Rubric>\\nThe reply follows the refund policy (within 30 days or damaged goods, never more than once).\\n</Rubric>\"}]"
+              }
+            }
+          ]
+        },
+        "id": "fe772cdc-5395-4f10-bd14-52d368e05835",
+        "latencyMs": 0,
+        "namedScores": {},
+        "prompt": {
+          "raw": "Please refund my last order.",
+          "label": "{{question}}",
+          "config": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          }
+        },
+        "promptId": "d3bcaf71c11c2678899be04d872718325f0916b3b0705e805ee29930663a42e2",
+        "promptIdx": 0,
+        "provider": {
+          "id": "stored-outputs",
+          "label": ""
+        },
+        "response": {
+          "output": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+          "metadata": {
+            "storedOutput": {
+              "schema": "example.stored-output/v1",
+              "caseId": "c3",
+              "repeatIndex": 1,
+              "outputSha256": "218c2d012ecdf0beba51dc580d1480acf145d4136760d0c8b094c5b9e2e08b21"
+            }
+          }
+        },
+        "score": 1,
+        "success": true,
+        "testCase": {
+          "vars": {
+            "case_id": "c3",
+            "question": "Please refund my last order."
+          },
+          "assert": [
+            {
+              "type": "llm-rubric",
+              "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+            }
+          ],
+          "options": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          },
+          "metadata": {}
+        },
+        "testIdx": 7,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {
+          "case_id": "c3",
+          "question": "Please refund my last order."
+        },
+        "metadata": {
+          "storedOutput": {
+            "schema": "example.stored-output/v1",
+            "caseId": "c3",
+            "repeatIndex": 1,
+            "outputSha256": "218c2d012ecdf0beba51dc580d1480acf145d4136760d0c8b094c5b9e2e08b21"
+          },
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 0
+      },
+      {
+        "cost": 0,
+        "gradingResult": {
+          "pass": true,
+          "score": 1,
+          "reason": "All assertions passed",
+          "namedScores": {},
+          "tokensUsed": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          },
+          "componentResults": [
+            {
+              "assertion": {
+                "type": "llm-rubric",
+                "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+              },
+              "pass": true,
+              "score": 1,
+              "reason": "Local fake judge: pass.",
+              "tokensUsed": {
+                "total": 120,
+                "prompt": 100,
+                "completion": 20,
+                "cached": 0,
+                "numRequests": 0,
+                "completionDetails": {
+                  "reasoning": 0
+                }
+              },
+              "metadata": {
+                "renderedGradingPrompt": "[{\"role\":\"system\",\"content\":\"You are grading output according to a user-specified rubric. If the statement in the rubric is true, then the output passes the test. You respond with a JSON object with this structure: {reason: string, pass: boolean, score: number}\\n\\nExamples:\\n\\n<Output>Hello world</Output>\\n<Rubric>Content contains a greeting</Rubric>\\n{\\\"reason\\\": \\\"the content contains the word 'Hello'\\\", \\\"pass\\\": true, \\\"score\\\": 1.0}\\n\\n<Output>Avast ye swabs, repel the invaders!</Output>\\n<Rubric>Does not speak like a pirate</Rubric>\\n{\\\"reason\\\": \\\"'avast ye' is a common pirate term\\\", \\\"pass\\\": false, \\\"score\\\": 0.0}\"},{\"role\":\"user\",\"content\":\"<Output>\\nSure, I refunded it twice to be safe. [[strict:fail]]\\n</Output>\\n<Rubric>\\nThe reply follows the refund policy (within 30 days or damaged goods, never more than once).\\n</Rubric>\"}]"
+              }
+            }
+          ]
+        },
+        "id": "c9433658-e5fd-4b67-b338-5a8e2f2d00bf",
+        "latencyMs": 1,
+        "namedScores": {},
+        "prompt": {
+          "raw": "Please refund my last order.",
+          "label": "{{question}}",
+          "config": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          }
+        },
+        "promptId": "d3bcaf71c11c2678899be04d872718325f0916b3b0705e805ee29930663a42e2",
+        "promptIdx": 0,
+        "provider": {
+          "id": "stored-outputs",
+          "label": ""
+        },
+        "response": {
+          "output": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+          "metadata": {
+            "storedOutput": {
+              "schema": "example.stored-output/v1",
+              "caseId": "c3",
+              "repeatIndex": 2,
+              "outputSha256": "218c2d012ecdf0beba51dc580d1480acf145d4136760d0c8b094c5b9e2e08b21"
+            }
+          }
+        },
+        "score": 1,
+        "success": true,
+        "testCase": {
+          "vars": {
+            "case_id": "c3",
+            "question": "Please refund my last order."
+          },
+          "assert": [
+            {
+              "type": "llm-rubric",
+              "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+            }
+          ],
+          "options": {
+            "provider": {
+              "id": "anthropic:messages:claude-fake-1"
+            }
+          },
+          "metadata": {}
+        },
+        "testIdx": 8,
+        "tokenUsage": {
+          "prompt": 0,
+          "completion": 0,
+          "cached": 0,
+          "total": 0,
+          "numRequests": 1,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          },
+          "assertions": {
+            "total": 120,
+            "prompt": 100,
+            "completion": 20,
+            "cached": 0,
+            "numRequests": 1,
+            "completionDetails": {
+              "reasoning": 0,
+              "acceptedPrediction": 0,
+              "rejectedPrediction": 0,
+              "cacheReadInputTokens": 0,
+              "cacheCreationInputTokens": 0
+            }
+          }
+        },
+        "vars": {
+          "case_id": "c3",
+          "question": "Please refund my last order."
+        },
+        "metadata": {
+          "storedOutput": {
+            "schema": "example.stored-output/v1",
+            "caseId": "c3",
+            "repeatIndex": 2,
+            "outputSha256": "218c2d012ecdf0beba51dc580d1480acf145d4136760d0c8b094c5b9e2e08b21"
+          },
+          "_promptfooFileMetadata": {}
+        },
+        "failureReason": 0
+      }
+    ],
+    "stats": {
+      "successes": 9,
+      "failures": 0,
+      "errors": 0,
+      "tokenUsage": {
+        "prompt": 0,
+        "completion": 0,
+        "cached": 0,
+        "total": 0,
+        "numRequests": 9,
+        "completionDetails": {
+          "reasoning": 0,
+          "acceptedPrediction": 0,
+          "rejectedPrediction": 0,
+          "cacheReadInputTokens": 0,
+          "cacheCreationInputTokens": 0
+        },
+        "assertions": {
+          "total": 1080,
+          "prompt": 900,
+          "completion": 180,
+          "cached": 0,
+          "numRequests": 9,
+          "completionDetails": {
+            "reasoning": 0,
+            "acceptedPrediction": 0,
+            "rejectedPrediction": 0,
+            "cacheReadInputTokens": 0,
+            "cacheCreationInputTokens": 0
+          }
+        }
+      },
+      "durationMs": 80,
+      "evaluationDurationMs": 80
+    }
+  },
+  "config": {
+    "tags": {},
+    "prompts": [
+      "{{question}}"
+    ],
+    "providers": [
+      "file://stored-outputs-provider.cjs"
+    ],
+    "tests": [
+      {
+        "vars": {
+          "case_id": "c1",
+          "question": "My blender arrived broken. Can I get my money back?"
+        }
+      },
+      {
+        "vars": {
+          "case_id": "c2",
+          "question": "I bought shoes 45 days ago and want a refund."
+        }
+      },
+      {
+        "vars": {
+          "case_id": "c3",
+          "question": "Please refund my last order."
+        }
+      }
+    ],
+    "env": {},
+    "sharing": false,
+    "defaultTest": {
+      "options": {
+        "provider": {
+          "id": "anthropic:messages:claude-fake-1"
+        }
+      },
+      "assert": [
+        {
+          "type": "llm-rubric",
+          "value": "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
+        }
+      ],
+      "vars": {},
+      "metadata": {}
+    },
+    "outputPath": [
+      "out/plain.json"
+    ],
+    "extensions": [],
+    "metadata": {},
+    "evaluateOptions": {}
+  },
+  "shareableUrl": null,
+  "metadata": {
+    "promptfooVersion": "0.123.1",
+    "nodeVersion": "v25.6.1",
+    "platform": "darwin",
+    "arch": "arm64",
+    "exportedAt": "2026-10-13T17:53:52.102Z",
+    "evaluationCreatedAt": "2026-10-13T17:53:51.999Z"
+  },
+  "vars": [
+    "case_id",
+    "question"
+  ],
+  "runtimeOptions": {
+    "eventSource": "cli",
+    "showProgressBar": true,
+    "repeat": 3,
+    "maxConcurrency": 1,
+    "cache": false
+  }
+}

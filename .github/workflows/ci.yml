@@ -1,0 +1,139 @@
+# Continuous integration: typecheck, test and the pack-install test on Node 22.21.0 and 24, the release gate on Node 24
+# (tools/release-tree-check.ts, which ends with a publish dry run), then the importers' own
+# checks (the Inspect grader's self-test, and the three zero-spend rehearsals against the local fake endpoint), the
+# licence map, and, on a pull request, the sign-off of every commit.
+# It never publishes; release.yml is the only workflow that does. Actions are pinned by commit.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22.21.0', 24]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      # package.json says node >=22.21.0: the first leg is that version exactly, the lowest one the package claims.
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:pack
+      # The one release gate, the same command release.yml runs before it publishes: the manifest is the publishable
+      # one, the tree holds no path that is never published, and `npm publish --dry-run` exits 0 (prepack builds
+      # dist/). It sends nothing to the registry.
+      - name: The release gate on this tree
+        if: matrix.node == 24
+        run: node tools/release-tree-check.ts
+
+  # The licence map. `reuse lint` is run on the committed tree, where it ignores the folders git ignores (dist/,
+  # node_modules/), and before any install. In a folder that is not a git repository it also reads dist/ and node_modules/
+  # once they exist, and exits 1 on a clean tree; in a git checkout it skips what git ignores. The version is pinned; the extra lets it read the encoding of a file.
+  licence:
+    name: licence map
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.13'
+      - run: pip install 'reuse[charset-normalizer]==6.2.0'
+      - run: reuse lint
+
+  # The Developer Certificate of Origin: every commit of a pull request carries a Signed-off-by line (CONTRIBUTING.md).
+  # tools/dco-check.ts refuses the range if one commit lacks it. The whole history is fetched so that the range can be read.
+  dco:
+    name: sign-off
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - name: Every commit of the pull request is signed off
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: node tools/dco-check.ts "$BASE..$HEAD"
+
+  # The importers' examples: the Python grader's self-test, and each tool's rehearsal at zero spend. The commands are
+  # those of docs/IMPORTERS.md, through the import step. Every request goes to 127.0.0.1; the key is a dummy value.
+  importers:
+    name: importers
+    runs-on: ubuntu-latest
+    env:
+      ANTHROPIC_API_KEY: dummy
+      ENDPOINT: http://127.0.0.1:18765
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.13'
+      - run: npm ci
+      # The pinned versions are the ones the examples were made and tested with.
+      - run: pip install inspect_ai==0.3.275
+      - run: npm install --global promptfoo@0.123.1
+      - name: The recording grader's self-test
+        run: python examples/importers/inspect/selftest.py
+      - name: Rehearsal, skill-evals
+        run: |
+          OUT="$(mktemp -d)"
+          SK=examples/importers/skill-evals
+          node $SK/check.ts --flow $SK/example-flow --variant baseline --cases $SK/cases.json --reps 2 --select /reply --bar $SK/bar.json
+          node examples/importers/fake-endpoint.ts --log "$OUT/sk-requests.jsonl" &
+          EP=$!; trap 'kill $EP' EXIT; sleep 1
+          for j in old:fake-judge-old new:fake-judge-strict-new; do
+            node $SK/regrade.ts --flow $SK/example-flow --variant baseline --cases $SK/cases.json --reps 2 --rep 0 --draws 3 \
+              --template $SK/template.txt --criterion $SK/criterion.txt --system $SK/system.txt --select /reply --model "${j#*:}" \
+              --max-tokens 256 --temperature 0 --thinking NOT_SENT --effort NOT_SENT --max-reasks 0 --base-url "$ENDPOINT" \
+              --reading one-json-object-boolean-pass/v1 --out "$OUT/sk-${j%%:*}.regrade.jsonl"
+            node $SK/import.ts --in "$OUT/sk-${j%%:*}.regrade.jsonl" --cases $SK/cases.json --bar $SK/bar.json --out "$OUT/rehearsal-sk-${j%%:*}.json" \
+              --reading one-json-object-boolean-pass/v1 --flow $SK/example-flow
+          done
+      - name: Rehearsal, Inspect
+        run: |
+          OUT="$(mktemp -d)"
+          IN=examples/importers/inspect
+          python $IN/regrade.py --log $IN/fixtures/source.json --epochs 3 --check
+          node examples/importers/fake-endpoint.ts --reply-format grade --log "$OUT/in-requests.jsonl" &
+          EP=$!; trap 'kill $EP' EXIT; sleep 1
+          for j in old:fake-judge-old new:fake-judge-strict-new; do
+            python $IN/regrade.py --log $IN/fixtures/source.json --epochs 3 --judge-model "${j#*:}" --max-tokens 256 --temperature 0 \
+              --thinking NOT_SENT --effort NOT_SENT --max-reasks 0 --base-url "$ENDPOINT" --out-dir "$OUT/in-${j%%:*}"
+            node $IN/import.ts --in "$(ls "$OUT"/in-${j%%:*}/*.json)" --cases $IN/cases.json --bar $IN/bar.json --out "$OUT/rehearsal-${j%%:*}-inspect.json"
+          done
+      - name: Rehearsal, promptfoo
+        run: |
+          OUT="$(mktemp -d)"
+          PF=examples/importers/promptfoo
+          cp -R $PF "$OUT/pf"
+          sed 's/fake-judge-old/fake-judge-strict-new/' "$OUT/pf/promptfooconfig.yaml" > "$OUT/pf/new-judge.yaml"
+          PF_ENV=("PROMPTFOO_CONFIG_DIR=$OUT/pfcfg" PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 PROMPTFOO_DISABLE_SHARING=1 PROMPTFOO_DISABLE_REMOTE_GENERATION=true)
+          node examples/importers/fake-endpoint.ts --log "$OUT/pf-requests.jsonl" &
+          EP=$!; trap 'kill $EP' EXIT; sleep 1
+          (cd "$OUT" && env "${PF_ENV[@]}" promptfoo eval -c "$OUT/pf/promptfooconfig.yaml" --repeat 3 --no-cache -o old-judge.json)
+          # promptfoo exits 100 when a row fails, and the strict judge fails case c3: a completed run.
+          (cd "$OUT" && env "${PF_ENV[@]}" promptfoo eval -c "$OUT/pf/new-judge.yaml" --repeat 3 --no-cache -o new-judge.json) || [ $? -eq 100 ]
+          for j in old new; do
+            node $PF/import.ts --in "$OUT/$j-judge.json" --cases $PF/cases.json --bar $PF/bar.json --out "$OUT/rehearsal-pf-$j.json" --reading one-json-object-boolean-pass/v1
+          done

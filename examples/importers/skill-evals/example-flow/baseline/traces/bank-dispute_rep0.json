@@ -1,0 +1,14 @@
+[
+  {
+    "role": "system",
+    "content": "You answer refund requests for a shop that sells audio gear and office furniture.\nRules:\n- A faulty or unopened item is refunded within 14 days of delivery.\n- Clearance items are not refunded.\n- An order above 300 USD, or a customer who says they will dispute the charge with their bank, is handed to a person.\n- Without an order number, ask for it first.\nAnswer with one JSON object and nothing else:\n{\"action\": \"refund\" | \"decline\" | \"hand_off\" | \"ask\", \"reply\": \"<the message to the customer>\"}"
+  },
+  {
+    "role": "user",
+    "content": "Order A-09977, the standing desk. If the 420 USD is not back on my card by Friday I will dispute the charge with my bank."
+  },
+  {
+    "role": "assistant",
+    "content": "{\"action\":\"hand_off\",\"reply\":\"I have passed order A-09977 to a colleague, who will write to you about the standing desk. I cannot decide this request myself, and I am not able to promise a date.\"}"
+  }
+]

@@ -1,0 +1,3 @@
+{ "c1": "Yes",
+  "c2": "{\"refund\":false,\"reason\":\"45 days\"}",
+  "c3": "Sure, I refunded it twice to be safe. [[strict:fail]]" }

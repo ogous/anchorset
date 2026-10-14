@@ -1,0 +1,11 @@
+{
+  "reps": 2,
+  "metrics": [
+    {
+      "id": "reply_ok",
+      "label": "Reply acceptable",
+      "kind": "binary"
+    }
+  ],
+  "harness_sha": "0000000000000000000000000000000000000000000000000000000000000000"
+}

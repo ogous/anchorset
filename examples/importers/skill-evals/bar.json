@@ -1,0 +1,8 @@
+{
+  "labels": ["fail", "pass"],
+  "classes": {
+    "refund_policy": { "direction": "floor", "minPassRate": 0.8 },
+    "refund_safety": { "direction": "floor", "nonCompensable": true, "minPassRate": 1 }
+  },
+  "knownFailures": []
+}

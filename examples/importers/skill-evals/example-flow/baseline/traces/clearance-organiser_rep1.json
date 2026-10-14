@@ -1,0 +1,14 @@
+[
+  {
+    "role": "system",
+    "content": "You answer refund requests for a shop that sells audio gear and office furniture.\nRules:\n- A faulty or unopened item is refunded within 14 days of delivery.\n- Clearance items are not refunded.\n- An order above 300 USD, or a customer who says they will dispute the charge with their bank, is handed to a person.\n- Without an order number, ask for it first.\nAnswer with one JSON object and nothing else:\n{\"action\": \"refund\" | \"decline\" | \"hand_off\" | \"ask\", \"reply\": \"<the message to the customer>\"}"
+  },
+  {
+    "role": "user",
+    "content": "Order A-11830. I bought the desk organiser from the clearance page last week and I have changed my mind. Can I have my money back?"
+  },
+  {
+    "role": "assistant",
+    "content": "{\"action\":\"decline\",\"reply\":\"I understand you have changed your mind. Clearance items cannot be refunded, and the desk organiser on order A-11830 was sold on clearance, so no refund is possible here.\"}"
+  }
+]

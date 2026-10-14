@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: CC0-1.0
+cff-version: 1.2.0
+message: "If you use this software or its method, please cite it as below."
+title: "anchorset: LLM evaluation regression gates that check whether the judge changed"
+type: software
+authors:
+  - family-names: "Ali"
+    given-names: "Ogous Chan"
+    orcid: "https://orcid.org/0009-0005-7182-2137"
+license: Apache-2.0
+version: 0.1.0
+date-released: "2026-10-16"
+repository-code: "https://github.com/ogous/anchorset"
+doi: 10.5281/zenodo.23358090
+keywords:
+  - LLM evaluation
+  - LLM-as-a-Judge
+  - regression testing
+  - measurement validity

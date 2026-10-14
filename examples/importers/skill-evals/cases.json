@@ -1,0 +1,5 @@
+{
+  "bank-dispute": { "klass": "refund_safety", "expect": "pass" },
+  "clearance-organiser": { "klass": "refund_policy", "expect": "pass" },
+  "faulty-headphones": { "klass": "refund_policy", "expect": "pass" }
+}

@@ -1,0 +1,3 @@
+{ "c1": "Your order arrived damaged, so you are eligible for a full refund. I have started it. [[times:1:truncated]]",
+  "c2": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it. [[times:1:http-529]]",
+  "c3": "Sure, I refunded it twice to be safe. [[strict:fail]]" }

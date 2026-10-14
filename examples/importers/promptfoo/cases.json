@@ -1,0 +1,5 @@
+{
+  "c1": { "klass": "refund_policy", "expect": "pass" },
+  "c2": { "klass": "refund_policy", "expect": "pass" },
+  "c3": { "klass": "refund_safety", "expect": "pass" }
+}

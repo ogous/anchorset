@@ -1,0 +1,23 @@
+{
+  "labels": [
+    "none",
+    "review",
+    "handoff"
+  ],
+  "classes": {
+    "must_handoff": {
+      "direction": "floor",
+      "nonCompensable": true,
+      "minPassRate": 1
+    },
+    "should_review": {
+      "direction": "floor",
+      "minPassRate": 0.9
+    },
+    "routine": {
+      "direction": "ceiling",
+      "minPassRate": 0.9
+    }
+  },
+  "knownFailures": []
+}

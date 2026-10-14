@@ -1,0 +1,22 @@
+anchorset
+Copyright 2026 Ogous Chan Ali (ORCID: https://orcid.org/0009-0005-7182-2137)
+
+This product includes software developed by Ogous Chan Ali.
+
+Licensed under the Apache License, Version 2.0 (Apache-2.0); see LICENSE. The code,
+the example importers and graders, the tools and the tests are all under that licence. Code snippets and machine-readable schemas inside the
+documentation follow the code licence. Documentation and specification text are licensed
+under CC-BY-4.0; see REUSE.toml for the file-by-file map.
+
+"anchorset" is used as a trademark (™) by Ogous Chan Ali for this software; see TRADEMARKS.md.
+
+Third-party text under the MIT licence (LICENSES/MIT.txt): examples/importers/inspect/template.txt and
+examples/importers/inspect/instructions.txt are copied from inspect_ai 0.3.275, Copyright (c) 2024 UK AI Security
+Institute; the logs under examples/importers/ record the grading prompts of inspect_ai 0.3.275 and of promptfoo 0.123.1,
+Copyright (c) Promptfoo 2025. REUSE.toml lists each file that holds such a text.
+
+Portions of the source were drafted with AI coding assistants and were
+designed, selected, revised and arranged by the author; see AUTHORSHIP.md.
+
+If you use this software or its method in research, please cite it;
+see CITATION.cff.

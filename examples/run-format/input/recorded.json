@@ -1,0 +1,153 @@
+{
+  "graded": "by-code",
+  "bar": {
+    "labels": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5"
+    ],
+    "classes": {
+      "reply_quality": {
+        "direction": "floor",
+        "minPassRate": 0.5
+      }
+    },
+    "knownFailures": []
+  },
+  "cases": [
+    {
+      "id": "q01",
+      "klass": "reply_quality",
+      "input": {
+        "message": "Where is my refund? It has been twelve days."
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q02",
+      "klass": "reply_quality",
+      "input": {
+        "message": "Can I return a jacket I wore once?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q03",
+      "klass": "reply_quality",
+      "input": {
+        "message": "You charged me twice for one order."
+      },
+      "expect": "4"
+    }
+  ],
+  "drawsPerCase": 2,
+  "identity": {
+    "rubricHash": "662b93637a949b989316cdbea1b46bba86c8229598481b28ed999bc3ee121bac",
+    "systemModelRequested": "example-model",
+    "systemModelServed": "example-model-2026-01",
+    "systemPromptHash": "541c38a9274727f5123ba2435b6bf5b0b2cb52ade6a004afbb0e53a60f34007a",
+    "systemToolsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "systemHarnessVersion": "example-harness 1.0",
+    "seed": 7
+  },
+  "callShapes": {
+    "system": {
+      "schema": "anchorset.callshape/v1",
+      "endpoint": "example:messages",
+      "apiVersion": "1",
+      "betaFlags": [],
+      "thinkingMode": "off",
+      "thinkingBudgetTokens": "NOT_SENT",
+      "effort": "NOT_SENT",
+      "toolChoice": "none",
+      "toolChoiceName": "NOT_SENT",
+      "strictTools": "NOT_SENT",
+      "parallelToolUse": "NOT_SENT",
+      "temperature": 0,
+      "topP": "NOT_SENT",
+      "topK": "NOT_SENT",
+      "frequencyPenalty": "NOT_SENT",
+      "presencePenalty": "NOT_SENT",
+      "samplingSeed": "NOT_SENT",
+      "maxOutputTokens": 256,
+      "stopSequences": "NOT_SENT",
+      "responseFormat": {
+        "kind": "text"
+      },
+      "contextPolicy": "none",
+      "stream": false,
+      "timeoutMs": 30000,
+      "extras": {}
+    }
+  },
+  "draws": [
+    {
+      "case": "q01",
+      "draw": 0,
+      "attempts": [
+        {
+          "output": "Reply to q01, draw 0.",
+          "label": "4",
+          "stop": "end"
+        }
+      ]
+    },
+    {
+      "case": "q01",
+      "draw": 1,
+      "attempts": [
+        {
+          "output": "Reply to q01, draw 1.",
+          "label": "5",
+          "stop": "end"
+        }
+      ]
+    },
+    {
+      "case": "q02",
+      "draw": 0,
+      "attempts": [
+        {
+          "output": "Reply to q02, draw 0.",
+          "label": "5",
+          "stop": "end"
+        }
+      ]
+    },
+    {
+      "case": "q02",
+      "draw": 1,
+      "attempts": [
+        {
+          "output": "Reply to q02, draw 1.",
+          "label": "4",
+          "stop": "end"
+        }
+      ]
+    },
+    {
+      "case": "q03",
+      "draw": 0,
+      "attempts": [
+        {
+          "output": "Reply to q03, draw 0.",
+          "label": "4",
+          "stop": "end"
+        }
+      ]
+    },
+    {
+      "case": "q03",
+      "draw": 1,
+      "attempts": [
+        {
+          "output": "Reply to q03, draw 1.",
+          "label": "2",
+          "stop": "end"
+        }
+      ]
+    }
+  ]
+}

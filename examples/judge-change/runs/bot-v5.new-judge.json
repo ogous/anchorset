@@ -1,0 +1,3213 @@
+{
+  "schema": "anchorset.run/v3",
+  "identity": {
+    "caseSetHash": "dbb9df32e72a966d064a39885da85132f2fb79b9c4d26ebc23f31f6a00b8c5f9",
+    "barHash": "350b69d36d8131b950035f8ebe8f26052e634c48b5b8f81a767a56e27fa049b0",
+    "systemModelRequested": "example-model-a",
+    "systemModelServed": "example-model-a-2026-01-15",
+    "systemCallShapeHash": "cd3a87bafcf795c97f74f21db1a9a7b7cb355da06d6d74ad44e42b4db800d66c",
+    "systemPromptHash": "254ebfb286523125cc1829f27799c6c6e6fe916831ad7a9964e7117038891932",
+    "systemToolsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "systemHarnessVersion": "refund-harness 1.4.0",
+    "seed": 903097385,
+    "drawsPerCase": 6,
+    "judgeDefinitionHash": "b0fadff9c7699843c33381191dfbfdb24c67aec6667e149e0231b57086189d0c",
+    "judgeModelRequested": "example-judge",
+    "judgeModelServed": "example-judge-2026-06-01",
+    "judgeCallShapeHash": "cde6d59590b0355ea58f8896336222049b92894eabfc91265cf0c98a7a0d615b",
+    "judgeHarnessVersion": "judge-harness 2.0.0",
+    "rubricHash": "c4527b9966f8b00373e4397530985ece7f12f4d197edbe8e98ea903999d30061"
+  },
+  "callShapes": {
+    "system": {
+      "schema": "anchorset.callshape/v1",
+      "endpoint": "example-provider:messages",
+      "apiVersion": "2026-01-01",
+      "betaFlags": [],
+      "thinkingMode": "off",
+      "thinkingBudgetTokens": "NOT_SENT",
+      "effort": "NOT_SENT",
+      "toolChoice": "auto",
+      "toolChoiceName": "NOT_SENT",
+      "strictTools": "NOT_SENT",
+      "parallelToolUse": "NOT_SENT",
+      "temperature": 0,
+      "topP": "NOT_SENT",
+      "topK": "NOT_SENT",
+      "frequencyPenalty": "NOT_SENT",
+      "presencePenalty": "NOT_SENT",
+      "samplingSeed": "NOT_SENT",
+      "maxOutputTokens": 512,
+      "stopSequences": "NOT_SENT",
+      "responseFormat": {
+        "kind": "text"
+      },
+      "contextPolicy": "none",
+      "stream": false,
+      "timeoutMs": 30000,
+      "extras": {}
+    },
+    "judge": {
+      "schema": "anchorset.callshape/v1",
+      "endpoint": "example-provider:messages",
+      "apiVersion": "2026-01-01",
+      "betaFlags": [],
+      "thinkingMode": "off",
+      "thinkingBudgetTokens": "NOT_SENT",
+      "effort": "NOT_SENT",
+      "toolChoice": "named",
+      "toolChoiceName": "grade",
+      "strictTools": true,
+      "parallelToolUse": false,
+      "temperature": 0,
+      "topP": "NOT_SENT",
+      "topK": "NOT_SENT",
+      "frequencyPenalty": "NOT_SENT",
+      "presencePenalty": "NOT_SENT",
+      "samplingSeed": "NOT_SENT",
+      "maxOutputTokens": 64,
+      "stopSequences": "NOT_SENT",
+      "responseFormat": {
+        "kind": "tool",
+        "name": "grade"
+      },
+      "contextPolicy": "none",
+      "stream": false,
+      "timeoutMs": 30000,
+      "extras": {}
+    }
+  },
+  "cases": [
+    {
+      "id": "q01",
+      "klass": "reply_quality",
+      "input": {
+        "message": "My pair of boots arrived damaged. Can I get a refund?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q02",
+      "klass": "reply_quality",
+      "input": {
+        "message": "The pair of boots I ordered is the wrong size. How do I return it?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q03",
+      "klass": "reply_quality",
+      "input": {
+        "message": "I was charged twice for my pair of boots. Please refund one charge."
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q04",
+      "klass": "reply_quality",
+      "input": {
+        "message": "My refund for the pair of boots has not arrived after a week. Where is it?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q05",
+      "klass": "reply_quality",
+      "input": {
+        "message": "My kettle arrived damaged. Can I get a refund?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q06",
+      "klass": "reply_quality",
+      "input": {
+        "message": "The kettle I ordered is the wrong size. How do I return it?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q07",
+      "klass": "reply_quality",
+      "input": {
+        "message": "I was charged twice for my kettle. Please refund one charge."
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q08",
+      "klass": "reply_quality",
+      "input": {
+        "message": "My refund for the kettle has not arrived after a week. Where is it?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q09",
+      "klass": "reply_quality",
+      "input": {
+        "message": "My backpack arrived damaged. Can I get a refund?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q10",
+      "klass": "reply_quality",
+      "input": {
+        "message": "The backpack I ordered is the wrong size. How do I return it?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q11",
+      "klass": "reply_quality",
+      "input": {
+        "message": "I was charged twice for my backpack. Please refund one charge."
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q12",
+      "klass": "reply_quality",
+      "input": {
+        "message": "My refund for the backpack has not arrived after a week. Where is it?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q13",
+      "klass": "reply_quality",
+      "input": {
+        "message": "My desk lamp arrived damaged. Can I get a refund?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q14",
+      "klass": "reply_quality",
+      "input": {
+        "message": "The desk lamp I ordered is the wrong size. How do I return it?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q15",
+      "klass": "reply_quality",
+      "input": {
+        "message": "I was charged twice for my desk lamp. Please refund one charge."
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q16",
+      "klass": "reply_quality",
+      "input": {
+        "message": "My refund for the desk lamp has not arrived after a week. Where is it?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q17",
+      "klass": "reply_quality",
+      "input": {
+        "message": "My yoga mat arrived damaged. Can I get a refund?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q18",
+      "klass": "reply_quality",
+      "input": {
+        "message": "The yoga mat I ordered is the wrong size. How do I return it?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q19",
+      "klass": "reply_quality",
+      "input": {
+        "message": "I was charged twice for my yoga mat. Please refund one charge."
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q20",
+      "klass": "reply_quality",
+      "input": {
+        "message": "My refund for the yoga mat has not arrived after a week. Where is it?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q21",
+      "klass": "reply_quality",
+      "input": {
+        "message": "My phone case arrived damaged. Can I get a refund?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q22",
+      "klass": "reply_quality",
+      "input": {
+        "message": "The phone case I ordered is the wrong size. How do I return it?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q23",
+      "klass": "reply_quality",
+      "input": {
+        "message": "I was charged twice for my phone case. Please refund one charge."
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q24",
+      "klass": "reply_quality",
+      "input": {
+        "message": "My refund for the phone case has not arrived after a week. Where is it?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q25",
+      "klass": "reply_quality",
+      "input": {
+        "message": "My coffee grinder arrived damaged. Can I get a refund?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q26",
+      "klass": "reply_quality",
+      "input": {
+        "message": "The coffee grinder I ordered is the wrong size. How do I return it?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q27",
+      "klass": "reply_quality",
+      "input": {
+        "message": "I was charged twice for my coffee grinder. Please refund one charge."
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q28",
+      "klass": "reply_quality",
+      "input": {
+        "message": "My refund for the coffee grinder has not arrived after a week. Where is it?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q29",
+      "klass": "reply_quality",
+      "input": {
+        "message": "My bluetooth speaker arrived damaged. Can I get a refund?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q30",
+      "klass": "reply_quality",
+      "input": {
+        "message": "The bluetooth speaker I ordered is the wrong size. How do I return it?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q31",
+      "klass": "reply_quality",
+      "input": {
+        "message": "I was charged twice for my bluetooth speaker. Please refund one charge."
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q32",
+      "klass": "reply_quality",
+      "input": {
+        "message": "My refund for the bluetooth speaker has not arrived after a week. Where is it?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "p1",
+      "klass": "policy_safe",
+      "input": {
+        "message": "The item arrived two days after the 30-day window. Can I still return it?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "p2",
+      "klass": "policy_safe",
+      "input": {
+        "message": "I used the item for a month and I want my money back. Can you promise that?"
+      },
+      "expect": "4"
+    }
+  ],
+  "draws": [
+    {
+      "caseId": "q01",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "c22ded54a8d2078ec8c0bb869fe05ba81f75855c1432820b31afd57b097c9d4d",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "6adb53209b0ed9170dec036156a83d73708317439a648b56c1ab584ba52ac7fe"
+        }
+      ]
+    },
+    {
+      "caseId": "q01",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "c22ded54a8d2078ec8c0bb869fe05ba81f75855c1432820b31afd57b097c9d4d",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "6adb53209b0ed9170dec036156a83d73708317439a648b56c1ab584ba52ac7fe"
+        }
+      ]
+    },
+    {
+      "caseId": "q01",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "c22ded54a8d2078ec8c0bb869fe05ba81f75855c1432820b31afd57b097c9d4d",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "6adb53209b0ed9170dec036156a83d73708317439a648b56c1ab584ba52ac7fe"
+        }
+      ]
+    },
+    {
+      "caseId": "q01",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "c22ded54a8d2078ec8c0bb869fe05ba81f75855c1432820b31afd57b097c9d4d",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "6adb53209b0ed9170dec036156a83d73708317439a648b56c1ab584ba52ac7fe"
+        }
+      ]
+    },
+    {
+      "caseId": "q01",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "c22ded54a8d2078ec8c0bb869fe05ba81f75855c1432820b31afd57b097c9d4d",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "6adb53209b0ed9170dec036156a83d73708317439a648b56c1ab584ba52ac7fe"
+        }
+      ]
+    },
+    {
+      "caseId": "q01",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "c22ded54a8d2078ec8c0bb869fe05ba81f75855c1432820b31afd57b097c9d4d",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "6adb53209b0ed9170dec036156a83d73708317439a648b56c1ab584ba52ac7fe"
+        }
+      ]
+    },
+    {
+      "caseId": "q02",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "8260ae32c5e99da146137cc7d317a4861c75d2ccb7b2968b531b5bedb75e1435",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "bca6e47c8c03225f41b7ed6abd2962afa127026c2c3306a3cc5ffe88348e6ff5"
+        }
+      ]
+    },
+    {
+      "caseId": "q02",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "8260ae32c5e99da146137cc7d317a4861c75d2ccb7b2968b531b5bedb75e1435",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "bca6e47c8c03225f41b7ed6abd2962afa127026c2c3306a3cc5ffe88348e6ff5"
+        }
+      ]
+    },
+    {
+      "caseId": "q02",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "8260ae32c5e99da146137cc7d317a4861c75d2ccb7b2968b531b5bedb75e1435",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "bca6e47c8c03225f41b7ed6abd2962afa127026c2c3306a3cc5ffe88348e6ff5"
+        }
+      ]
+    },
+    {
+      "caseId": "q02",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "8260ae32c5e99da146137cc7d317a4861c75d2ccb7b2968b531b5bedb75e1435",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "bca6e47c8c03225f41b7ed6abd2962afa127026c2c3306a3cc5ffe88348e6ff5"
+        }
+      ]
+    },
+    {
+      "caseId": "q02",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "8260ae32c5e99da146137cc7d317a4861c75d2ccb7b2968b531b5bedb75e1435",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "bca6e47c8c03225f41b7ed6abd2962afa127026c2c3306a3cc5ffe88348e6ff5"
+        }
+      ]
+    },
+    {
+      "caseId": "q02",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "8260ae32c5e99da146137cc7d317a4861c75d2ccb7b2968b531b5bedb75e1435",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "bca6e47c8c03225f41b7ed6abd2962afa127026c2c3306a3cc5ffe88348e6ff5"
+        }
+      ]
+    },
+    {
+      "caseId": "q03",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "517dfeab6a9d6c6738f24b877c4dac9953e12b11664ce7c8d32553d56d8567eb",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "2c038e98779a8f5a9451160ede3e13abce578e321829f12f1ba96e14948574fc"
+        }
+      ]
+    },
+    {
+      "caseId": "q03",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "517dfeab6a9d6c6738f24b877c4dac9953e12b11664ce7c8d32553d56d8567eb",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "2c038e98779a8f5a9451160ede3e13abce578e321829f12f1ba96e14948574fc"
+        }
+      ]
+    },
+    {
+      "caseId": "q03",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "517dfeab6a9d6c6738f24b877c4dac9953e12b11664ce7c8d32553d56d8567eb",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "2c038e98779a8f5a9451160ede3e13abce578e321829f12f1ba96e14948574fc"
+        }
+      ]
+    },
+    {
+      "caseId": "q03",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "517dfeab6a9d6c6738f24b877c4dac9953e12b11664ce7c8d32553d56d8567eb",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "2c038e98779a8f5a9451160ede3e13abce578e321829f12f1ba96e14948574fc"
+        }
+      ]
+    },
+    {
+      "caseId": "q03",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "517dfeab6a9d6c6738f24b877c4dac9953e12b11664ce7c8d32553d56d8567eb",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "2c038e98779a8f5a9451160ede3e13abce578e321829f12f1ba96e14948574fc"
+        }
+      ]
+    },
+    {
+      "caseId": "q03",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "517dfeab6a9d6c6738f24b877c4dac9953e12b11664ce7c8d32553d56d8567eb",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "2c038e98779a8f5a9451160ede3e13abce578e321829f12f1ba96e14948574fc"
+        }
+      ]
+    },
+    {
+      "caseId": "q04",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "fd21f80daa841dce2e73acdd1b538bbfbc3748cdd10248dc53f5258199affefa",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f899943d23c82e74b7e6e7e9452f5053427c638425de30837d9336c39d8d2bb5"
+        }
+      ]
+    },
+    {
+      "caseId": "q04",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "fd21f80daa841dce2e73acdd1b538bbfbc3748cdd10248dc53f5258199affefa",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f899943d23c82e74b7e6e7e9452f5053427c638425de30837d9336c39d8d2bb5"
+        }
+      ]
+    },
+    {
+      "caseId": "q04",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "fd21f80daa841dce2e73acdd1b538bbfbc3748cdd10248dc53f5258199affefa",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f899943d23c82e74b7e6e7e9452f5053427c638425de30837d9336c39d8d2bb5"
+        }
+      ]
+    },
+    {
+      "caseId": "q04",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "fd21f80daa841dce2e73acdd1b538bbfbc3748cdd10248dc53f5258199affefa",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f899943d23c82e74b7e6e7e9452f5053427c638425de30837d9336c39d8d2bb5"
+        }
+      ]
+    },
+    {
+      "caseId": "q04",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "fd21f80daa841dce2e73acdd1b538bbfbc3748cdd10248dc53f5258199affefa",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f899943d23c82e74b7e6e7e9452f5053427c638425de30837d9336c39d8d2bb5"
+        }
+      ]
+    },
+    {
+      "caseId": "q04",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "fd21f80daa841dce2e73acdd1b538bbfbc3748cdd10248dc53f5258199affefa",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f899943d23c82e74b7e6e7e9452f5053427c638425de30837d9336c39d8d2bb5"
+        }
+      ]
+    },
+    {
+      "caseId": "q05",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "125a39a929e34f7d434175fd7bac1647dd591c2d3be099f08d364ebd458f506f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "93b2dedd81240aa9c715ad916cac9229fff69beec1b644baccd09afa80b8b55c"
+        }
+      ]
+    },
+    {
+      "caseId": "q05",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "125a39a929e34f7d434175fd7bac1647dd591c2d3be099f08d364ebd458f506f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "93b2dedd81240aa9c715ad916cac9229fff69beec1b644baccd09afa80b8b55c"
+        }
+      ]
+    },
+    {
+      "caseId": "q05",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "125a39a929e34f7d434175fd7bac1647dd591c2d3be099f08d364ebd458f506f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "93b2dedd81240aa9c715ad916cac9229fff69beec1b644baccd09afa80b8b55c"
+        }
+      ]
+    },
+    {
+      "caseId": "q05",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "125a39a929e34f7d434175fd7bac1647dd591c2d3be099f08d364ebd458f506f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "93b2dedd81240aa9c715ad916cac9229fff69beec1b644baccd09afa80b8b55c"
+        }
+      ]
+    },
+    {
+      "caseId": "q05",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "125a39a929e34f7d434175fd7bac1647dd591c2d3be099f08d364ebd458f506f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "93b2dedd81240aa9c715ad916cac9229fff69beec1b644baccd09afa80b8b55c"
+        }
+      ]
+    },
+    {
+      "caseId": "q05",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "125a39a929e34f7d434175fd7bac1647dd591c2d3be099f08d364ebd458f506f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "93b2dedd81240aa9c715ad916cac9229fff69beec1b644baccd09afa80b8b55c"
+        }
+      ]
+    },
+    {
+      "caseId": "q06",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "b8fd29fbe319c60685ffe2dc409f2a01cd6ad0656cffcc615b0bcf490cec877f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "7e08704632ac16545a0c6b142582fecb3eae08b81a8ec440b6f93fff7fc37625"
+        }
+      ]
+    },
+    {
+      "caseId": "q06",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "b8fd29fbe319c60685ffe2dc409f2a01cd6ad0656cffcc615b0bcf490cec877f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "7e08704632ac16545a0c6b142582fecb3eae08b81a8ec440b6f93fff7fc37625"
+        }
+      ]
+    },
+    {
+      "caseId": "q06",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "b8fd29fbe319c60685ffe2dc409f2a01cd6ad0656cffcc615b0bcf490cec877f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "7e08704632ac16545a0c6b142582fecb3eae08b81a8ec440b6f93fff7fc37625"
+        }
+      ]
+    },
+    {
+      "caseId": "q06",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "b8fd29fbe319c60685ffe2dc409f2a01cd6ad0656cffcc615b0bcf490cec877f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "7e08704632ac16545a0c6b142582fecb3eae08b81a8ec440b6f93fff7fc37625"
+        }
+      ]
+    },
+    {
+      "caseId": "q06",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "b8fd29fbe319c60685ffe2dc409f2a01cd6ad0656cffcc615b0bcf490cec877f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "7e08704632ac16545a0c6b142582fecb3eae08b81a8ec440b6f93fff7fc37625"
+        }
+      ]
+    },
+    {
+      "caseId": "q06",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "b8fd29fbe319c60685ffe2dc409f2a01cd6ad0656cffcc615b0bcf490cec877f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "7e08704632ac16545a0c6b142582fecb3eae08b81a8ec440b6f93fff7fc37625"
+        }
+      ]
+    },
+    {
+      "caseId": "q07",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "ddea2ce6894c45630171f241e610290de5403f02f2083009fcc7efdcd86d7e6e",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "b28e5b575bbc38deba5cd335e625bc71c240a5073ac26250ff3d178f34ed98be"
+        }
+      ]
+    },
+    {
+      "caseId": "q07",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "ddea2ce6894c45630171f241e610290de5403f02f2083009fcc7efdcd86d7e6e",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "b28e5b575bbc38deba5cd335e625bc71c240a5073ac26250ff3d178f34ed98be"
+        }
+      ]
+    },
+    {
+      "caseId": "q07",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "ddea2ce6894c45630171f241e610290de5403f02f2083009fcc7efdcd86d7e6e",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "b28e5b575bbc38deba5cd335e625bc71c240a5073ac26250ff3d178f34ed98be"
+        }
+      ]
+    },
+    {
+      "caseId": "q07",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "ddea2ce6894c45630171f241e610290de5403f02f2083009fcc7efdcd86d7e6e",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "b28e5b575bbc38deba5cd335e625bc71c240a5073ac26250ff3d178f34ed98be"
+        }
+      ]
+    },
+    {
+      "caseId": "q07",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "ddea2ce6894c45630171f241e610290de5403f02f2083009fcc7efdcd86d7e6e",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "b28e5b575bbc38deba5cd335e625bc71c240a5073ac26250ff3d178f34ed98be"
+        }
+      ]
+    },
+    {
+      "caseId": "q07",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "ddea2ce6894c45630171f241e610290de5403f02f2083009fcc7efdcd86d7e6e",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "b28e5b575bbc38deba5cd335e625bc71c240a5073ac26250ff3d178f34ed98be"
+        }
+      ]
+    },
+    {
+      "caseId": "q08",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "d6a867920542b26730723d585e31a6cd3f38daa3b023aeb0c0db78e901369771",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "c86b5019075002db42862da3b6defc9bf6ad84ee0ae52c1c8015ec8b66d04a60"
+        }
+      ]
+    },
+    {
+      "caseId": "q08",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "d6a867920542b26730723d585e31a6cd3f38daa3b023aeb0c0db78e901369771",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "c86b5019075002db42862da3b6defc9bf6ad84ee0ae52c1c8015ec8b66d04a60"
+        }
+      ]
+    },
+    {
+      "caseId": "q08",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "d6a867920542b26730723d585e31a6cd3f38daa3b023aeb0c0db78e901369771",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "c86b5019075002db42862da3b6defc9bf6ad84ee0ae52c1c8015ec8b66d04a60"
+        }
+      ]
+    },
+    {
+      "caseId": "q08",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "d6a867920542b26730723d585e31a6cd3f38daa3b023aeb0c0db78e901369771",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "c86b5019075002db42862da3b6defc9bf6ad84ee0ae52c1c8015ec8b66d04a60"
+        }
+      ]
+    },
+    {
+      "caseId": "q08",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "d6a867920542b26730723d585e31a6cd3f38daa3b023aeb0c0db78e901369771",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "c86b5019075002db42862da3b6defc9bf6ad84ee0ae52c1c8015ec8b66d04a60"
+        }
+      ]
+    },
+    {
+      "caseId": "q08",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "d6a867920542b26730723d585e31a6cd3f38daa3b023aeb0c0db78e901369771",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "c86b5019075002db42862da3b6defc9bf6ad84ee0ae52c1c8015ec8b66d04a60"
+        }
+      ]
+    },
+    {
+      "caseId": "q09",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "cc09c9ee3cbb1f978698b51479c7035d5736966745631f1940ec606d41753e41",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "27541e3471ffcc1e96371cc4b62dd83ac50e6a968ad652393a74c99ae10d4013"
+        }
+      ]
+    },
+    {
+      "caseId": "q09",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "cc09c9ee3cbb1f978698b51479c7035d5736966745631f1940ec606d41753e41",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "27541e3471ffcc1e96371cc4b62dd83ac50e6a968ad652393a74c99ae10d4013"
+        }
+      ]
+    },
+    {
+      "caseId": "q09",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "cc09c9ee3cbb1f978698b51479c7035d5736966745631f1940ec606d41753e41",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "27541e3471ffcc1e96371cc4b62dd83ac50e6a968ad652393a74c99ae10d4013"
+        }
+      ]
+    },
+    {
+      "caseId": "q09",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "cc09c9ee3cbb1f978698b51479c7035d5736966745631f1940ec606d41753e41",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "27541e3471ffcc1e96371cc4b62dd83ac50e6a968ad652393a74c99ae10d4013"
+        }
+      ]
+    },
+    {
+      "caseId": "q09",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "cc09c9ee3cbb1f978698b51479c7035d5736966745631f1940ec606d41753e41",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "27541e3471ffcc1e96371cc4b62dd83ac50e6a968ad652393a74c99ae10d4013"
+        }
+      ]
+    },
+    {
+      "caseId": "q09",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "cc09c9ee3cbb1f978698b51479c7035d5736966745631f1940ec606d41753e41",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "27541e3471ffcc1e96371cc4b62dd83ac50e6a968ad652393a74c99ae10d4013"
+        }
+      ]
+    },
+    {
+      "caseId": "q10",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "3c874a568619fdd8e2f5852d51a0643c8f4648de4a32662c01141047ddcad6f9",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f6940b3b7d6fe84b9ee27e3ff4fd7d8b8156685dc8235ea34bb2f3da0a4d3e81"
+        }
+      ]
+    },
+    {
+      "caseId": "q10",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "3c874a568619fdd8e2f5852d51a0643c8f4648de4a32662c01141047ddcad6f9",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f6940b3b7d6fe84b9ee27e3ff4fd7d8b8156685dc8235ea34bb2f3da0a4d3e81"
+        }
+      ]
+    },
+    {
+      "caseId": "q10",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "3c874a568619fdd8e2f5852d51a0643c8f4648de4a32662c01141047ddcad6f9",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f6940b3b7d6fe84b9ee27e3ff4fd7d8b8156685dc8235ea34bb2f3da0a4d3e81"
+        }
+      ]
+    },
+    {
+      "caseId": "q10",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "3c874a568619fdd8e2f5852d51a0643c8f4648de4a32662c01141047ddcad6f9",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f6940b3b7d6fe84b9ee27e3ff4fd7d8b8156685dc8235ea34bb2f3da0a4d3e81"
+        }
+      ]
+    },
+    {
+      "caseId": "q10",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "3c874a568619fdd8e2f5852d51a0643c8f4648de4a32662c01141047ddcad6f9",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f6940b3b7d6fe84b9ee27e3ff4fd7d8b8156685dc8235ea34bb2f3da0a4d3e81"
+        }
+      ]
+    },
+    {
+      "caseId": "q10",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "3c874a568619fdd8e2f5852d51a0643c8f4648de4a32662c01141047ddcad6f9",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f6940b3b7d6fe84b9ee27e3ff4fd7d8b8156685dc8235ea34bb2f3da0a4d3e81"
+        }
+      ]
+    },
+    {
+      "caseId": "q11",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "f80e122ea666ea175c17c5c4eaed12cea0e3ccaae2b97c507b76c14ce2b61078",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "bc1355128f503843ac1f0db3bbd55f34d61ccbc8cd79cc4163d04a0444f871d1"
+        }
+      ]
+    },
+    {
+      "caseId": "q11",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "f80e122ea666ea175c17c5c4eaed12cea0e3ccaae2b97c507b76c14ce2b61078",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "bc1355128f503843ac1f0db3bbd55f34d61ccbc8cd79cc4163d04a0444f871d1"
+        }
+      ]
+    },
+    {
+      "caseId": "q11",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "f80e122ea666ea175c17c5c4eaed12cea0e3ccaae2b97c507b76c14ce2b61078",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "bc1355128f503843ac1f0db3bbd55f34d61ccbc8cd79cc4163d04a0444f871d1"
+        }
+      ]
+    },
+    {
+      "caseId": "q11",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "f80e122ea666ea175c17c5c4eaed12cea0e3ccaae2b97c507b76c14ce2b61078",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "bc1355128f503843ac1f0db3bbd55f34d61ccbc8cd79cc4163d04a0444f871d1"
+        }
+      ]
+    },
+    {
+      "caseId": "q11",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "f80e122ea666ea175c17c5c4eaed12cea0e3ccaae2b97c507b76c14ce2b61078",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "bc1355128f503843ac1f0db3bbd55f34d61ccbc8cd79cc4163d04a0444f871d1"
+        }
+      ]
+    },
+    {
+      "caseId": "q11",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "f80e122ea666ea175c17c5c4eaed12cea0e3ccaae2b97c507b76c14ce2b61078",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "bc1355128f503843ac1f0db3bbd55f34d61ccbc8cd79cc4163d04a0444f871d1"
+        }
+      ]
+    },
+    {
+      "caseId": "q12",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "4c70669ccce4157a4fb7f6cd1e411491f80fe5e9de985369ce605f62fcdd2cba",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a254cfb9786c78d54f385fbaf4c579431aa8c7b1437467da9ec9c90e1ccec15d"
+        }
+      ]
+    },
+    {
+      "caseId": "q12",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "4c70669ccce4157a4fb7f6cd1e411491f80fe5e9de985369ce605f62fcdd2cba",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a254cfb9786c78d54f385fbaf4c579431aa8c7b1437467da9ec9c90e1ccec15d"
+        }
+      ]
+    },
+    {
+      "caseId": "q12",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "4c70669ccce4157a4fb7f6cd1e411491f80fe5e9de985369ce605f62fcdd2cba",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a254cfb9786c78d54f385fbaf4c579431aa8c7b1437467da9ec9c90e1ccec15d"
+        }
+      ]
+    },
+    {
+      "caseId": "q12",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "4c70669ccce4157a4fb7f6cd1e411491f80fe5e9de985369ce605f62fcdd2cba",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a254cfb9786c78d54f385fbaf4c579431aa8c7b1437467da9ec9c90e1ccec15d"
+        }
+      ]
+    },
+    {
+      "caseId": "q12",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "4c70669ccce4157a4fb7f6cd1e411491f80fe5e9de985369ce605f62fcdd2cba",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a254cfb9786c78d54f385fbaf4c579431aa8c7b1437467da9ec9c90e1ccec15d"
+        }
+      ]
+    },
+    {
+      "caseId": "q12",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "4c70669ccce4157a4fb7f6cd1e411491f80fe5e9de985369ce605f62fcdd2cba",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a254cfb9786c78d54f385fbaf4c579431aa8c7b1437467da9ec9c90e1ccec15d"
+        }
+      ]
+    },
+    {
+      "caseId": "q13",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "db5b68c175561f6c9f4fe56fbf777419b6f2379e60af67c9875cbdbd07c77283",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "66450c3edc65c6c4723909549767208b35530cdf855d94da4c9a6b181489b75a"
+        }
+      ]
+    },
+    {
+      "caseId": "q13",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "db5b68c175561f6c9f4fe56fbf777419b6f2379e60af67c9875cbdbd07c77283",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "66450c3edc65c6c4723909549767208b35530cdf855d94da4c9a6b181489b75a"
+        }
+      ]
+    },
+    {
+      "caseId": "q13",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "db5b68c175561f6c9f4fe56fbf777419b6f2379e60af67c9875cbdbd07c77283",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "66450c3edc65c6c4723909549767208b35530cdf855d94da4c9a6b181489b75a"
+        }
+      ]
+    },
+    {
+      "caseId": "q13",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "db5b68c175561f6c9f4fe56fbf777419b6f2379e60af67c9875cbdbd07c77283",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "66450c3edc65c6c4723909549767208b35530cdf855d94da4c9a6b181489b75a"
+        }
+      ]
+    },
+    {
+      "caseId": "q13",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "db5b68c175561f6c9f4fe56fbf777419b6f2379e60af67c9875cbdbd07c77283",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "66450c3edc65c6c4723909549767208b35530cdf855d94da4c9a6b181489b75a"
+        }
+      ]
+    },
+    {
+      "caseId": "q13",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "db5b68c175561f6c9f4fe56fbf777419b6f2379e60af67c9875cbdbd07c77283",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "66450c3edc65c6c4723909549767208b35530cdf855d94da4c9a6b181489b75a"
+        }
+      ]
+    },
+    {
+      "caseId": "q14",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "356dd0c8abcf6301761a6adc8c29a83c17185d0aaf1f75f754eea79cc40d67fd",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "09efd1008c5eabaa9e6e38c7d22bff60e2b2657284755bf7ebb531f263407b9b"
+        }
+      ]
+    },
+    {
+      "caseId": "q14",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "356dd0c8abcf6301761a6adc8c29a83c17185d0aaf1f75f754eea79cc40d67fd",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "09efd1008c5eabaa9e6e38c7d22bff60e2b2657284755bf7ebb531f263407b9b"
+        }
+      ]
+    },
+    {
+      "caseId": "q14",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "356dd0c8abcf6301761a6adc8c29a83c17185d0aaf1f75f754eea79cc40d67fd",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "09efd1008c5eabaa9e6e38c7d22bff60e2b2657284755bf7ebb531f263407b9b"
+        }
+      ]
+    },
+    {
+      "caseId": "q14",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "356dd0c8abcf6301761a6adc8c29a83c17185d0aaf1f75f754eea79cc40d67fd",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "09efd1008c5eabaa9e6e38c7d22bff60e2b2657284755bf7ebb531f263407b9b"
+        }
+      ]
+    },
+    {
+      "caseId": "q14",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "356dd0c8abcf6301761a6adc8c29a83c17185d0aaf1f75f754eea79cc40d67fd",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "09efd1008c5eabaa9e6e38c7d22bff60e2b2657284755bf7ebb531f263407b9b"
+        }
+      ]
+    },
+    {
+      "caseId": "q14",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "356dd0c8abcf6301761a6adc8c29a83c17185d0aaf1f75f754eea79cc40d67fd",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "09efd1008c5eabaa9e6e38c7d22bff60e2b2657284755bf7ebb531f263407b9b"
+        }
+      ]
+    },
+    {
+      "caseId": "q15",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "8e845ec15f0ca3feea8e6316cb88cb0fa29c4f039ff30f1305bdc51307d9701b",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "2de92c8e8e6a8f4085bd570467bf6646179616bf7ceb0cb297b94e15c251f890"
+        }
+      ]
+    },
+    {
+      "caseId": "q15",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "8e845ec15f0ca3feea8e6316cb88cb0fa29c4f039ff30f1305bdc51307d9701b",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "2de92c8e8e6a8f4085bd570467bf6646179616bf7ceb0cb297b94e15c251f890"
+        }
+      ]
+    },
+    {
+      "caseId": "q15",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "8e845ec15f0ca3feea8e6316cb88cb0fa29c4f039ff30f1305bdc51307d9701b",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "2de92c8e8e6a8f4085bd570467bf6646179616bf7ceb0cb297b94e15c251f890"
+        }
+      ]
+    },
+    {
+      "caseId": "q15",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "8e845ec15f0ca3feea8e6316cb88cb0fa29c4f039ff30f1305bdc51307d9701b",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "2de92c8e8e6a8f4085bd570467bf6646179616bf7ceb0cb297b94e15c251f890"
+        }
+      ]
+    },
+    {
+      "caseId": "q15",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "8e845ec15f0ca3feea8e6316cb88cb0fa29c4f039ff30f1305bdc51307d9701b",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "2de92c8e8e6a8f4085bd570467bf6646179616bf7ceb0cb297b94e15c251f890"
+        }
+      ]
+    },
+    {
+      "caseId": "q15",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "8e845ec15f0ca3feea8e6316cb88cb0fa29c4f039ff30f1305bdc51307d9701b",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "2de92c8e8e6a8f4085bd570467bf6646179616bf7ceb0cb297b94e15c251f890"
+        }
+      ]
+    },
+    {
+      "caseId": "q16",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "36fd3e8902d17cf4de5833f88822e4b5bfc546e62ec143997750bde0a0563c28",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "c9dda2707faed872064ca717df3a483cdf21b222865a15c62a917394149e74a1"
+        }
+      ]
+    },
+    {
+      "caseId": "q16",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "36fd3e8902d17cf4de5833f88822e4b5bfc546e62ec143997750bde0a0563c28",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "c9dda2707faed872064ca717df3a483cdf21b222865a15c62a917394149e74a1"
+        }
+      ]
+    },
+    {
+      "caseId": "q16",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "36fd3e8902d17cf4de5833f88822e4b5bfc546e62ec143997750bde0a0563c28",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "c9dda2707faed872064ca717df3a483cdf21b222865a15c62a917394149e74a1"
+        }
+      ]
+    },
+    {
+      "caseId": "q16",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "36fd3e8902d17cf4de5833f88822e4b5bfc546e62ec143997750bde0a0563c28",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "c9dda2707faed872064ca717df3a483cdf21b222865a15c62a917394149e74a1"
+        }
+      ]
+    },
+    {
+      "caseId": "q16",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "36fd3e8902d17cf4de5833f88822e4b5bfc546e62ec143997750bde0a0563c28",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "c9dda2707faed872064ca717df3a483cdf21b222865a15c62a917394149e74a1"
+        }
+      ]
+    },
+    {
+      "caseId": "q16",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "36fd3e8902d17cf4de5833f88822e4b5bfc546e62ec143997750bde0a0563c28",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "c9dda2707faed872064ca717df3a483cdf21b222865a15c62a917394149e74a1"
+        }
+      ]
+    },
+    {
+      "caseId": "q17",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "b2c72f1b1ef04613331f3568f474b1a24458c96abc7240230bb57d074977d5c2",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "d3ea516d0071929254226a7d1ba70d6cd3f6070fa5de75c743cad8c259d6d3d1"
+        }
+      ]
+    },
+    {
+      "caseId": "q17",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "b2c72f1b1ef04613331f3568f474b1a24458c96abc7240230bb57d074977d5c2",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "d3ea516d0071929254226a7d1ba70d6cd3f6070fa5de75c743cad8c259d6d3d1"
+        }
+      ]
+    },
+    {
+      "caseId": "q17",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "b2c72f1b1ef04613331f3568f474b1a24458c96abc7240230bb57d074977d5c2",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "d3ea516d0071929254226a7d1ba70d6cd3f6070fa5de75c743cad8c259d6d3d1"
+        }
+      ]
+    },
+    {
+      "caseId": "q17",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "b2c72f1b1ef04613331f3568f474b1a24458c96abc7240230bb57d074977d5c2",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "d3ea516d0071929254226a7d1ba70d6cd3f6070fa5de75c743cad8c259d6d3d1"
+        }
+      ]
+    },
+    {
+      "caseId": "q17",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "b2c72f1b1ef04613331f3568f474b1a24458c96abc7240230bb57d074977d5c2",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "d3ea516d0071929254226a7d1ba70d6cd3f6070fa5de75c743cad8c259d6d3d1"
+        }
+      ]
+    },
+    {
+      "caseId": "q17",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "b2c72f1b1ef04613331f3568f474b1a24458c96abc7240230bb57d074977d5c2",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "d3ea516d0071929254226a7d1ba70d6cd3f6070fa5de75c743cad8c259d6d3d1"
+        }
+      ]
+    },
+    {
+      "caseId": "q18",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "582780c135a139bb531832b249421afe09f320f2c49a407b2aafd562ed2d6d89",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8e03fd4a2fbe30e5972373c634f493babf234f8f2c2e3d754bc7178bda1aefe9"
+        }
+      ]
+    },
+    {
+      "caseId": "q18",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "582780c135a139bb531832b249421afe09f320f2c49a407b2aafd562ed2d6d89",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8e03fd4a2fbe30e5972373c634f493babf234f8f2c2e3d754bc7178bda1aefe9"
+        }
+      ]
+    },
+    {
+      "caseId": "q18",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "582780c135a139bb531832b249421afe09f320f2c49a407b2aafd562ed2d6d89",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8e03fd4a2fbe30e5972373c634f493babf234f8f2c2e3d754bc7178bda1aefe9"
+        }
+      ]
+    },
+    {
+      "caseId": "q18",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "582780c135a139bb531832b249421afe09f320f2c49a407b2aafd562ed2d6d89",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8e03fd4a2fbe30e5972373c634f493babf234f8f2c2e3d754bc7178bda1aefe9"
+        }
+      ]
+    },
+    {
+      "caseId": "q18",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "582780c135a139bb531832b249421afe09f320f2c49a407b2aafd562ed2d6d89",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8e03fd4a2fbe30e5972373c634f493babf234f8f2c2e3d754bc7178bda1aefe9"
+        }
+      ]
+    },
+    {
+      "caseId": "q18",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "582780c135a139bb531832b249421afe09f320f2c49a407b2aafd562ed2d6d89",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8e03fd4a2fbe30e5972373c634f493babf234f8f2c2e3d754bc7178bda1aefe9"
+        }
+      ]
+    },
+    {
+      "caseId": "q19",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "f80e122ea666ea175c17c5c4eaed12cea0e3ccaae2b97c507b76c14ce2b61078",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f35737613fd8479d0a79485ff765a14e031eb3f5ae361d575853ee3c38f77d58"
+        }
+      ]
+    },
+    {
+      "caseId": "q19",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "f80e122ea666ea175c17c5c4eaed12cea0e3ccaae2b97c507b76c14ce2b61078",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f35737613fd8479d0a79485ff765a14e031eb3f5ae361d575853ee3c38f77d58"
+        }
+      ]
+    },
+    {
+      "caseId": "q19",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "f80e122ea666ea175c17c5c4eaed12cea0e3ccaae2b97c507b76c14ce2b61078",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f35737613fd8479d0a79485ff765a14e031eb3f5ae361d575853ee3c38f77d58"
+        }
+      ]
+    },
+    {
+      "caseId": "q19",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "f80e122ea666ea175c17c5c4eaed12cea0e3ccaae2b97c507b76c14ce2b61078",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f35737613fd8479d0a79485ff765a14e031eb3f5ae361d575853ee3c38f77d58"
+        }
+      ]
+    },
+    {
+      "caseId": "q19",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "1",
+          "outputHash": "f80e122ea666ea175c17c5c4eaed12cea0e3ccaae2b97c507b76c14ce2b61078",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f35737613fd8479d0a79485ff765a14e031eb3f5ae361d575853ee3c38f77d58"
+        }
+      ]
+    },
+    {
+      "caseId": "q19",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "f80e122ea666ea175c17c5c4eaed12cea0e3ccaae2b97c507b76c14ce2b61078",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f35737613fd8479d0a79485ff765a14e031eb3f5ae361d575853ee3c38f77d58"
+        }
+      ]
+    },
+    {
+      "caseId": "q20",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "c9c3dee9802eb22d824e521a7ee67dc8e85299cf88cb82ec1aa271579cdb7c6b",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4607d3d576f7d65bcac44e9d110f9c3da05918242bda71d2ba14eed173c88489"
+        }
+      ]
+    },
+    {
+      "caseId": "q20",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "c9c3dee9802eb22d824e521a7ee67dc8e85299cf88cb82ec1aa271579cdb7c6b",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4607d3d576f7d65bcac44e9d110f9c3da05918242bda71d2ba14eed173c88489"
+        }
+      ]
+    },
+    {
+      "caseId": "q20",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "c9c3dee9802eb22d824e521a7ee67dc8e85299cf88cb82ec1aa271579cdb7c6b",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4607d3d576f7d65bcac44e9d110f9c3da05918242bda71d2ba14eed173c88489"
+        }
+      ]
+    },
+    {
+      "caseId": "q20",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "c9c3dee9802eb22d824e521a7ee67dc8e85299cf88cb82ec1aa271579cdb7c6b",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4607d3d576f7d65bcac44e9d110f9c3da05918242bda71d2ba14eed173c88489"
+        }
+      ]
+    },
+    {
+      "caseId": "q20",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "c9c3dee9802eb22d824e521a7ee67dc8e85299cf88cb82ec1aa271579cdb7c6b",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4607d3d576f7d65bcac44e9d110f9c3da05918242bda71d2ba14eed173c88489"
+        }
+      ]
+    },
+    {
+      "caseId": "q20",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "c9c3dee9802eb22d824e521a7ee67dc8e85299cf88cb82ec1aa271579cdb7c6b",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4607d3d576f7d65bcac44e9d110f9c3da05918242bda71d2ba14eed173c88489"
+        }
+      ]
+    },
+    {
+      "caseId": "q21",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "832d197fb384662f0a57cc8e78c7fc21065323712f7a4fd56dd290f2e5b97c69",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a4f5c0a91304422378b2a493d6b735da476cc51fce6e3a23964bd51d306130bf"
+        }
+      ]
+    },
+    {
+      "caseId": "q21",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "832d197fb384662f0a57cc8e78c7fc21065323712f7a4fd56dd290f2e5b97c69",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a4f5c0a91304422378b2a493d6b735da476cc51fce6e3a23964bd51d306130bf"
+        }
+      ]
+    },
+    {
+      "caseId": "q21",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "832d197fb384662f0a57cc8e78c7fc21065323712f7a4fd56dd290f2e5b97c69",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a4f5c0a91304422378b2a493d6b735da476cc51fce6e3a23964bd51d306130bf"
+        }
+      ]
+    },
+    {
+      "caseId": "q21",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "832d197fb384662f0a57cc8e78c7fc21065323712f7a4fd56dd290f2e5b97c69",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a4f5c0a91304422378b2a493d6b735da476cc51fce6e3a23964bd51d306130bf"
+        }
+      ]
+    },
+    {
+      "caseId": "q21",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "832d197fb384662f0a57cc8e78c7fc21065323712f7a4fd56dd290f2e5b97c69",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a4f5c0a91304422378b2a493d6b735da476cc51fce6e3a23964bd51d306130bf"
+        }
+      ]
+    },
+    {
+      "caseId": "q21",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "832d197fb384662f0a57cc8e78c7fc21065323712f7a4fd56dd290f2e5b97c69",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a4f5c0a91304422378b2a493d6b735da476cc51fce6e3a23964bd51d306130bf"
+        }
+      ]
+    },
+    {
+      "caseId": "q22",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "182521516619e2285b303d63a1881cab8adda12b9979dec07c69441a079a592f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8529ad183a434a6b29e727d24ff3dbdc234523ca422108d8549d8663c9d08166"
+        }
+      ]
+    },
+    {
+      "caseId": "q22",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "182521516619e2285b303d63a1881cab8adda12b9979dec07c69441a079a592f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8529ad183a434a6b29e727d24ff3dbdc234523ca422108d8549d8663c9d08166"
+        }
+      ]
+    },
+    {
+      "caseId": "q22",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "182521516619e2285b303d63a1881cab8adda12b9979dec07c69441a079a592f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8529ad183a434a6b29e727d24ff3dbdc234523ca422108d8549d8663c9d08166"
+        }
+      ]
+    },
+    {
+      "caseId": "q22",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "182521516619e2285b303d63a1881cab8adda12b9979dec07c69441a079a592f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8529ad183a434a6b29e727d24ff3dbdc234523ca422108d8549d8663c9d08166"
+        }
+      ]
+    },
+    {
+      "caseId": "q22",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "182521516619e2285b303d63a1881cab8adda12b9979dec07c69441a079a592f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8529ad183a434a6b29e727d24ff3dbdc234523ca422108d8549d8663c9d08166"
+        }
+      ]
+    },
+    {
+      "caseId": "q22",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "1",
+          "outputHash": "182521516619e2285b303d63a1881cab8adda12b9979dec07c69441a079a592f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8529ad183a434a6b29e727d24ff3dbdc234523ca422108d8549d8663c9d08166"
+        }
+      ]
+    },
+    {
+      "caseId": "q23",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "3f1eae3e7c8c0a4455d8236845ad94bbd1706d196e404ca93c82ccbc490f70c6",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8e8a9f233977d91641d22dc309351070db4ff0998864f4f7d10fa15ac8ee818e"
+        }
+      ]
+    },
+    {
+      "caseId": "q23",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "3f1eae3e7c8c0a4455d8236845ad94bbd1706d196e404ca93c82ccbc490f70c6",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8e8a9f233977d91641d22dc309351070db4ff0998864f4f7d10fa15ac8ee818e"
+        }
+      ]
+    },
+    {
+      "caseId": "q23",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "3f1eae3e7c8c0a4455d8236845ad94bbd1706d196e404ca93c82ccbc490f70c6",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8e8a9f233977d91641d22dc309351070db4ff0998864f4f7d10fa15ac8ee818e"
+        }
+      ]
+    },
+    {
+      "caseId": "q23",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "3f1eae3e7c8c0a4455d8236845ad94bbd1706d196e404ca93c82ccbc490f70c6",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8e8a9f233977d91641d22dc309351070db4ff0998864f4f7d10fa15ac8ee818e"
+        }
+      ]
+    },
+    {
+      "caseId": "q23",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "3f1eae3e7c8c0a4455d8236845ad94bbd1706d196e404ca93c82ccbc490f70c6",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8e8a9f233977d91641d22dc309351070db4ff0998864f4f7d10fa15ac8ee818e"
+        }
+      ]
+    },
+    {
+      "caseId": "q23",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "3f1eae3e7c8c0a4455d8236845ad94bbd1706d196e404ca93c82ccbc490f70c6",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "8e8a9f233977d91641d22dc309351070db4ff0998864f4f7d10fa15ac8ee818e"
+        }
+      ]
+    },
+    {
+      "caseId": "q24",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "fb3080caaffc3010f61c633a4487595247b2410157c960f155367bcb470ade57",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "cd78edec8e31bfdbccee11d42fc0a03d4b033de99294198c252c31c640c73fa8"
+        }
+      ]
+    },
+    {
+      "caseId": "q24",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "fb3080caaffc3010f61c633a4487595247b2410157c960f155367bcb470ade57",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "cd78edec8e31bfdbccee11d42fc0a03d4b033de99294198c252c31c640c73fa8"
+        }
+      ]
+    },
+    {
+      "caseId": "q24",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "fb3080caaffc3010f61c633a4487595247b2410157c960f155367bcb470ade57",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "cd78edec8e31bfdbccee11d42fc0a03d4b033de99294198c252c31c640c73fa8"
+        }
+      ]
+    },
+    {
+      "caseId": "q24",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "fb3080caaffc3010f61c633a4487595247b2410157c960f155367bcb470ade57",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "cd78edec8e31bfdbccee11d42fc0a03d4b033de99294198c252c31c640c73fa8"
+        }
+      ]
+    },
+    {
+      "caseId": "q24",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "fb3080caaffc3010f61c633a4487595247b2410157c960f155367bcb470ade57",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "cd78edec8e31bfdbccee11d42fc0a03d4b033de99294198c252c31c640c73fa8"
+        }
+      ]
+    },
+    {
+      "caseId": "q24",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "fb3080caaffc3010f61c633a4487595247b2410157c960f155367bcb470ade57",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "cd78edec8e31bfdbccee11d42fc0a03d4b033de99294198c252c31c640c73fa8"
+        }
+      ]
+    },
+    {
+      "caseId": "q25",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "771ee048180f81c8424922b24749c9c58308d3f2caa6eadc850b7d1979c147d1",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "cd2cc3c5f3a1a9acf073265ecc1439931462a3c5adbcad2a78771f293d295d45"
+        }
+      ]
+    },
+    {
+      "caseId": "q25",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "771ee048180f81c8424922b24749c9c58308d3f2caa6eadc850b7d1979c147d1",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "cd2cc3c5f3a1a9acf073265ecc1439931462a3c5adbcad2a78771f293d295d45"
+        }
+      ]
+    },
+    {
+      "caseId": "q25",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "771ee048180f81c8424922b24749c9c58308d3f2caa6eadc850b7d1979c147d1",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "cd2cc3c5f3a1a9acf073265ecc1439931462a3c5adbcad2a78771f293d295d45"
+        }
+      ]
+    },
+    {
+      "caseId": "q25",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "771ee048180f81c8424922b24749c9c58308d3f2caa6eadc850b7d1979c147d1",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "cd2cc3c5f3a1a9acf073265ecc1439931462a3c5adbcad2a78771f293d295d45"
+        }
+      ]
+    },
+    {
+      "caseId": "q25",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "771ee048180f81c8424922b24749c9c58308d3f2caa6eadc850b7d1979c147d1",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "cd2cc3c5f3a1a9acf073265ecc1439931462a3c5adbcad2a78771f293d295d45"
+        }
+      ]
+    },
+    {
+      "caseId": "q25",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "771ee048180f81c8424922b24749c9c58308d3f2caa6eadc850b7d1979c147d1",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "cd2cc3c5f3a1a9acf073265ecc1439931462a3c5adbcad2a78771f293d295d45"
+        }
+      ]
+    },
+    {
+      "caseId": "q26",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "e4d9690b21d0b533069b661751846b020f133779023b4a5072f9e82b3069c93c",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "9397cd8b550559a4f7fbad40f77cb7249aeb2ef6b6452b74cc60527f6fe1b0cf"
+        }
+      ]
+    },
+    {
+      "caseId": "q26",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "e4d9690b21d0b533069b661751846b020f133779023b4a5072f9e82b3069c93c",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "9397cd8b550559a4f7fbad40f77cb7249aeb2ef6b6452b74cc60527f6fe1b0cf"
+        }
+      ]
+    },
+    {
+      "caseId": "q26",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "e4d9690b21d0b533069b661751846b020f133779023b4a5072f9e82b3069c93c",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "9397cd8b550559a4f7fbad40f77cb7249aeb2ef6b6452b74cc60527f6fe1b0cf"
+        }
+      ]
+    },
+    {
+      "caseId": "q26",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "e4d9690b21d0b533069b661751846b020f133779023b4a5072f9e82b3069c93c",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "9397cd8b550559a4f7fbad40f77cb7249aeb2ef6b6452b74cc60527f6fe1b0cf"
+        }
+      ]
+    },
+    {
+      "caseId": "q26",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "e4d9690b21d0b533069b661751846b020f133779023b4a5072f9e82b3069c93c",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "9397cd8b550559a4f7fbad40f77cb7249aeb2ef6b6452b74cc60527f6fe1b0cf"
+        }
+      ]
+    },
+    {
+      "caseId": "q26",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "e4d9690b21d0b533069b661751846b020f133779023b4a5072f9e82b3069c93c",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "9397cd8b550559a4f7fbad40f77cb7249aeb2ef6b6452b74cc60527f6fe1b0cf"
+        }
+      ]
+    },
+    {
+      "caseId": "q27",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "0cf1ec26f1d8fe61b07062b48c38ab79d619771999afed6da95afea47a9737cb",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a9e2419b11dde13c51ff7c2e5b98ccc34c6be3c795dafb5c2fd4dd25e9294490"
+        }
+      ]
+    },
+    {
+      "caseId": "q27",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "0cf1ec26f1d8fe61b07062b48c38ab79d619771999afed6da95afea47a9737cb",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a9e2419b11dde13c51ff7c2e5b98ccc34c6be3c795dafb5c2fd4dd25e9294490"
+        }
+      ]
+    },
+    {
+      "caseId": "q27",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "0cf1ec26f1d8fe61b07062b48c38ab79d619771999afed6da95afea47a9737cb",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a9e2419b11dde13c51ff7c2e5b98ccc34c6be3c795dafb5c2fd4dd25e9294490"
+        }
+      ]
+    },
+    {
+      "caseId": "q27",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "0cf1ec26f1d8fe61b07062b48c38ab79d619771999afed6da95afea47a9737cb",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a9e2419b11dde13c51ff7c2e5b98ccc34c6be3c795dafb5c2fd4dd25e9294490"
+        }
+      ]
+    },
+    {
+      "caseId": "q27",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "0cf1ec26f1d8fe61b07062b48c38ab79d619771999afed6da95afea47a9737cb",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a9e2419b11dde13c51ff7c2e5b98ccc34c6be3c795dafb5c2fd4dd25e9294490"
+        }
+      ]
+    },
+    {
+      "caseId": "q27",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "0cf1ec26f1d8fe61b07062b48c38ab79d619771999afed6da95afea47a9737cb",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a9e2419b11dde13c51ff7c2e5b98ccc34c6be3c795dafb5c2fd4dd25e9294490"
+        }
+      ]
+    },
+    {
+      "caseId": "q28",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "be7fbb212c79769597898a0819a35cb3291ba71b26d523b033f33f5e4b169948",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a77f75f1071902bb0edd86b5fabc54c06769b6632d77cd7c0c6335e4abc2708a"
+        }
+      ]
+    },
+    {
+      "caseId": "q28",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "be7fbb212c79769597898a0819a35cb3291ba71b26d523b033f33f5e4b169948",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a77f75f1071902bb0edd86b5fabc54c06769b6632d77cd7c0c6335e4abc2708a"
+        }
+      ]
+    },
+    {
+      "caseId": "q28",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "be7fbb212c79769597898a0819a35cb3291ba71b26d523b033f33f5e4b169948",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a77f75f1071902bb0edd86b5fabc54c06769b6632d77cd7c0c6335e4abc2708a"
+        }
+      ]
+    },
+    {
+      "caseId": "q28",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "be7fbb212c79769597898a0819a35cb3291ba71b26d523b033f33f5e4b169948",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a77f75f1071902bb0edd86b5fabc54c06769b6632d77cd7c0c6335e4abc2708a"
+        }
+      ]
+    },
+    {
+      "caseId": "q28",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "be7fbb212c79769597898a0819a35cb3291ba71b26d523b033f33f5e4b169948",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a77f75f1071902bb0edd86b5fabc54c06769b6632d77cd7c0c6335e4abc2708a"
+        }
+      ]
+    },
+    {
+      "caseId": "q28",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "be7fbb212c79769597898a0819a35cb3291ba71b26d523b033f33f5e4b169948",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a77f75f1071902bb0edd86b5fabc54c06769b6632d77cd7c0c6335e4abc2708a"
+        }
+      ]
+    },
+    {
+      "caseId": "q29",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "3f1206d81c06fbb15d38f77ff0d1bd4c867e069b494a123ad91010a7816d9f6a",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "b69aac61d0c017bbc6e68710e34b2bcaa9fc76779cdf6748cddc6aa338066531"
+        }
+      ]
+    },
+    {
+      "caseId": "q29",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "3f1206d81c06fbb15d38f77ff0d1bd4c867e069b494a123ad91010a7816d9f6a",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "b69aac61d0c017bbc6e68710e34b2bcaa9fc76779cdf6748cddc6aa338066531"
+        }
+      ]
+    },
+    {
+      "caseId": "q29",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "3f1206d81c06fbb15d38f77ff0d1bd4c867e069b494a123ad91010a7816d9f6a",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "b69aac61d0c017bbc6e68710e34b2bcaa9fc76779cdf6748cddc6aa338066531"
+        }
+      ]
+    },
+    {
+      "caseId": "q29",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "3f1206d81c06fbb15d38f77ff0d1bd4c867e069b494a123ad91010a7816d9f6a",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "b69aac61d0c017bbc6e68710e34b2bcaa9fc76779cdf6748cddc6aa338066531"
+        }
+      ]
+    },
+    {
+      "caseId": "q29",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "3f1206d81c06fbb15d38f77ff0d1bd4c867e069b494a123ad91010a7816d9f6a",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "b69aac61d0c017bbc6e68710e34b2bcaa9fc76779cdf6748cddc6aa338066531"
+        }
+      ]
+    },
+    {
+      "caseId": "q29",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "2",
+          "outputHash": "3f1206d81c06fbb15d38f77ff0d1bd4c867e069b494a123ad91010a7816d9f6a",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "b69aac61d0c017bbc6e68710e34b2bcaa9fc76779cdf6748cddc6aa338066531"
+        }
+      ]
+    },
+    {
+      "caseId": "q30",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "e2e743334445096c91c87321c0722d1130a246fa56edec06993972442e65c4b2",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "1d8f40bf65e75aa90088d00f3abe0c5e3a47ad63ea9d4904c988c710303abb74"
+        }
+      ]
+    },
+    {
+      "caseId": "q30",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "e2e743334445096c91c87321c0722d1130a246fa56edec06993972442e65c4b2",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "1d8f40bf65e75aa90088d00f3abe0c5e3a47ad63ea9d4904c988c710303abb74"
+        }
+      ]
+    },
+    {
+      "caseId": "q30",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "e2e743334445096c91c87321c0722d1130a246fa56edec06993972442e65c4b2",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "1d8f40bf65e75aa90088d00f3abe0c5e3a47ad63ea9d4904c988c710303abb74"
+        }
+      ]
+    },
+    {
+      "caseId": "q30",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "e2e743334445096c91c87321c0722d1130a246fa56edec06993972442e65c4b2",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "1d8f40bf65e75aa90088d00f3abe0c5e3a47ad63ea9d4904c988c710303abb74"
+        }
+      ]
+    },
+    {
+      "caseId": "q30",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "e2e743334445096c91c87321c0722d1130a246fa56edec06993972442e65c4b2",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "1d8f40bf65e75aa90088d00f3abe0c5e3a47ad63ea9d4904c988c710303abb74"
+        }
+      ]
+    },
+    {
+      "caseId": "q30",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "e2e743334445096c91c87321c0722d1130a246fa56edec06993972442e65c4b2",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "1d8f40bf65e75aa90088d00f3abe0c5e3a47ad63ea9d4904c988c710303abb74"
+        }
+      ]
+    },
+    {
+      "caseId": "q31",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "def58e3de8ce9bf404923da5992614989b625b3bc867241ff050eb518a83a502",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4937b707099cbc8fa4690d15315f4606d0b7dc758fa203261c5009ed3a4e0388"
+        }
+      ]
+    },
+    {
+      "caseId": "q31",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "def58e3de8ce9bf404923da5992614989b625b3bc867241ff050eb518a83a502",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4937b707099cbc8fa4690d15315f4606d0b7dc758fa203261c5009ed3a4e0388"
+        }
+      ]
+    },
+    {
+      "caseId": "q31",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "def58e3de8ce9bf404923da5992614989b625b3bc867241ff050eb518a83a502",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4937b707099cbc8fa4690d15315f4606d0b7dc758fa203261c5009ed3a4e0388"
+        }
+      ]
+    },
+    {
+      "caseId": "q31",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "def58e3de8ce9bf404923da5992614989b625b3bc867241ff050eb518a83a502",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4937b707099cbc8fa4690d15315f4606d0b7dc758fa203261c5009ed3a4e0388"
+        }
+      ]
+    },
+    {
+      "caseId": "q31",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "def58e3de8ce9bf404923da5992614989b625b3bc867241ff050eb518a83a502",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4937b707099cbc8fa4690d15315f4606d0b7dc758fa203261c5009ed3a4e0388"
+        }
+      ]
+    },
+    {
+      "caseId": "q31",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "def58e3de8ce9bf404923da5992614989b625b3bc867241ff050eb518a83a502",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4937b707099cbc8fa4690d15315f4606d0b7dc758fa203261c5009ed3a4e0388"
+        }
+      ]
+    },
+    {
+      "caseId": "q32",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "ca9b3fe807e76506cda97bc40fed5f867985cf4b311d1a4c5ae558cdc0a60cb8",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4136b877f89617e1a222f2789917474b114449d32d3c0773cbbbe9e3fe3fe50e"
+        }
+      ]
+    },
+    {
+      "caseId": "q32",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "ca9b3fe807e76506cda97bc40fed5f867985cf4b311d1a4c5ae558cdc0a60cb8",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4136b877f89617e1a222f2789917474b114449d32d3c0773cbbbe9e3fe3fe50e"
+        }
+      ]
+    },
+    {
+      "caseId": "q32",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "ca9b3fe807e76506cda97bc40fed5f867985cf4b311d1a4c5ae558cdc0a60cb8",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4136b877f89617e1a222f2789917474b114449d32d3c0773cbbbe9e3fe3fe50e"
+        }
+      ]
+    },
+    {
+      "caseId": "q32",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "ca9b3fe807e76506cda97bc40fed5f867985cf4b311d1a4c5ae558cdc0a60cb8",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4136b877f89617e1a222f2789917474b114449d32d3c0773cbbbe9e3fe3fe50e"
+        }
+      ]
+    },
+    {
+      "caseId": "q32",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "ca9b3fe807e76506cda97bc40fed5f867985cf4b311d1a4c5ae558cdc0a60cb8",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4136b877f89617e1a222f2789917474b114449d32d3c0773cbbbe9e3fe3fe50e"
+        }
+      ]
+    },
+    {
+      "caseId": "q32",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "ca9b3fe807e76506cda97bc40fed5f867985cf4b311d1a4c5ae558cdc0a60cb8",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "4136b877f89617e1a222f2789917474b114449d32d3c0773cbbbe9e3fe3fe50e"
+        }
+      ]
+    },
+    {
+      "caseId": "p1",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "03b59c9b8de194183ee0293c433a66cf48cd8d5a3a492448d6bc7b4fb232b98f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "5386ff1c16e75a1148fc1d7aa0ab92be1f2047470f40e53b531dee89f8806ef6"
+        }
+      ]
+    },
+    {
+      "caseId": "p1",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "03b59c9b8de194183ee0293c433a66cf48cd8d5a3a492448d6bc7b4fb232b98f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "5386ff1c16e75a1148fc1d7aa0ab92be1f2047470f40e53b531dee89f8806ef6"
+        }
+      ]
+    },
+    {
+      "caseId": "p1",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "03b59c9b8de194183ee0293c433a66cf48cd8d5a3a492448d6bc7b4fb232b98f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "5386ff1c16e75a1148fc1d7aa0ab92be1f2047470f40e53b531dee89f8806ef6"
+        }
+      ]
+    },
+    {
+      "caseId": "p1",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "3",
+          "outputHash": "03b59c9b8de194183ee0293c433a66cf48cd8d5a3a492448d6bc7b4fb232b98f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "5386ff1c16e75a1148fc1d7aa0ab92be1f2047470f40e53b531dee89f8806ef6"
+        }
+      ]
+    },
+    {
+      "caseId": "p1",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "03b59c9b8de194183ee0293c433a66cf48cd8d5a3a492448d6bc7b4fb232b98f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "5386ff1c16e75a1148fc1d7aa0ab92be1f2047470f40e53b531dee89f8806ef6"
+        }
+      ]
+    },
+    {
+      "caseId": "p1",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "03b59c9b8de194183ee0293c433a66cf48cd8d5a3a492448d6bc7b4fb232b98f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "5386ff1c16e75a1148fc1d7aa0ab92be1f2047470f40e53b531dee89f8806ef6"
+        }
+      ]
+    },
+    {
+      "caseId": "p2",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "03b59c9b8de194183ee0293c433a66cf48cd8d5a3a492448d6bc7b4fb232b98f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "0af6ee862895866ac7d617d9ab09916d698d46e26afac3054e4213805f6c0c91"
+        }
+      ]
+    },
+    {
+      "caseId": "p2",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "03b59c9b8de194183ee0293c433a66cf48cd8d5a3a492448d6bc7b4fb232b98f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "0af6ee862895866ac7d617d9ab09916d698d46e26afac3054e4213805f6c0c91"
+        }
+      ]
+    },
+    {
+      "caseId": "p2",
+      "drawIndex": 2,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "03b59c9b8de194183ee0293c433a66cf48cd8d5a3a492448d6bc7b4fb232b98f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "0af6ee862895866ac7d617d9ab09916d698d46e26afac3054e4213805f6c0c91"
+        }
+      ]
+    },
+    {
+      "caseId": "p2",
+      "drawIndex": 3,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "03b59c9b8de194183ee0293c433a66cf48cd8d5a3a492448d6bc7b4fb232b98f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "0af6ee862895866ac7d617d9ab09916d698d46e26afac3054e4213805f6c0c91"
+        }
+      ]
+    },
+    {
+      "caseId": "p2",
+      "drawIndex": 4,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "03b59c9b8de194183ee0293c433a66cf48cd8d5a3a492448d6bc7b4fb232b98f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "0af6ee862895866ac7d617d9ab09916d698d46e26afac3054e4213805f6c0c91"
+        }
+      ]
+    },
+    {
+      "caseId": "p2",
+      "drawIndex": 5,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "03b59c9b8de194183ee0293c433a66cf48cd8d5a3a492448d6bc7b4fb232b98f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "0af6ee862895866ac7d617d9ab09916d698d46e26afac3054e4213805f6c0c91"
+        }
+      ]
+    }
+  ],
+  "packetBasis": "recorded"
+}

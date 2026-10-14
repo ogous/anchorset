@@ -1,0 +1,4102 @@
+{
+  "version": 2,
+  "status": "success",
+  "eval": {
+    "eval_id": "4FFbP3JvsLenvtE7zRHrLh",
+    "run_id": "mZy8dRgqeCzckaWoZZgD6Y",
+    "created": "2026-10-13T17:54:34+00:00",
+    "task": "regrade",
+    "task_id": "5oRZa6m5hbxSoiDrjAHPjA",
+    "task_version": 0,
+    "task_display_name": "regrade",
+    "task_attribs": {},
+    "task_args": {},
+    "task_args_passed": {},
+    "dataset": {
+      "samples": 3,
+      "sample_ids": [
+        "c1",
+        "c2",
+        "c3"
+      ],
+      "shuffled": false
+    },
+    "model": "mockllm/unused-system",
+    "model_generate_config": {},
+    "model_args": {},
+    "config": {
+      "epochs": 3,
+      "fail_on_error": true,
+      "continue_on_fail": false,
+      "score_on_error": false,
+      "sandbox_cleanup": true,
+      "sandbox_prebuilt": false,
+      "log_samples": true,
+      "log_realtime": true,
+      "log_images": true,
+      "score_display": true
+    },
+    "packages": {
+      "inspect_ai": "0.3.275"
+    },
+    "scorers": [
+      {
+        "name": "model_graded_qa",
+        "options": {
+          "model": {
+            "model": "anthropic/claude-fake-1",
+            "config": {
+              "max_tokens": 1024
+            },
+            "base_url": null,
+            "model_args": {
+              "streaming": false
+            }
+          }
+        },
+        "metrics": [
+          {
+            "name": "inspect_ai/accuracy",
+            "options": {}
+          },
+          {
+            "name": "inspect_ai/stderr",
+            "options": {}
+          }
+        ],
+        "metadata": {}
+      }
+    ]
+  },
+  "plan": {
+    "name": "plan",
+    "steps": [
+      {
+        "solver": "replay_stored",
+        "params": {},
+        "params_passed": {}
+      }
+    ],
+    "config": {}
+  },
+  "results": {
+    "total_samples": 9,
+    "completed_samples": 9,
+    "scores": [
+      {
+        "name": "model_graded_qa",
+        "scorer": "model_graded_qa",
+        "scored_samples": 3,
+        "unscored_samples": 0,
+        "params": {
+          "model": {
+            "model": "anthropic/claude-fake-1",
+            "config": {
+              "max_tokens": 1024
+            },
+            "base_url": null,
+            "model_args": {
+              "streaming": false
+            }
+          }
+        },
+        "metrics": {
+          "accuracy": {
+            "name": "accuracy",
+            "value": 1.0,
+            "params": {}
+          },
+          "stderr": {
+            "name": "stderr",
+            "value": 0.0,
+            "params": {}
+          }
+        }
+      }
+    ],
+    "headline": {
+      "scorer": "model_graded_qa",
+      "score": "model_graded_qa",
+      "metric": "accuracy"
+    }
+  },
+  "stats": {
+    "started_at": "2026-10-13T17:54:34+00:00",
+    "completed_at": "2026-10-13T17:54:34+00:00",
+    "model_usage": {
+      "anthropic/claude-fake-1": {
+        "input_tokens": 900,
+        "output_tokens": 180,
+        "total_tokens": 1080
+      }
+    },
+    "role_usage": {},
+    "connection_limit_history": []
+  },
+  "invalidated": false,
+  "tags": [],
+  "metadata": {},
+  "samples": [
+    {
+      "id": "c1",
+      "epoch": 1,
+      "input": "My blender arrived broken. Can I get my money back?",
+      "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+      "messages": [
+        {
+          "id": "5g459UCRTQmKScqZWiqH8K",
+          "content": "My blender arrived broken. Can I get my money back?",
+          "source": "input",
+          "role": "user"
+        },
+        {
+          "id": "PzG9jsf5BF3WrwmNyUAEig",
+          "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+          "source": "generate",
+          "role": "assistant",
+          "model": "stored-outputs"
+        }
+      ],
+      "output": {
+        "model": "stored-outputs",
+        "choices": [
+          {
+            "message": {
+              "id": "PzG9jsf5BF3WrwmNyUAEig",
+              "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+              "source": "generate",
+              "role": "assistant",
+              "model": "stored-outputs"
+            },
+            "stop_reason": "stop"
+          }
+        ],
+        "completion": "Your order arrived damaged, so you are eligible for a full refund. I have started it."
+      },
+      "scores": {
+        "model_graded_qa": {
+          "value": "C",
+          "answer": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+          "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+          "metadata": {
+            "grading": [
+              {
+                "id": "G4HdrqXtUPsU7BgDLpaAke",
+                "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                "role": "user"
+              },
+              {
+                "id": "ZQfqPnKZTqsW8yVoBFmYz2",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Local fake judge reasoning.\n\nGRADE: C"
+                  }
+                ],
+                "source": "generate",
+                "role": "assistant",
+                "model": "claude-fake-1-served-20260101"
+              }
+            ]
+          },
+          "history": []
+        }
+      },
+      "metadata": {},
+      "store": {},
+      "events": [
+        {
+          "uuid": "QoatPybvJVaupVcHdDxUGn",
+          "span_id": "GVMbUzY8tvJV5EGaCWNCRu",
+          "timestamp": "2026-10-13T17:54:34.473405+00:00",
+          "working_start": 3275290.253802833,
+          "event": "span_begin",
+          "id": "GVMbUzY8tvJV5EGaCWNCRu",
+          "type": "init",
+          "name": "init"
+        },
+        {
+          "uuid": "Eu6ygvpeSSKucFQo6w57he",
+          "span_id": "GVMbUzY8tvJV5EGaCWNCRu",
+          "timestamp": "2026-10-13T17:54:34.473869+00:00",
+          "working_start": 3275290.254265708,
+          "event": "sample_init",
+          "sample": {
+            "input": "My blender arrived broken. Can I get my money back?",
+            "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+            "id": "c1"
+          },
+          "state": {
+            "messages": [
+              {
+                "id": "5g459UCRTQmKScqZWiqH8K",
+                "content": "My blender arrived broken. Can I get my money back?",
+                "source": "input",
+                "role": "user"
+              }
+            ],
+            "tools": [],
+            "tool_choice": null,
+            "store": {},
+            "output": {
+              "model": "mockllm/unused-system",
+              "choices": [],
+              "completion": ""
+            },
+            "completed": false,
+            "metadata": {}
+          }
+        },
+        {
+          "uuid": "TiD8wQbd6ciGnDGZUsMteC",
+          "span_id": "GVMbUzY8tvJV5EGaCWNCRu",
+          "timestamp": "2026-10-13T17:54:34.474116+00:00",
+          "working_start": 3275290.254512916,
+          "event": "span_end",
+          "id": "GVMbUzY8tvJV5EGaCWNCRu"
+        },
+        {
+          "uuid": "e3CfL9WZy943AVmHKopaof",
+          "span_id": "fH5JK4DBswY6jHkHbyAiD9",
+          "timestamp": "2026-10-13T17:54:34.479877+00:00",
+          "working_start": 0.0054719592444598675,
+          "event": "span_begin",
+          "id": "fH5JK4DBswY6jHkHbyAiD9",
+          "type": "solvers",
+          "name": "solvers"
+        },
+        {
+          "uuid": "32uYmAeGtKzLwfTbtNbADi",
+          "span_id": "bv2A8m4BRajaKMnwwvxoAE",
+          "timestamp": "2026-10-13T17:54:34.480402+00:00",
+          "working_start": 0.005997084081172943,
+          "event": "span_begin",
+          "id": "bv2A8m4BRajaKMnwwvxoAE",
+          "parent_id": "fH5JK4DBswY6jHkHbyAiD9",
+          "type": "solver",
+          "name": "replay_stored"
+        },
+        {
+          "uuid": "n3Dsgbszd6DjTqUUQ9cXzR",
+          "span_id": "bv2A8m4BRajaKMnwwvxoAE",
+          "timestamp": "2026-10-13T17:54:34.480884+00:00",
+          "working_start": 0.006479416973888874,
+          "event": "state",
+          "changes": [
+            {
+              "op": "add",
+              "path": "/messages/1",
+              "value": {
+                "id": "PzG9jsf5BF3WrwmNyUAEig",
+                "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+                "source": "generate",
+                "role": "assistant",
+                "model": "stored-outputs"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/model",
+              "value": "stored-outputs",
+              "replaced": "mockllm/unused-system"
+            },
+            {
+              "op": "add",
+              "path": "/output/choices/0",
+              "value": {
+                "message": {
+                  "id": "PzG9jsf5BF3WrwmNyUAEig",
+                  "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "stored-outputs"
+                },
+                "stop_reason": "stop"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/completion",
+              "value": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+              "replaced": ""
+            }
+          ]
+        },
+        {
+          "uuid": "FMyABHgW8axnFzVy4fNJ3y",
+          "span_id": "bv2A8m4BRajaKMnwwvxoAE",
+          "timestamp": "2026-10-13T17:54:34.481044+00:00",
+          "working_start": 0.006639209110289812,
+          "event": "span_end",
+          "id": "bv2A8m4BRajaKMnwwvxoAE"
+        },
+        {
+          "uuid": "SZH45vPGfdJm4fnebBmzra",
+          "span_id": "fH5JK4DBswY6jHkHbyAiD9",
+          "timestamp": "2026-10-13T17:54:34.481137+00:00",
+          "working_start": 0.006732416804879904,
+          "event": "span_end",
+          "id": "fH5JK4DBswY6jHkHbyAiD9"
+        },
+        {
+          "uuid": "J4UKL7uLtcRnT4TxRvCpjW",
+          "span_id": "WoqpZoaADwmkqkkqE3Af4v",
+          "timestamp": "2026-10-13T17:54:34.487474+00:00",
+          "working_start": 0.013070208951830864,
+          "event": "span_begin",
+          "id": "WoqpZoaADwmkqkkqE3Af4v",
+          "type": "scorers",
+          "name": "scorers"
+        },
+        {
+          "uuid": "jB7kQtTZ3gbVHnoaE9BhjT",
+          "span_id": "Fwr3y4Hs2GUmq4SAcP92gw",
+          "timestamp": "2026-10-13T17:54:34.487655+00:00",
+          "working_start": 0.01325008412823081,
+          "event": "span_begin",
+          "id": "Fwr3y4Hs2GUmq4SAcP92gw",
+          "parent_id": "WoqpZoaADwmkqkkqE3Af4v",
+          "type": "scorer",
+          "name": "model_graded_qa"
+        },
+        {
+          "uuid": "P3PtiLfg9iWZKXvapNZXgi",
+          "span_id": "Fwr3y4Hs2GUmq4SAcP92gw",
+          "timestamp": "2026-10-13T17:54:34.487887+00:00",
+          "working_start": 0.013482458889484406,
+          "event": "model",
+          "model": "anthropic/claude-fake-1",
+          "input": [],
+          "input_refs": [
+            [
+              0,
+              1
+            ]
+          ],
+          "tools": [],
+          "tool_choice": "none",
+          "config": {
+            "max_tokens": 1024
+          },
+          "output": {
+            "model": "claude-fake-1-served-20260101",
+            "choices": [
+              {
+                "message": {
+                  "id": "ZQfqPnKZTqsW8yVoBFmYz2",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                },
+                "stop_reason": "stop"
+              }
+            ],
+            "completion": "Local fake judge reasoning.\n\nGRADE: C",
+            "usage": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            },
+            "time": 0.032258833292871714
+          },
+          "call": {
+            "request": {
+              "cache_control": {
+                "type": "ephemeral"
+              },
+              "tools": [],
+              "model": "claude-fake-1",
+              "max_tokens": 1024,
+              "extra_headers": {
+                "x-irid": "Fvgq8JkiAPAZYSLZukcBoJ"
+              }
+            },
+            "response": {
+              "id": "msg_fake_0001",
+              "container": null,
+              "content": [
+                {
+                  "citations": null,
+                  "text": "Local fake judge reasoning.\n\nGRADE: C",
+                  "type": "text"
+                }
+              ],
+              "diagnostics": null,
+              "model": "claude-fake-1-served-20260101",
+              "role": "assistant",
+              "stop_details": null,
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation": null,
+                "cache_creation_input_tokens": null,
+                "cache_read_input_tokens": null,
+                "inference_geo": null,
+                "input_tokens": 100,
+                "output_tokens": 20,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "server_tool_use": null,
+                "service_tier": null
+              }
+            },
+            "time": 0.032258833292871714,
+            "call_refs": [
+              [
+                0,
+                1
+              ]
+            ],
+            "call_key": "messages"
+          },
+          "completed": "2026-10-13T17:54:34.646993+00:00",
+          "working_time": 0.032258833292871714
+        },
+        {
+          "uuid": "PeNRaoxX3QTmcj3T4SgjzV",
+          "span_id": "Fwr3y4Hs2GUmq4SAcP92gw",
+          "timestamp": "2026-10-13T17:54:34.647568+00:00",
+          "working_start": 0.04669749969616532,
+          "event": "score",
+          "score": {
+            "value": "C",
+            "answer": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+            "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+            "metadata": {
+              "grading": [
+                {
+                  "id": "G4HdrqXtUPsU7BgDLpaAke",
+                  "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                  "role": "user"
+                },
+                {
+                  "id": "ZQfqPnKZTqsW8yVoBFmYz2",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                }
+              ]
+            },
+            "history": []
+          },
+          "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+          "intermediate": false,
+          "scorer": "model_graded_qa",
+          "scorer_args": {
+            "model": {
+              "model": "anthropic/claude-fake-1",
+              "config": {
+                "max_tokens": 1024
+              },
+              "base_url": null,
+              "model_args": {
+                "streaming": false
+              }
+            }
+          },
+          "model_usage": {
+            "anthropic/claude-fake-1": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            }
+          }
+        },
+        {
+          "uuid": "MiwjwzH8sRU5NvQ8dgNBbP",
+          "span_id": "Fwr3y4Hs2GUmq4SAcP92gw",
+          "timestamp": "2026-10-13T17:54:34.647817+00:00",
+          "working_start": 0.04694662429392338,
+          "event": "span_end",
+          "id": "Fwr3y4Hs2GUmq4SAcP92gw"
+        },
+        {
+          "uuid": "LBCLo7GiXF7x5VfqMUo2oi",
+          "span_id": "WoqpZoaADwmkqkkqE3Af4v",
+          "timestamp": "2026-10-13T17:54:34.647930+00:00",
+          "working_start": 0.04705954156816006,
+          "event": "span_end",
+          "id": "WoqpZoaADwmkqkkqE3Af4v"
+        }
+      ],
+      "model_usage": {
+        "anthropic/claude-fake-1": {
+          "input_tokens": 100,
+          "output_tokens": 20,
+          "total_tokens": 120
+        }
+      },
+      "role_usage": {},
+      "started_at": "2026-10-13T17:54:34.474407+00:00",
+      "completed_at": "2026-10-13T17:54:34.648180+00:00",
+      "total_time": 0.174,
+      "working_time": 0.047,
+      "uuid": "UBAG6YqUrpC4hNnrtrULND",
+      "error_retries": [],
+      "attachments": {
+        "8803a0a46dadd7ba3dff542e61dbb9af": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
+      },
+      "events_data": {
+        "messages": [
+          {
+            "id": "G4HdrqXtUPsU7BgDLpaAke",
+            "content": "attachment://8803a0a46dadd7ba3dff542e61dbb9af",
+            "role": "user"
+          }
+        ],
+        "calls": [
+          {
+            "role": "user",
+            "content": "attachment://8803a0a46dadd7ba3dff542e61dbb9af"
+          }
+        ]
+      },
+      "turn_count": 0
+    },
+    {
+      "id": "c2",
+      "epoch": 1,
+      "input": "I bought shoes 45 days ago and want a refund.",
+      "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+      "messages": [
+        {
+          "id": "9wxYYrbQQ3pUTgyiCG9Adf",
+          "content": "I bought shoes 45 days ago and want a refund.",
+          "source": "input",
+          "role": "user"
+        },
+        {
+          "id": "M3yYCNKtmcwQiwCibKSVAp",
+          "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+          "source": "generate",
+          "role": "assistant",
+          "model": "stored-outputs"
+        }
+      ],
+      "output": {
+        "model": "stored-outputs",
+        "choices": [
+          {
+            "message": {
+              "id": "M3yYCNKtmcwQiwCibKSVAp",
+              "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+              "source": "generate",
+              "role": "assistant",
+              "model": "stored-outputs"
+            },
+            "stop_reason": "stop"
+          }
+        ],
+        "completion": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it."
+      },
+      "scores": {
+        "model_graded_qa": {
+          "value": "C",
+          "answer": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+          "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+          "metadata": {
+            "grading": [
+              {
+                "id": "2LScsgUeB7GzhTZNpq2JDg",
+                "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                "role": "user"
+              },
+              {
+                "id": "hddMj5LHAhxkHFtzUkUcGB",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Local fake judge reasoning.\n\nGRADE: C"
+                  }
+                ],
+                "source": "generate",
+                "role": "assistant",
+                "model": "claude-fake-1-served-20260101"
+              }
+            ]
+          },
+          "history": []
+        }
+      },
+      "metadata": {},
+      "store": {},
+      "events": [
+        {
+          "uuid": "3qKTGeBozjg4fxBC5kZpLp",
+          "span_id": "V2TWygV9LCqPCvPrHGtLtf",
+          "timestamp": "2026-10-13T17:54:34.474766+00:00",
+          "working_start": 3275290.255162458,
+          "event": "span_begin",
+          "id": "V2TWygV9LCqPCvPrHGtLtf",
+          "type": "init",
+          "name": "init"
+        },
+        {
+          "uuid": "PbhbDRzQLes9v35eGUUK2c",
+          "span_id": "V2TWygV9LCqPCvPrHGtLtf",
+          "timestamp": "2026-10-13T17:54:34.474972+00:00",
+          "working_start": 3275290.255368083,
+          "event": "sample_init",
+          "sample": {
+            "input": "I bought shoes 45 days ago and want a refund.",
+            "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+            "id": "c2"
+          },
+          "state": {
+            "messages": [
+              {
+                "id": "9wxYYrbQQ3pUTgyiCG9Adf",
+                "content": "I bought shoes 45 days ago and want a refund.",
+                "source": "input",
+                "role": "user"
+              }
+            ],
+            "tools": [],
+            "tool_choice": null,
+            "store": {},
+            "output": {
+              "model": "mockllm/unused-system",
+              "choices": [],
+              "completion": ""
+            },
+            "completed": false,
+            "metadata": {}
+          }
+        },
+        {
+          "uuid": "XgQrLehjgwKnXtLB8KGaoq",
+          "span_id": "V2TWygV9LCqPCvPrHGtLtf",
+          "timestamp": "2026-10-13T17:54:34.475095+00:00",
+          "working_start": 3275290.255491958,
+          "event": "span_end",
+          "id": "V2TWygV9LCqPCvPrHGtLtf"
+        },
+        {
+          "uuid": "hyZiVrqv9wukJP4gk6MiJe",
+          "span_id": "UQTqF93pHrHELjP6bdnw2F",
+          "timestamp": "2026-10-13T17:54:34.481312+00:00",
+          "working_start": 0.006129541900008917,
+          "event": "span_begin",
+          "id": "UQTqF93pHrHELjP6bdnw2F",
+          "type": "solvers",
+          "name": "solvers"
+        },
+        {
+          "uuid": "DMLEyHgeGytfKANWNATBB2",
+          "span_id": "CwfPxcsFrT9cPqsMQnaMPR",
+          "timestamp": "2026-10-13T17:54:34.481419+00:00",
+          "working_start": 0.006236374843865633,
+          "event": "span_begin",
+          "id": "CwfPxcsFrT9cPqsMQnaMPR",
+          "parent_id": "UQTqF93pHrHELjP6bdnw2F",
+          "type": "solver",
+          "name": "replay_stored"
+        },
+        {
+          "uuid": "D2JsVbCTvpqb47ETo95uX6",
+          "span_id": "CwfPxcsFrT9cPqsMQnaMPR",
+          "timestamp": "2026-10-13T17:54:34.481644+00:00",
+          "working_start": 0.006461583077907562,
+          "event": "state",
+          "changes": [
+            {
+              "op": "add",
+              "path": "/messages/1",
+              "value": {
+                "id": "M3yYCNKtmcwQiwCibKSVAp",
+                "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+                "source": "generate",
+                "role": "assistant",
+                "model": "stored-outputs"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/model",
+              "value": "stored-outputs",
+              "replaced": "mockllm/unused-system"
+            },
+            {
+              "op": "add",
+              "path": "/output/choices/0",
+              "value": {
+                "message": {
+                  "id": "M3yYCNKtmcwQiwCibKSVAp",
+                  "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "stored-outputs"
+                },
+                "stop_reason": "stop"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/completion",
+              "value": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+              "replaced": ""
+            }
+          ]
+        },
+        {
+          "uuid": "3gF4jboHQoFLPh8PRnWvyf",
+          "span_id": "CwfPxcsFrT9cPqsMQnaMPR",
+          "timestamp": "2026-10-13T17:54:34.481750+00:00",
+          "working_start": 0.006567167118191719,
+          "event": "span_end",
+          "id": "CwfPxcsFrT9cPqsMQnaMPR"
+        },
+        {
+          "uuid": "eduXAnjNV8aQhgNGRxCJwu",
+          "span_id": "UQTqF93pHrHELjP6bdnw2F",
+          "timestamp": "2026-10-13T17:54:34.481835+00:00",
+          "working_start": 0.006652541924268007,
+          "event": "span_end",
+          "id": "UQTqF93pHrHELjP6bdnw2F"
+        },
+        {
+          "uuid": "eKFaKrCCTk43geAR26XcWp",
+          "span_id": "C9NmEp5vThCBprhQNzin7E",
+          "timestamp": "2026-10-13T17:54:34.488029+00:00",
+          "working_start": 0.012846458237618208,
+          "event": "span_begin",
+          "id": "C9NmEp5vThCBprhQNzin7E",
+          "type": "scorers",
+          "name": "scorers"
+        },
+        {
+          "uuid": "7wnGLjGCRj93T2Tz2CZxps",
+          "span_id": "AKdsrdzZPDczTLPr2hZLWw",
+          "timestamp": "2026-10-13T17:54:34.488139+00:00",
+          "working_start": 0.012956167105585337,
+          "event": "span_begin",
+          "id": "AKdsrdzZPDczTLPr2hZLWw",
+          "parent_id": "C9NmEp5vThCBprhQNzin7E",
+          "type": "scorer",
+          "name": "model_graded_qa"
+        },
+        {
+          "uuid": "UG9oyPtMVr9UZwm5PZFCnW",
+          "span_id": "AKdsrdzZPDczTLPr2hZLWw",
+          "timestamp": "2026-10-13T17:54:34.488304+00:00",
+          "working_start": 0.01312112482264638,
+          "event": "model",
+          "model": "anthropic/claude-fake-1",
+          "input": [],
+          "input_refs": [
+            [
+              0,
+              1
+            ]
+          ],
+          "tools": [],
+          "tool_choice": "none",
+          "config": {
+            "max_tokens": 1024
+          },
+          "output": {
+            "model": "claude-fake-1-served-20260101",
+            "choices": [
+              {
+                "message": {
+                  "id": "hddMj5LHAhxkHFtzUkUcGB",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                },
+                "stop_reason": "stop"
+              }
+            ],
+            "completion": "Local fake judge reasoning.\n\nGRADE: C",
+            "usage": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            },
+            "time": 0.021210292354226112
+          },
+          "call": {
+            "request": {
+              "cache_control": {
+                "type": "ephemeral"
+              },
+              "tools": [],
+              "model": "claude-fake-1",
+              "max_tokens": 1024,
+              "extra_headers": {
+                "x-irid": "BxLBGkHxbm5zSYT5JNKdyq"
+              }
+            },
+            "response": {
+              "id": "msg_fake_0002",
+              "container": null,
+              "content": [
+                {
+                  "citations": null,
+                  "text": "Local fake judge reasoning.\n\nGRADE: C",
+                  "type": "text"
+                }
+              ],
+              "diagnostics": null,
+              "model": "claude-fake-1-served-20260101",
+              "role": "assistant",
+              "stop_details": null,
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation": null,
+                "cache_creation_input_tokens": null,
+                "cache_read_input_tokens": null,
+                "inference_geo": null,
+                "input_tokens": 100,
+                "output_tokens": 20,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "server_tool_use": null,
+                "service_tier": null
+              }
+            },
+            "time": 0.021210292354226112,
+            "call_refs": [
+              [
+                0,
+                1
+              ]
+            ],
+            "call_key": "messages"
+          },
+          "completed": "2026-10-13T17:54:34.650160+00:00",
+          "working_time": 0.021210292354226112
+        },
+        {
+          "uuid": "Q5pGUTC8K2jCKm7aXKhAHg",
+          "span_id": "AKdsrdzZPDczTLPr2hZLWw",
+          "timestamp": "2026-10-13T17:54:34.650392+00:00",
+          "working_start": 0.03469408303499222,
+          "event": "score",
+          "score": {
+            "value": "C",
+            "answer": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+            "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+            "metadata": {
+              "grading": [
+                {
+                  "id": "2LScsgUeB7GzhTZNpq2JDg",
+                  "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                  "role": "user"
+                },
+                {
+                  "id": "hddMj5LHAhxkHFtzUkUcGB",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                }
+              ]
+            },
+            "history": []
+          },
+          "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+          "intermediate": false,
+          "scorer": "model_graded_qa",
+          "scorer_args": {
+            "model": {
+              "model": "anthropic/claude-fake-1",
+              "config": {
+                "max_tokens": 1024
+              },
+              "base_url": null,
+              "model_args": {
+                "streaming": false
+              }
+            }
+          },
+          "model_usage": {
+            "anthropic/claude-fake-1": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            }
+          }
+        },
+        {
+          "uuid": "j74RvkZHQMH5jeoMeUZK4a",
+          "span_id": "AKdsrdzZPDczTLPr2hZLWw",
+          "timestamp": "2026-10-13T17:54:34.650522+00:00",
+          "working_start": 0.03482470801100135,
+          "event": "span_end",
+          "id": "AKdsrdzZPDczTLPr2hZLWw"
+        },
+        {
+          "uuid": "mTH2vSsaKCzeH6Ph5iCBKx",
+          "span_id": "C9NmEp5vThCBprhQNzin7E",
+          "timestamp": "2026-10-13T17:54:34.650617+00:00",
+          "working_start": 0.03491866681724787,
+          "event": "span_end",
+          "id": "C9NmEp5vThCBprhQNzin7E"
+        }
+      ],
+      "model_usage": {
+        "anthropic/claude-fake-1": {
+          "input_tokens": 100,
+          "output_tokens": 20,
+          "total_tokens": 120
+        }
+      },
+      "role_usage": {},
+      "started_at": "2026-10-13T17:54:34.475184+00:00",
+      "completed_at": "2026-10-13T17:54:34.660172+00:00",
+      "total_time": 0.185,
+      "working_time": 0.044,
+      "uuid": "DQfnznzUgt5vdsPuMcK3nZ",
+      "error_retries": [],
+      "attachments": {
+        "a62565467235aa6087533ab0ae3e0e89": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
+      },
+      "events_data": {
+        "messages": [
+          {
+            "id": "2LScsgUeB7GzhTZNpq2JDg",
+            "content": "attachment://a62565467235aa6087533ab0ae3e0e89",
+            "role": "user"
+          }
+        ],
+        "calls": [
+          {
+            "role": "user",
+            "content": "attachment://a62565467235aa6087533ab0ae3e0e89"
+          }
+        ]
+      },
+      "turn_count": 0
+    },
+    {
+      "id": "c3",
+      "epoch": 1,
+      "input": "Please refund my last order.",
+      "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+      "messages": [
+        {
+          "id": "WpUNGmAS34MbDKbrgeNQeB",
+          "content": "Please refund my last order.",
+          "source": "input",
+          "role": "user"
+        },
+        {
+          "id": "gsKqKdAzXgBMvQFZoMxynw",
+          "content": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+          "source": "generate",
+          "role": "assistant",
+          "model": "stored-outputs"
+        }
+      ],
+      "output": {
+        "model": "stored-outputs",
+        "choices": [
+          {
+            "message": {
+              "id": "gsKqKdAzXgBMvQFZoMxynw",
+              "content": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+              "source": "generate",
+              "role": "assistant",
+              "model": "stored-outputs"
+            },
+            "stop_reason": "stop"
+          }
+        ],
+        "completion": "Sure, I refunded it twice to be safe. [[strict:fail]]"
+      },
+      "scores": {
+        "model_graded_qa": {
+          "value": "C",
+          "answer": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+          "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+          "metadata": {
+            "grading": [
+              {
+                "id": "RpmHqXMkX9bY6ARg76ktpB",
+                "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[strict:fail]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                "role": "user"
+              },
+              {
+                "id": "MayJaR5LDrsHWBUuwRAmYY",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Local fake judge reasoning.\n\nGRADE: C"
+                  }
+                ],
+                "source": "generate",
+                "role": "assistant",
+                "model": "claude-fake-1-served-20260101"
+              }
+            ]
+          },
+          "history": []
+        }
+      },
+      "metadata": {},
+      "store": {},
+      "events": [
+        {
+          "uuid": "8UnmzvCXxtJP6xbBnTiXZK",
+          "span_id": "GcFd2NNwCGxfjgVVbDT7EU",
+          "timestamp": "2026-10-13T17:54:34.475440+00:00",
+          "working_start": 3275290.255835833,
+          "event": "span_begin",
+          "id": "GcFd2NNwCGxfjgVVbDT7EU",
+          "type": "init",
+          "name": "init"
+        },
+        {
+          "uuid": "NQQkW2xhHcDhn9HC5882h7",
+          "span_id": "GcFd2NNwCGxfjgVVbDT7EU",
+          "timestamp": "2026-10-13T17:54:34.475636+00:00",
+          "working_start": 3275290.256032791,
+          "event": "sample_init",
+          "sample": {
+            "input": "Please refund my last order.",
+            "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+            "id": "c3"
+          },
+          "state": {
+            "messages": [
+              {
+                "id": "WpUNGmAS34MbDKbrgeNQeB",
+                "content": "Please refund my last order.",
+                "source": "input",
+                "role": "user"
+              }
+            ],
+            "tools": [],
+            "tool_choice": null,
+            "store": {},
+            "output": {
+              "model": "mockllm/unused-system",
+              "choices": [],
+              "completion": ""
+            },
+            "completed": false,
+            "metadata": {}
+          }
+        },
+        {
+          "uuid": "9PaSYPB6ZBpbg73tkozAr2",
+          "span_id": "GcFd2NNwCGxfjgVVbDT7EU",
+          "timestamp": "2026-10-13T17:54:34.475745+00:00",
+          "working_start": 3275290.256141583,
+          "event": "span_end",
+          "id": "GcFd2NNwCGxfjgVVbDT7EU"
+        },
+        {
+          "uuid": "jgbZWJM48NyyAjFp5hLYdR",
+          "span_id": "EGhBW5LRNHeXgXEdFb4kvZ",
+          "timestamp": "2026-10-13T17:54:34.481974+00:00",
+          "working_start": 0.006127915810793638,
+          "event": "span_begin",
+          "id": "EGhBW5LRNHeXgXEdFb4kvZ",
+          "type": "solvers",
+          "name": "solvers"
+        },
+        {
+          "uuid": "nAJjo96gKLHr4Qm7MA55vD",
+          "span_id": "J2eX3xo9n9vRgWB7cUJAxp",
+          "timestamp": "2026-10-13T17:54:34.482067+00:00",
+          "working_start": 0.006221207790076733,
+          "event": "span_begin",
+          "id": "J2eX3xo9n9vRgWB7cUJAxp",
+          "parent_id": "EGhBW5LRNHeXgXEdFb4kvZ",
+          "type": "solver",
+          "name": "replay_stored"
+        },
+        {
+          "uuid": "5B5TaMxBLB5DTdD2ZGCwVQ",
+          "span_id": "J2eX3xo9n9vRgWB7cUJAxp",
+          "timestamp": "2026-10-13T17:54:34.482277+00:00",
+          "working_start": 0.00643149996176362,
+          "event": "state",
+          "changes": [
+            {
+              "op": "add",
+              "path": "/messages/1",
+              "value": {
+                "id": "gsKqKdAzXgBMvQFZoMxynw",
+                "content": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+                "source": "generate",
+                "role": "assistant",
+                "model": "stored-outputs"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/model",
+              "value": "stored-outputs",
+              "replaced": "mockllm/unused-system"
+            },
+            {
+              "op": "add",
+              "path": "/output/choices/0",
+              "value": {
+                "message": {
+                  "id": "gsKqKdAzXgBMvQFZoMxynw",
+                  "content": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "stored-outputs"
+                },
+                "stop_reason": "stop"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/completion",
+              "value": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+              "replaced": ""
+            }
+          ]
+        },
+        {
+          "uuid": "k6jLGpPrxwUxsJP5e8TjGj",
+          "span_id": "J2eX3xo9n9vRgWB7cUJAxp",
+          "timestamp": "2026-10-13T17:54:34.482396+00:00",
+          "working_start": 0.006550000049173832,
+          "event": "span_end",
+          "id": "J2eX3xo9n9vRgWB7cUJAxp"
+        },
+        {
+          "uuid": "DgN8ovkDhRYGCwVfCBFgfk",
+          "span_id": "EGhBW5LRNHeXgXEdFb4kvZ",
+          "timestamp": "2026-10-13T17:54:34.482480+00:00",
+          "working_start": 0.0066337077878415585,
+          "event": "span_end",
+          "id": "EGhBW5LRNHeXgXEdFb4kvZ"
+        },
+        {
+          "uuid": "9FW3fsspzRNCp3GjW8M4w7",
+          "span_id": "ZdcqhKKzuoqL4Kdwd4wAzb",
+          "timestamp": "2026-10-13T17:54:34.488373+00:00",
+          "working_start": 0.012527290731668472,
+          "event": "span_begin",
+          "id": "ZdcqhKKzuoqL4Kdwd4wAzb",
+          "type": "scorers",
+          "name": "scorers"
+        },
+        {
+          "uuid": "6zZbCX4SRUL3E6rVn7ddGu",
+          "span_id": "25ZRii6d4xrsgpy2rcXeqf",
+          "timestamp": "2026-10-13T17:54:34.488470+00:00",
+          "working_start": 0.012623791117221117,
+          "event": "span_begin",
+          "id": "25ZRii6d4xrsgpy2rcXeqf",
+          "parent_id": "ZdcqhKKzuoqL4Kdwd4wAzb",
+          "type": "scorer",
+          "name": "model_graded_qa"
+        },
+        {
+          "uuid": "GKrRQGFN2MenMszVriEciu",
+          "span_id": "25ZRii6d4xrsgpy2rcXeqf",
+          "timestamp": "2026-10-13T17:54:34.488618+00:00",
+          "working_start": 0.012771707959473133,
+          "event": "model",
+          "model": "anthropic/claude-fake-1",
+          "input": [],
+          "input_refs": [
+            [
+              0,
+              1
+            ]
+          ],
+          "tools": [],
+          "tool_choice": "none",
+          "config": {
+            "max_tokens": 1024
+          },
+          "output": {
+            "model": "claude-fake-1-served-20260101",
+            "choices": [
+              {
+                "message": {
+                  "id": "MayJaR5LDrsHWBUuwRAmYY",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                },
+                "stop_reason": "stop"
+              }
+            ],
+            "completion": "Local fake judge reasoning.\n\nGRADE: C",
+            "usage": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            },
+            "time": 0.02236129203811288
+          },
+          "call": {
+            "request": {
+              "cache_control": {
+                "type": "ephemeral"
+              },
+              "tools": [],
+              "model": "claude-fake-1",
+              "max_tokens": 1024,
+              "extra_headers": {
+                "x-irid": "LJ5fBoiFWNeXSiFcjRpRKc"
+              }
+            },
+            "response": {
+              "id": "msg_fake_0003",
+              "container": null,
+              "content": [
+                {
+                  "citations": null,
+                  "text": "Local fake judge reasoning.\n\nGRADE: C",
+                  "type": "text"
+                }
+              ],
+              "diagnostics": null,
+              "model": "claude-fake-1-served-20260101",
+              "role": "assistant",
+              "stop_details": null,
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation": null,
+                "cache_creation_input_tokens": null,
+                "cache_read_input_tokens": null,
+                "inference_geo": null,
+                "input_tokens": 100,
+                "output_tokens": 20,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "server_tool_use": null,
+                "service_tier": null
+              }
+            },
+            "time": 0.02236129203811288,
+            "call_refs": [
+              [
+                0,
+                1
+              ]
+            ],
+            "call_key": "messages"
+          },
+          "completed": "2026-10-13T17:54:34.651499+00:00",
+          "working_time": 0.02236129203811288
+        },
+        {
+          "uuid": "MxRtPaVS9BtoeWSD692uQv",
+          "span_id": "25ZRii6d4xrsgpy2rcXeqf",
+          "timestamp": "2026-10-13T17:54:34.651702+00:00",
+          "working_start": 0.035396208986639977,
+          "event": "score",
+          "score": {
+            "value": "C",
+            "answer": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+            "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+            "metadata": {
+              "grading": [
+                {
+                  "id": "RpmHqXMkX9bY6ARg76ktpB",
+                  "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[strict:fail]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                  "role": "user"
+                },
+                {
+                  "id": "MayJaR5LDrsHWBUuwRAmYY",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                }
+              ]
+            },
+            "history": []
+          },
+          "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+          "intermediate": false,
+          "scorer": "model_graded_qa",
+          "scorer_args": {
+            "model": {
+              "model": "anthropic/claude-fake-1",
+              "config": {
+                "max_tokens": 1024
+              },
+              "base_url": null,
+              "model_args": {
+                "streaming": false
+              }
+            }
+          },
+          "model_usage": {
+            "anthropic/claude-fake-1": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            }
+          }
+        },
+        {
+          "uuid": "3EVtx6WNDGtbtdqeUA79CC",
+          "span_id": "25ZRii6d4xrsgpy2rcXeqf",
+          "timestamp": "2026-10-13T17:54:34.651828+00:00",
+          "working_start": 0.035522750578820705,
+          "event": "span_end",
+          "id": "25ZRii6d4xrsgpy2rcXeqf"
+        },
+        {
+          "uuid": "dn43Sg86NGRZgEpoHpSurT",
+          "span_id": "ZdcqhKKzuoqL4Kdwd4wAzb",
+          "timestamp": "2026-10-13T17:54:34.651919+00:00",
+          "working_start": 0.03561329282820225,
+          "event": "span_end",
+          "id": "ZdcqhKKzuoqL4Kdwd4wAzb"
+        }
+      ],
+      "model_usage": {
+        "anthropic/claude-fake-1": {
+          "input_tokens": 100,
+          "output_tokens": 20,
+          "total_tokens": 120
+        }
+      },
+      "role_usage": {},
+      "started_at": "2026-10-13T17:54:34.475847+00:00",
+      "completed_at": "2026-10-13T17:54:34.660887+00:00",
+      "total_time": 0.185,
+      "working_time": 0.045,
+      "uuid": "3rfL79ga7Lj8bNoyGFEyxs",
+      "error_retries": [],
+      "attachments": {
+        "551b26feb1828e1c43479e36c0a34570": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[strict:fail]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
+      },
+      "events_data": {
+        "messages": [
+          {
+            "id": "RpmHqXMkX9bY6ARg76ktpB",
+            "content": "attachment://551b26feb1828e1c43479e36c0a34570",
+            "role": "user"
+          }
+        ],
+        "calls": [
+          {
+            "role": "user",
+            "content": "attachment://551b26feb1828e1c43479e36c0a34570"
+          }
+        ]
+      },
+      "turn_count": 0
+    },
+    {
+      "id": "c1",
+      "epoch": 2,
+      "input": "My blender arrived broken. Can I get my money back?",
+      "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+      "messages": [
+        {
+          "id": "6pQhctApg9uJHTH2bgKjFd",
+          "content": "My blender arrived broken. Can I get my money back?",
+          "source": "input",
+          "role": "user"
+        },
+        {
+          "id": "SsjMBPLNQKjSUbgZWv6V5R",
+          "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+          "source": "generate",
+          "role": "assistant",
+          "model": "stored-outputs"
+        }
+      ],
+      "output": {
+        "model": "stored-outputs",
+        "choices": [
+          {
+            "message": {
+              "id": "SsjMBPLNQKjSUbgZWv6V5R",
+              "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+              "source": "generate",
+              "role": "assistant",
+              "model": "stored-outputs"
+            },
+            "stop_reason": "stop"
+          }
+        ],
+        "completion": "Your order arrived damaged, so you are eligible for a full refund. I have started it."
+      },
+      "scores": {
+        "model_graded_qa": {
+          "value": "C",
+          "answer": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+          "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+          "metadata": {
+            "grading": [
+              {
+                "id": "NtHVASthreXuytampJYQd3",
+                "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                "role": "user"
+              },
+              {
+                "id": "YUpYLJ7UrvirdZPMXSZK24",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Local fake judge reasoning.\n\nGRADE: C"
+                  }
+                ],
+                "source": "generate",
+                "role": "assistant",
+                "model": "claude-fake-1-served-20260101"
+              }
+            ]
+          },
+          "history": []
+        }
+      },
+      "metadata": {},
+      "store": {},
+      "events": [
+        {
+          "uuid": "Yky33D3L7Um3kKtwfmRaiZ",
+          "span_id": "b4qM58xFtLCyJeA5fXV3u5",
+          "timestamp": "2026-10-13T17:54:34.476108+00:00",
+          "working_start": 3275290.25650475,
+          "event": "span_begin",
+          "id": "b4qM58xFtLCyJeA5fXV3u5",
+          "type": "init",
+          "name": "init"
+        },
+        {
+          "uuid": "E9hfQobbL9ZgXotBvhokpS",
+          "span_id": "b4qM58xFtLCyJeA5fXV3u5",
+          "timestamp": "2026-10-13T17:54:34.476296+00:00",
+          "working_start": 3275290.256691791,
+          "event": "sample_init",
+          "sample": {
+            "input": "My blender arrived broken. Can I get my money back?",
+            "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+            "id": "c1"
+          },
+          "state": {
+            "messages": [
+              {
+                "id": "6pQhctApg9uJHTH2bgKjFd",
+                "content": "My blender arrived broken. Can I get my money back?",
+                "source": "input",
+                "role": "user"
+              }
+            ],
+            "tools": [],
+            "tool_choice": null,
+            "store": {},
+            "output": {
+              "model": "mockllm/unused-system",
+              "choices": [],
+              "completion": ""
+            },
+            "completed": false,
+            "metadata": {}
+          }
+        },
+        {
+          "uuid": "8jWM5REKd66hb4zFF3xYZG",
+          "span_id": "b4qM58xFtLCyJeA5fXV3u5",
+          "timestamp": "2026-10-13T17:54:34.476401+00:00",
+          "working_start": 3275290.256796958,
+          "event": "span_end",
+          "id": "b4qM58xFtLCyJeA5fXV3u5"
+        },
+        {
+          "uuid": "hDyDXRJni8XwWzopPhyMqG",
+          "span_id": "M4fZuBVxsocXtaWkZ2wrpv",
+          "timestamp": "2026-10-13T17:54:34.482608+00:00",
+          "working_start": 0.006132457870990038,
+          "event": "span_begin",
+          "id": "M4fZuBVxsocXtaWkZ2wrpv",
+          "type": "solvers",
+          "name": "solvers"
+        },
+        {
+          "uuid": "jksLfa6BrEstVQMNcv2cWC",
+          "span_id": "bkSQuFoV8B6oCqRzWJNJyZ",
+          "timestamp": "2026-10-13T17:54:34.482701+00:00",
+          "working_start": 0.006225332617759705,
+          "event": "span_begin",
+          "id": "bkSQuFoV8B6oCqRzWJNJyZ",
+          "parent_id": "M4fZuBVxsocXtaWkZ2wrpv",
+          "type": "solver",
+          "name": "replay_stored"
+        },
+        {
+          "uuid": "GGD5VKyh5rF5xTZeA2TSjj",
+          "span_id": "bkSQuFoV8B6oCqRzWJNJyZ",
+          "timestamp": "2026-10-13T17:54:34.482905+00:00",
+          "working_start": 0.006429249886423349,
+          "event": "state",
+          "changes": [
+            {
+              "op": "add",
+              "path": "/messages/1",
+              "value": {
+                "id": "SsjMBPLNQKjSUbgZWv6V5R",
+                "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+                "source": "generate",
+                "role": "assistant",
+                "model": "stored-outputs"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/model",
+              "value": "stored-outputs",
+              "replaced": "mockllm/unused-system"
+            },
+            {
+              "op": "add",
+              "path": "/output/choices/0",
+              "value": {
+                "message": {
+                  "id": "SsjMBPLNQKjSUbgZWv6V5R",
+                  "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "stored-outputs"
+                },
+                "stop_reason": "stop"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/completion",
+              "value": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+              "replaced": ""
+            }
+          ]
+        },
+        {
+          "uuid": "fcaYFjeV2vRbauXZgYdXVA",
+          "span_id": "bkSQuFoV8B6oCqRzWJNJyZ",
+          "timestamp": "2026-10-13T17:54:34.483010+00:00",
+          "working_start": 0.006533874664455652,
+          "event": "span_end",
+          "id": "bkSQuFoV8B6oCqRzWJNJyZ"
+        },
+        {
+          "uuid": "khJd37WAgvBWDsnfPn63hP",
+          "span_id": "M4fZuBVxsocXtaWkZ2wrpv",
+          "timestamp": "2026-10-13T17:54:34.483094+00:00",
+          "working_start": 0.006617874838411808,
+          "event": "span_end",
+          "id": "M4fZuBVxsocXtaWkZ2wrpv"
+        },
+        {
+          "uuid": "dEYXgwe8xQDhyR4CgvvNxe",
+          "span_id": "BFbULpurrWqbaEg6qB9pu3",
+          "timestamp": "2026-10-13T17:54:34.488674+00:00",
+          "working_start": 0.01219783304259181,
+          "event": "span_begin",
+          "id": "BFbULpurrWqbaEg6qB9pu3",
+          "type": "scorers",
+          "name": "scorers"
+        },
+        {
+          "uuid": "9jzyJspzATrSfMuSLexdSH",
+          "span_id": "hNZQdR6fa6VvhwxDiRbRTx",
+          "timestamp": "2026-10-13T17:54:34.488776+00:00",
+          "working_start": 0.012300290632992983,
+          "event": "span_begin",
+          "id": "hNZQdR6fa6VvhwxDiRbRTx",
+          "parent_id": "BFbULpurrWqbaEg6qB9pu3",
+          "type": "scorer",
+          "name": "model_graded_qa"
+        },
+        {
+          "uuid": "8PQR5CyxK9KoiaDWs4Kph9",
+          "span_id": "hNZQdR6fa6VvhwxDiRbRTx",
+          "timestamp": "2026-10-13T17:54:34.488934+00:00",
+          "working_start": 0.01245783269405365,
+          "event": "model",
+          "model": "anthropic/claude-fake-1",
+          "input": [],
+          "input_refs": [
+            [
+              0,
+              1
+            ]
+          ],
+          "tools": [],
+          "tool_choice": "none",
+          "config": {
+            "max_tokens": 1024
+          },
+          "output": {
+            "model": "claude-fake-1-served-20260101",
+            "choices": [
+              {
+                "message": {
+                  "id": "YUpYLJ7UrvirdZPMXSZK24",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                },
+                "stop_reason": "stop"
+              }
+            ],
+            "completion": "Local fake judge reasoning.\n\nGRADE: C",
+            "usage": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            },
+            "time": 0.023431125096976757
+          },
+          "call": {
+            "request": {
+              "cache_control": {
+                "type": "ephemeral"
+              },
+              "tools": [],
+              "model": "claude-fake-1",
+              "max_tokens": 1024,
+              "extra_headers": {
+                "x-irid": "nFA5jjcZdmr6zUxsYqJw42"
+              }
+            },
+            "response": {
+              "id": "msg_fake_0004",
+              "container": null,
+              "content": [
+                {
+                  "citations": null,
+                  "text": "Local fake judge reasoning.\n\nGRADE: C",
+                  "type": "text"
+                }
+              ],
+              "diagnostics": null,
+              "model": "claude-fake-1-served-20260101",
+              "role": "assistant",
+              "stop_details": null,
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation": null,
+                "cache_creation_input_tokens": null,
+                "cache_read_input_tokens": null,
+                "inference_geo": null,
+                "input_tokens": 100,
+                "output_tokens": 20,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "server_tool_use": null,
+                "service_tier": null
+              }
+            },
+            "time": 0.023431125096976757,
+            "call_refs": [
+              [
+                0,
+                1
+              ]
+            ],
+            "call_key": "messages"
+          },
+          "completed": "2026-10-13T17:54:34.652747+00:00",
+          "working_time": 0.023431125096976757
+        },
+        {
+          "uuid": "G4p9dJJT9nxyyXgr2v6yGQ",
+          "span_id": "hNZQdR6fa6VvhwxDiRbRTx",
+          "timestamp": "2026-10-13T17:54:34.652937+00:00",
+          "working_start": 0.03613424953073263,
+          "event": "score",
+          "score": {
+            "value": "C",
+            "answer": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+            "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+            "metadata": {
+              "grading": [
+                {
+                  "id": "NtHVASthreXuytampJYQd3",
+                  "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                  "role": "user"
+                },
+                {
+                  "id": "YUpYLJ7UrvirdZPMXSZK24",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                }
+              ]
+            },
+            "history": []
+          },
+          "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+          "intermediate": false,
+          "scorer": "model_graded_qa",
+          "scorer_args": {
+            "model": {
+              "model": "anthropic/claude-fake-1",
+              "config": {
+                "max_tokens": 1024
+              },
+              "base_url": null,
+              "model_args": {
+                "streaming": false
+              }
+            }
+          },
+          "model_usage": {
+            "anthropic/claude-fake-1": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            }
+          }
+        },
+        {
+          "uuid": "dShvK9UgFmr7epnhLACNoW",
+          "span_id": "hNZQdR6fa6VvhwxDiRbRTx",
+          "timestamp": "2026-10-13T17:54:34.653060+00:00",
+          "working_start": 0.03625787468627095,
+          "event": "span_end",
+          "id": "hNZQdR6fa6VvhwxDiRbRTx"
+        },
+        {
+          "uuid": "VTZhmgWvcJbeUeE3a8HXpT",
+          "span_id": "BFbULpurrWqbaEg6qB9pu3",
+          "timestamp": "2026-10-13T17:54:34.653150+00:00",
+          "working_start": 0.0363474995829165,
+          "event": "span_end",
+          "id": "BFbULpurrWqbaEg6qB9pu3"
+        }
+      ],
+      "model_usage": {
+        "anthropic/claude-fake-1": {
+          "input_tokens": 100,
+          "output_tokens": 20,
+          "total_tokens": 120
+        }
+      },
+      "role_usage": {},
+      "started_at": "2026-10-13T17:54:34.476477+00:00",
+      "completed_at": "2026-10-13T17:54:34.661498+00:00",
+      "total_time": 0.185,
+      "working_time": 0.045,
+      "uuid": "faw8vGvzE6ghP5ENS4VmYe",
+      "error_retries": [],
+      "attachments": {
+        "8803a0a46dadd7ba3dff542e61dbb9af": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
+      },
+      "events_data": {
+        "messages": [
+          {
+            "id": "NtHVASthreXuytampJYQd3",
+            "content": "attachment://8803a0a46dadd7ba3dff542e61dbb9af",
+            "role": "user"
+          }
+        ],
+        "calls": [
+          {
+            "role": "user",
+            "content": "attachment://8803a0a46dadd7ba3dff542e61dbb9af"
+          }
+        ]
+      },
+      "turn_count": 0
+    },
+    {
+      "id": "c2",
+      "epoch": 2,
+      "input": "I bought shoes 45 days ago and want a refund.",
+      "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+      "messages": [
+        {
+          "id": "kRy48EudYMxeEZK7BiDXy2",
+          "content": "I bought shoes 45 days ago and want a refund.",
+          "source": "input",
+          "role": "user"
+        },
+        {
+          "id": "jN2UtN5dqkepH2NoR6jjBG",
+          "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+          "source": "generate",
+          "role": "assistant",
+          "model": "stored-outputs"
+        }
+      ],
+      "output": {
+        "model": "stored-outputs",
+        "choices": [
+          {
+            "message": {
+              "id": "jN2UtN5dqkepH2NoR6jjBG",
+              "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+              "source": "generate",
+              "role": "assistant",
+              "model": "stored-outputs"
+            },
+            "stop_reason": "stop"
+          }
+        ],
+        "completion": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it."
+      },
+      "scores": {
+        "model_graded_qa": {
+          "value": "C",
+          "answer": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+          "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+          "metadata": {
+            "grading": [
+              {
+                "id": "bTtFw4R88d3V7KqvEoZwCS",
+                "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                "role": "user"
+              },
+              {
+                "id": "NgRnkAboS3A2N9TMGF7QQm",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Local fake judge reasoning.\n\nGRADE: C"
+                  }
+                ],
+                "source": "generate",
+                "role": "assistant",
+                "model": "claude-fake-1-served-20260101"
+              }
+            ]
+          },
+          "history": []
+        }
+      },
+      "metadata": {},
+      "store": {},
+      "events": [
+        {
+          "uuid": "n6U5UBJUEqbUVSGfTYjVoW",
+          "span_id": "LWVi4kpiojtRQs9q3JKqHg",
+          "timestamp": "2026-10-13T17:54:34.476716+00:00",
+          "working_start": 3275290.257112,
+          "event": "span_begin",
+          "id": "LWVi4kpiojtRQs9q3JKqHg",
+          "type": "init",
+          "name": "init"
+        },
+        {
+          "uuid": "ZkHr6WVEyukpEZBGkQnHZn",
+          "span_id": "LWVi4kpiojtRQs9q3JKqHg",
+          "timestamp": "2026-10-13T17:54:34.476892+00:00",
+          "working_start": 3275290.257288708,
+          "event": "sample_init",
+          "sample": {
+            "input": "I bought shoes 45 days ago and want a refund.",
+            "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+            "id": "c2"
+          },
+          "state": {
+            "messages": [
+              {
+                "id": "kRy48EudYMxeEZK7BiDXy2",
+                "content": "I bought shoes 45 days ago and want a refund.",
+                "source": "input",
+                "role": "user"
+              }
+            ],
+            "tools": [],
+            "tool_choice": null,
+            "store": {},
+            "output": {
+              "model": "mockllm/unused-system",
+              "choices": [],
+              "completion": ""
+            },
+            "completed": false,
+            "metadata": {}
+          }
+        },
+        {
+          "uuid": "JTwNbBvncwcFdYfYraTBfY",
+          "span_id": "LWVi4kpiojtRQs9q3JKqHg",
+          "timestamp": "2026-10-13T17:54:34.476994+00:00",
+          "working_start": 3275290.257389833,
+          "event": "span_end",
+          "id": "LWVi4kpiojtRQs9q3JKqHg"
+        },
+        {
+          "uuid": "dYnJNJxWGu65ne2GdBZW8w",
+          "span_id": "7GNQY3nvwk8wJgG33gSW5c",
+          "timestamp": "2026-10-13T17:54:34.483233+00:00",
+          "working_start": 0.006165499798953533,
+          "event": "span_begin",
+          "id": "7GNQY3nvwk8wJgG33gSW5c",
+          "type": "solvers",
+          "name": "solvers"
+        },
+        {
+          "uuid": "B9DazJCJCbG7yQ5cxgN87r",
+          "span_id": "YjgvsNsvi9Z3twYCRTTwmm",
+          "timestamp": "2026-10-13T17:54:34.483323+00:00",
+          "working_start": 0.006255290936678648,
+          "event": "span_begin",
+          "id": "YjgvsNsvi9Z3twYCRTTwmm",
+          "parent_id": "7GNQY3nvwk8wJgG33gSW5c",
+          "type": "solver",
+          "name": "replay_stored"
+        },
+        {
+          "uuid": "WMYc4yoM2PpF6wvK8srAFP",
+          "span_id": "YjgvsNsvi9Z3twYCRTTwmm",
+          "timestamp": "2026-10-13T17:54:34.483523+00:00",
+          "working_start": 0.0064563327468931675,
+          "event": "state",
+          "changes": [
+            {
+              "op": "add",
+              "path": "/messages/1",
+              "value": {
+                "id": "jN2UtN5dqkepH2NoR6jjBG",
+                "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+                "source": "generate",
+                "role": "assistant",
+                "model": "stored-outputs"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/model",
+              "value": "stored-outputs",
+              "replaced": "mockllm/unused-system"
+            },
+            {
+              "op": "add",
+              "path": "/output/choices/0",
+              "value": {
+                "message": {
+                  "id": "jN2UtN5dqkepH2NoR6jjBG",
+                  "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "stored-outputs"
+                },
+                "stop_reason": "stop"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/completion",
+              "value": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+              "replaced": ""
+            }
+          ]
+        },
+        {
+          "uuid": "oLrZsebvYTgMYX2fM7v3XE",
+          "span_id": "YjgvsNsvi9Z3twYCRTTwmm",
+          "timestamp": "2026-10-13T17:54:34.483625+00:00",
+          "working_start": 0.006557915825396776,
+          "event": "span_end",
+          "id": "YjgvsNsvi9Z3twYCRTTwmm"
+        },
+        {
+          "uuid": "hpdayPfzzzSdFkD8b2UVTg",
+          "span_id": "7GNQY3nvwk8wJgG33gSW5c",
+          "timestamp": "2026-10-13T17:54:34.483708+00:00",
+          "working_start": 0.00664058281108737,
+          "event": "span_end",
+          "id": "7GNQY3nvwk8wJgG33gSW5c"
+        },
+        {
+          "uuid": "WPhrWxNCDX5DHuVW4HLj7w",
+          "span_id": "QCGKEFh52zL9ZEx3FXtDba",
+          "timestamp": "2026-10-13T17:54:34.488989+00:00",
+          "working_start": 0.011921666096895933,
+          "event": "span_begin",
+          "id": "QCGKEFh52zL9ZEx3FXtDba",
+          "type": "scorers",
+          "name": "scorers"
+        },
+        {
+          "uuid": "Cvzg3N6ghGcSyjhug3pWpD",
+          "span_id": "QYr5FBn3sCFSkcDqWHWzWW",
+          "timestamp": "2026-10-13T17:54:34.489087+00:00",
+          "working_start": 0.01201954111456871,
+          "event": "span_begin",
+          "id": "QYr5FBn3sCFSkcDqWHWzWW",
+          "parent_id": "QCGKEFh52zL9ZEx3FXtDba",
+          "type": "scorer",
+          "name": "model_graded_qa"
+        },
+        {
+          "uuid": "H69v3xz5saZs6RYfoP4VLv",
+          "span_id": "QYr5FBn3sCFSkcDqWHWzWW",
+          "timestamp": "2026-10-13T17:54:34.489232+00:00",
+          "working_start": 0.012164833024144173,
+          "event": "model",
+          "model": "anthropic/claude-fake-1",
+          "input": [],
+          "input_refs": [
+            [
+              0,
+              1
+            ]
+          ],
+          "tools": [],
+          "tool_choice": "none",
+          "config": {
+            "max_tokens": 1024
+          },
+          "output": {
+            "model": "claude-fake-1-served-20260101",
+            "choices": [
+              {
+                "message": {
+                  "id": "NgRnkAboS3A2N9TMGF7QQm",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                },
+                "stop_reason": "stop"
+              }
+            ],
+            "completion": "Local fake judge reasoning.\n\nGRADE: C",
+            "usage": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            },
+            "time": 0.024555041920393705
+          },
+          "call": {
+            "request": {
+              "cache_control": {
+                "type": "ephemeral"
+              },
+              "tools": [],
+              "model": "claude-fake-1",
+              "max_tokens": 1024,
+              "extra_headers": {
+                "x-irid": "XXVazggaAe2KCjeigDxJSw"
+              }
+            },
+            "response": {
+              "id": "msg_fake_0005",
+              "container": null,
+              "content": [
+                {
+                  "citations": null,
+                  "text": "Local fake judge reasoning.\n\nGRADE: C",
+                  "type": "text"
+                }
+              ],
+              "diagnostics": null,
+              "model": "claude-fake-1-served-20260101",
+              "role": "assistant",
+              "stop_details": null,
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation": null,
+                "cache_creation_input_tokens": null,
+                "cache_read_input_tokens": null,
+                "inference_geo": null,
+                "input_tokens": 100,
+                "output_tokens": 20,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "server_tool_use": null,
+                "service_tier": null
+              }
+            },
+            "time": 0.024555041920393705,
+            "call_refs": [
+              [
+                0,
+                1
+              ]
+            ],
+            "call_key": "messages"
+          },
+          "completed": "2026-10-13T17:54:34.654152+00:00",
+          "working_time": 0.024555041920393705
+        },
+        {
+          "uuid": "2n8EkWhtusjTPR2FTLr4fk",
+          "span_id": "QYr5FBn3sCFSkcDqWHWzWW",
+          "timestamp": "2026-10-13T17:54:34.654374+00:00",
+          "working_start": 0.03700787480920553,
+          "event": "score",
+          "score": {
+            "value": "C",
+            "answer": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+            "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+            "metadata": {
+              "grading": [
+                {
+                  "id": "bTtFw4R88d3V7KqvEoZwCS",
+                  "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                  "role": "user"
+                },
+                {
+                  "id": "NgRnkAboS3A2N9TMGF7QQm",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                }
+              ]
+            },
+            "history": []
+          },
+          "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+          "intermediate": false,
+          "scorer": "model_graded_qa",
+          "scorer_args": {
+            "model": {
+              "model": "anthropic/claude-fake-1",
+              "config": {
+                "max_tokens": 1024
+              },
+              "base_url": null,
+              "model_args": {
+                "streaming": false
+              }
+            }
+          },
+          "model_usage": {
+            "anthropic/claude-fake-1": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            }
+          }
+        },
+        {
+          "uuid": "Mvac5sXWjPfxwUruWraCQD",
+          "span_id": "QYr5FBn3sCFSkcDqWHWzWW",
+          "timestamp": "2026-10-13T17:54:34.654513+00:00",
+          "working_start": 0.037147124763578176,
+          "event": "span_end",
+          "id": "QYr5FBn3sCFSkcDqWHWzWW"
+        },
+        {
+          "uuid": "KBx2sTSJbSSXRHCr6SSzhf",
+          "span_id": "QCGKEFh52zL9ZEx3FXtDba",
+          "timestamp": "2026-10-13T17:54:34.654609+00:00",
+          "working_start": 0.037243624683469534,
+          "event": "span_end",
+          "id": "QCGKEFh52zL9ZEx3FXtDba"
+        }
+      ],
+      "model_usage": {
+        "anthropic/claude-fake-1": {
+          "input_tokens": 100,
+          "output_tokens": 20,
+          "total_tokens": 120
+        }
+      },
+      "role_usage": {},
+      "started_at": "2026-10-13T17:54:34.477068+00:00",
+      "completed_at": "2026-10-13T17:54:34.662096+00:00",
+      "total_time": 0.185,
+      "working_time": 0.045,
+      "uuid": "iMg47hw68MVZSAGNitgeiZ",
+      "error_retries": [],
+      "attachments": {
+        "a62565467235aa6087533ab0ae3e0e89": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
+      },
+      "events_data": {
+        "messages": [
+          {
+            "id": "bTtFw4R88d3V7KqvEoZwCS",
+            "content": "attachment://a62565467235aa6087533ab0ae3e0e89",
+            "role": "user"
+          }
+        ],
+        "calls": [
+          {
+            "role": "user",
+            "content": "attachment://a62565467235aa6087533ab0ae3e0e89"
+          }
+        ]
+      },
+      "turn_count": 0
+    },
+    {
+      "id": "c3",
+      "epoch": 2,
+      "input": "Please refund my last order.",
+      "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+      "messages": [
+        {
+          "id": "Dcesn4SNT7TvGC56yRWZau",
+          "content": "Please refund my last order.",
+          "source": "input",
+          "role": "user"
+        },
+        {
+          "id": "SfAxYo4f4W2d8qhK29Jphg",
+          "content": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+          "source": "generate",
+          "role": "assistant",
+          "model": "stored-outputs"
+        }
+      ],
+      "output": {
+        "model": "stored-outputs",
+        "choices": [
+          {
+            "message": {
+              "id": "SfAxYo4f4W2d8qhK29Jphg",
+              "content": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+              "source": "generate",
+              "role": "assistant",
+              "model": "stored-outputs"
+            },
+            "stop_reason": "stop"
+          }
+        ],
+        "completion": "Sure, I refunded it twice to be safe. [[strict:fail]]"
+      },
+      "scores": {
+        "model_graded_qa": {
+          "value": "C",
+          "answer": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+          "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+          "metadata": {
+            "grading": [
+              {
+                "id": "acU3W9uujpDB76pRKXFpwc",
+                "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[strict:fail]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                "role": "user"
+              },
+              {
+                "id": "KND7kApeeiZenW8tLNZQYg",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Local fake judge reasoning.\n\nGRADE: C"
+                  }
+                ],
+                "source": "generate",
+                "role": "assistant",
+                "model": "claude-fake-1-served-20260101"
+              }
+            ]
+          },
+          "history": []
+        }
+      },
+      "metadata": {},
+      "store": {},
+      "events": [
+        {
+          "uuid": "DGLEhSKFMQEx9YqhRMMD3U",
+          "span_id": "PWEsAMLdQ8YxgMHkZQcpby",
+          "timestamp": "2026-10-13T17:54:34.477300+00:00",
+          "working_start": 3275290.257696625,
+          "event": "span_begin",
+          "id": "PWEsAMLdQ8YxgMHkZQcpby",
+          "type": "init",
+          "name": "init"
+        },
+        {
+          "uuid": "WLRPBG7fqeqJx4tHN47yFe",
+          "span_id": "PWEsAMLdQ8YxgMHkZQcpby",
+          "timestamp": "2026-10-13T17:54:34.477477+00:00",
+          "working_start": 3275290.257873041,
+          "event": "sample_init",
+          "sample": {
+            "input": "Please refund my last order.",
+            "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+            "id": "c3"
+          },
+          "state": {
+            "messages": [
+              {
+                "id": "Dcesn4SNT7TvGC56yRWZau",
+                "content": "Please refund my last order.",
+                "source": "input",
+                "role": "user"
+              }
+            ],
+            "tools": [],
+            "tool_choice": null,
+            "store": {},
+            "output": {
+              "model": "mockllm/unused-system",
+              "choices": [],
+              "completion": ""
+            },
+            "completed": false,
+            "metadata": {}
+          }
+        },
+        {
+          "uuid": "gAzPAhrHnUhaviS4ApcSCC",
+          "span_id": "PWEsAMLdQ8YxgMHkZQcpby",
+          "timestamp": "2026-10-13T17:54:34.477599+00:00",
+          "working_start": 3275290.257995208,
+          "event": "span_end",
+          "id": "PWEsAMLdQ8YxgMHkZQcpby"
+        },
+        {
+          "uuid": "JrQ5phmJxs4k7ooEoqNw2h",
+          "span_id": "7wc3HCMCzA5HEVnq7RoP76",
+          "timestamp": "2026-10-13T17:54:34.483834+00:00",
+          "working_start": 0.0061558750458061695,
+          "event": "span_begin",
+          "id": "7wc3HCMCzA5HEVnq7RoP76",
+          "type": "solvers",
+          "name": "solvers"
+        },
+        {
+          "uuid": "kp7ua6Ay7Ew4Lc5JjvQNJD",
+          "span_id": "MTEWLSj8KTeUc8m6LAZKFw",
+          "timestamp": "2026-10-13T17:54:34.483923+00:00",
+          "working_start": 0.006245083175599575,
+          "event": "span_begin",
+          "id": "MTEWLSj8KTeUc8m6LAZKFw",
+          "parent_id": "7wc3HCMCzA5HEVnq7RoP76",
+          "type": "solver",
+          "name": "replay_stored"
+        },
+        {
+          "uuid": "8gUjAFxsZjzuFztjrziPDb",
+          "span_id": "MTEWLSj8KTeUc8m6LAZKFw",
+          "timestamp": "2026-10-13T17:54:34.484120+00:00",
+          "working_start": 0.00644270796328783,
+          "event": "state",
+          "changes": [
+            {
+              "op": "add",
+              "path": "/messages/1",
+              "value": {
+                "id": "SfAxYo4f4W2d8qhK29Jphg",
+                "content": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+                "source": "generate",
+                "role": "assistant",
+                "model": "stored-outputs"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/model",
+              "value": "stored-outputs",
+              "replaced": "mockllm/unused-system"
+            },
+            {
+              "op": "add",
+              "path": "/output/choices/0",
+              "value": {
+                "message": {
+                  "id": "SfAxYo4f4W2d8qhK29Jphg",
+                  "content": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "stored-outputs"
+                },
+                "stop_reason": "stop"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/completion",
+              "value": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+              "replaced": ""
+            }
+          ]
+        },
+        {
+          "uuid": "4jjAfyJaNmdt3Vf49nRAAf",
+          "span_id": "MTEWLSj8KTeUc8m6LAZKFw",
+          "timestamp": "2026-10-13T17:54:34.484238+00:00",
+          "working_start": 0.006560707930475473,
+          "event": "span_end",
+          "id": "MTEWLSj8KTeUc8m6LAZKFw"
+        },
+        {
+          "uuid": "KZZ3UpVrq27UTkfi7C8eK2",
+          "span_id": "7wc3HCMCzA5HEVnq7RoP76",
+          "timestamp": "2026-10-13T17:54:34.484322+00:00",
+          "working_start": 0.00664412509649992,
+          "event": "span_end",
+          "id": "7wc3HCMCzA5HEVnq7RoP76"
+        },
+        {
+          "uuid": "7vqhWZcAr5RCs4voQCbNBm",
+          "span_id": "Lgeh5cZZ6r9PM87mTb3BhB",
+          "timestamp": "2026-10-13T17:54:34.489284+00:00",
+          "working_start": 0.011606167070567608,
+          "event": "span_begin",
+          "id": "Lgeh5cZZ6r9PM87mTb3BhB",
+          "type": "scorers",
+          "name": "scorers"
+        },
+        {
+          "uuid": "GBuucDxrstfnjonVYstbgK",
+          "span_id": "bNDgYWJBXxZYGyQzeqexJE",
+          "timestamp": "2026-10-13T17:54:34.489375+00:00",
+          "working_start": 0.011697417125105858,
+          "event": "span_begin",
+          "id": "bNDgYWJBXxZYGyQzeqexJE",
+          "parent_id": "Lgeh5cZZ6r9PM87mTb3BhB",
+          "type": "scorer",
+          "name": "model_graded_qa"
+        },
+        {
+          "uuid": "hgVDgAmUzPo634V35EECWF",
+          "span_id": "bNDgYWJBXxZYGyQzeqexJE",
+          "timestamp": "2026-10-13T17:54:34.489505+00:00",
+          "working_start": 0.011826958041638136,
+          "event": "model",
+          "model": "anthropic/claude-fake-1",
+          "input": [],
+          "input_refs": [
+            [
+              0,
+              1
+            ]
+          ],
+          "tools": [],
+          "tool_choice": "none",
+          "config": {
+            "max_tokens": 1024
+          },
+          "output": {
+            "model": "claude-fake-1-served-20260101",
+            "choices": [
+              {
+                "message": {
+                  "id": "KND7kApeeiZenW8tLNZQYg",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                },
+                "stop_reason": "stop"
+              }
+            ],
+            "completion": "Local fake judge reasoning.\n\nGRADE: C",
+            "usage": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            },
+            "time": 0.02580104162916541
+          },
+          "call": {
+            "request": {
+              "cache_control": {
+                "type": "ephemeral"
+              },
+              "tools": [],
+              "model": "claude-fake-1",
+              "max_tokens": 1024,
+              "extra_headers": {
+                "x-irid": "dhcyZDLTwj9WgSee233ngq"
+              }
+            },
+            "response": {
+              "id": "msg_fake_0006",
+              "container": null,
+              "content": [
+                {
+                  "citations": null,
+                  "text": "Local fake judge reasoning.\n\nGRADE: C",
+                  "type": "text"
+                }
+              ],
+              "diagnostics": null,
+              "model": "claude-fake-1-served-20260101",
+              "role": "assistant",
+              "stop_details": null,
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation": null,
+                "cache_creation_input_tokens": null,
+                "cache_read_input_tokens": null,
+                "inference_geo": null,
+                "input_tokens": 100,
+                "output_tokens": 20,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "server_tool_use": null,
+                "service_tier": null
+              }
+            },
+            "time": 0.02580104162916541,
+            "call_refs": [
+              [
+                0,
+                1
+              ]
+            ],
+            "call_key": "messages"
+          },
+          "completed": "2026-10-13T17:54:34.655542+00:00",
+          "working_time": 0.02580104162916541
+        },
+        {
+          "uuid": "V3TmLbeq5WBC6Y3R6HHViX",
+          "span_id": "bNDgYWJBXxZYGyQzeqexJE",
+          "timestamp": "2026-10-13T17:54:34.655744+00:00",
+          "working_start": 0.03788945870473981,
+          "event": "score",
+          "score": {
+            "value": "C",
+            "answer": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+            "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+            "metadata": {
+              "grading": [
+                {
+                  "id": "acU3W9uujpDB76pRKXFpwc",
+                  "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[strict:fail]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                  "role": "user"
+                },
+                {
+                  "id": "KND7kApeeiZenW8tLNZQYg",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                }
+              ]
+            },
+            "history": []
+          },
+          "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+          "intermediate": false,
+          "scorer": "model_graded_qa",
+          "scorer_args": {
+            "model": {
+              "model": "anthropic/claude-fake-1",
+              "config": {
+                "max_tokens": 1024
+              },
+              "base_url": null,
+              "model_args": {
+                "streaming": false
+              }
+            }
+          },
+          "model_usage": {
+            "anthropic/claude-fake-1": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            }
+          }
+        },
+        {
+          "uuid": "AUyx6jiiJtdTTX3PwUdQez",
+          "span_id": "bNDgYWJBXxZYGyQzeqexJE",
+          "timestamp": "2026-10-13T17:54:34.655868+00:00",
+          "working_start": 0.03801341773942113,
+          "event": "span_end",
+          "id": "bNDgYWJBXxZYGyQzeqexJE"
+        },
+        {
+          "uuid": "geSYisqQad5fXu9YVgnRe5",
+          "span_id": "Lgeh5cZZ6r9PM87mTb3BhB",
+          "timestamp": "2026-10-13T17:54:34.655958+00:00",
+          "working_start": 0.03810295881703496,
+          "event": "span_end",
+          "id": "Lgeh5cZZ6r9PM87mTb3BhB"
+        }
+      ],
+      "model_usage": {
+        "anthropic/claude-fake-1": {
+          "input_tokens": 100,
+          "output_tokens": 20,
+          "total_tokens": 120
+        }
+      },
+      "role_usage": {},
+      "started_at": "2026-10-13T17:54:34.477679+00:00",
+      "completed_at": "2026-10-13T17:54:34.662678+00:00",
+      "total_time": 0.185,
+      "working_time": 0.045,
+      "uuid": "9zqkK9WpmPJdbCiyRUEQK3",
+      "error_retries": [],
+      "attachments": {
+        "551b26feb1828e1c43479e36c0a34570": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[strict:fail]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
+      },
+      "events_data": {
+        "messages": [
+          {
+            "id": "acU3W9uujpDB76pRKXFpwc",
+            "content": "attachment://551b26feb1828e1c43479e36c0a34570",
+            "role": "user"
+          }
+        ],
+        "calls": [
+          {
+            "role": "user",
+            "content": "attachment://551b26feb1828e1c43479e36c0a34570"
+          }
+        ]
+      },
+      "turn_count": 0
+    },
+    {
+      "id": "c1",
+      "epoch": 3,
+      "input": "My blender arrived broken. Can I get my money back?",
+      "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+      "messages": [
+        {
+          "id": "9w2JQev7BTiXqkPHRq9B2M",
+          "content": "My blender arrived broken. Can I get my money back?",
+          "source": "input",
+          "role": "user"
+        },
+        {
+          "id": "jZer8MEpYiTVepjwiqdBkJ",
+          "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+          "source": "generate",
+          "role": "assistant",
+          "model": "stored-outputs"
+        }
+      ],
+      "output": {
+        "model": "stored-outputs",
+        "choices": [
+          {
+            "message": {
+              "id": "jZer8MEpYiTVepjwiqdBkJ",
+              "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+              "source": "generate",
+              "role": "assistant",
+              "model": "stored-outputs"
+            },
+            "stop_reason": "stop"
+          }
+        ],
+        "completion": "Your order arrived damaged, so you are eligible for a full refund. I have started it."
+      },
+      "scores": {
+        "model_graded_qa": {
+          "value": "C",
+          "answer": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+          "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+          "metadata": {
+            "grading": [
+              {
+                "id": "hDyAnyT5FkmP8vv6JWU4zt",
+                "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                "role": "user"
+              },
+              {
+                "id": "RK8ijeUy7Z3JRk2gq3gCvd",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Local fake judge reasoning.\n\nGRADE: C"
+                  }
+                ],
+                "source": "generate",
+                "role": "assistant",
+                "model": "claude-fake-1-served-20260101"
+              }
+            ]
+          },
+          "history": []
+        }
+      },
+      "metadata": {},
+      "store": {},
+      "events": [
+        {
+          "uuid": "mTufEZZmqrE3EhFT7sewiT",
+          "span_id": "K2sgx7nwdnCFBBVnQyjYbf",
+          "timestamp": "2026-10-13T17:54:34.477929+00:00",
+          "working_start": 3275290.258324708,
+          "event": "span_begin",
+          "id": "K2sgx7nwdnCFBBVnQyjYbf",
+          "type": "init",
+          "name": "init"
+        },
+        {
+          "uuid": "RgSGSxsDJGSLfb65BgrsLC",
+          "span_id": "K2sgx7nwdnCFBBVnQyjYbf",
+          "timestamp": "2026-10-13T17:54:34.478119+00:00",
+          "working_start": 3275290.258515833,
+          "event": "sample_init",
+          "sample": {
+            "input": "My blender arrived broken. Can I get my money back?",
+            "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+            "id": "c1"
+          },
+          "state": {
+            "messages": [
+              {
+                "id": "9w2JQev7BTiXqkPHRq9B2M",
+                "content": "My blender arrived broken. Can I get my money back?",
+                "source": "input",
+                "role": "user"
+              }
+            ],
+            "tools": [],
+            "tool_choice": null,
+            "store": {},
+            "output": {
+              "model": "mockllm/unused-system",
+              "choices": [],
+              "completion": ""
+            },
+            "completed": false,
+            "metadata": {}
+          }
+        },
+        {
+          "uuid": "iHpWR3NKmLtymipMoWEQfW",
+          "span_id": "K2sgx7nwdnCFBBVnQyjYbf",
+          "timestamp": "2026-10-13T17:54:34.478228+00:00",
+          "working_start": 3275290.258624833,
+          "event": "span_end",
+          "id": "K2sgx7nwdnCFBBVnQyjYbf"
+        },
+        {
+          "uuid": "5vWwWyGGhLAsT4QhAMYHS8",
+          "span_id": "hrLB7g86d4J9QF5PdVKgMS",
+          "timestamp": "2026-10-13T17:54:34.484446+00:00",
+          "working_start": 0.006136790849268436,
+          "event": "span_begin",
+          "id": "hrLB7g86d4J9QF5PdVKgMS",
+          "type": "solvers",
+          "name": "solvers"
+        },
+        {
+          "uuid": "Y7KF67mw55fQX2eVJ5t7E5",
+          "span_id": "Aegm7nxqEdcSuwkFpsfqQW",
+          "timestamp": "2026-10-13T17:54:34.484535+00:00",
+          "working_start": 0.006226082798093557,
+          "event": "span_begin",
+          "id": "Aegm7nxqEdcSuwkFpsfqQW",
+          "parent_id": "hrLB7g86d4J9QF5PdVKgMS",
+          "type": "solver",
+          "name": "replay_stored"
+        },
+        {
+          "uuid": "SQa3deXgvFigMkCQ8RX6oE",
+          "span_id": "Aegm7nxqEdcSuwkFpsfqQW",
+          "timestamp": "2026-10-13T17:54:34.484746+00:00",
+          "working_start": 0.006436916068196297,
+          "event": "state",
+          "changes": [
+            {
+              "op": "add",
+              "path": "/messages/1",
+              "value": {
+                "id": "jZer8MEpYiTVepjwiqdBkJ",
+                "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+                "source": "generate",
+                "role": "assistant",
+                "model": "stored-outputs"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/model",
+              "value": "stored-outputs",
+              "replaced": "mockllm/unused-system"
+            },
+            {
+              "op": "add",
+              "path": "/output/choices/0",
+              "value": {
+                "message": {
+                  "id": "jZer8MEpYiTVepjwiqdBkJ",
+                  "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "stored-outputs"
+                },
+                "stop_reason": "stop"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/completion",
+              "value": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+              "replaced": ""
+            }
+          ]
+        },
+        {
+          "uuid": "oQWuqBjQeYPrSQsHY8LmwE",
+          "span_id": "Aegm7nxqEdcSuwkFpsfqQW",
+          "timestamp": "2026-10-13T17:54:34.485088+00:00",
+          "working_start": 0.006782250013202429,
+          "event": "span_end",
+          "id": "Aegm7nxqEdcSuwkFpsfqQW"
+        },
+        {
+          "uuid": "mvAkTRxManidcy9V8RoWnt",
+          "span_id": "hrLB7g86d4J9QF5PdVKgMS",
+          "timestamp": "2026-10-13T17:54:34.485234+00:00",
+          "working_start": 0.00692487508058548,
+          "event": "span_end",
+          "id": "hrLB7g86d4J9QF5PdVKgMS"
+        },
+        {
+          "uuid": "8LkbR6Q9jzvDS6irTGGZoT",
+          "span_id": "dvVqrNuPQ3JdAZRfLGDCxE",
+          "timestamp": "2026-10-13T17:54:34.489562+00:00",
+          "working_start": 0.011252624914050102,
+          "event": "span_begin",
+          "id": "dvVqrNuPQ3JdAZRfLGDCxE",
+          "type": "scorers",
+          "name": "scorers"
+        },
+        {
+          "uuid": "J3t9qctctUkvCcKKkHXgnP",
+          "span_id": "oBSN33KZeUgwhTngzV8DHW",
+          "timestamp": "2026-10-13T17:54:34.489654+00:00",
+          "working_start": 0.011344915721565485,
+          "event": "span_begin",
+          "id": "oBSN33KZeUgwhTngzV8DHW",
+          "parent_id": "dvVqrNuPQ3JdAZRfLGDCxE",
+          "type": "scorer",
+          "name": "model_graded_qa"
+        },
+        {
+          "uuid": "fi2xKaJYJtdAisKQrvEbbY",
+          "span_id": "oBSN33KZeUgwhTngzV8DHW",
+          "timestamp": "2026-10-13T17:54:34.489786+00:00",
+          "working_start": 0.011476750019937754,
+          "event": "model",
+          "model": "anthropic/claude-fake-1",
+          "input": [],
+          "input_refs": [
+            [
+              0,
+              1
+            ]
+          ],
+          "tools": [],
+          "tool_choice": "none",
+          "config": {
+            "max_tokens": 1024
+          },
+          "output": {
+            "model": "claude-fake-1-served-20260101",
+            "choices": [
+              {
+                "message": {
+                  "id": "RK8ijeUy7Z3JRk2gq3gCvd",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                },
+                "stop_reason": "stop"
+              }
+            ],
+            "completion": "Local fake judge reasoning.\n\nGRADE: C",
+            "usage": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            },
+            "time": 0.026931040920317173
+          },
+          "call": {
+            "request": {
+              "cache_control": {
+                "type": "ephemeral"
+              },
+              "tools": [],
+              "model": "claude-fake-1",
+              "max_tokens": 1024,
+              "extra_headers": {
+                "x-irid": "LY8D4AoToqfxfEnEVkZRuu"
+              }
+            },
+            "response": {
+              "id": "msg_fake_0007",
+              "container": null,
+              "content": [
+                {
+                  "citations": null,
+                  "text": "Local fake judge reasoning.\n\nGRADE: C",
+                  "type": "text"
+                }
+              ],
+              "diagnostics": null,
+              "model": "claude-fake-1-served-20260101",
+              "role": "assistant",
+              "stop_details": null,
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation": null,
+                "cache_creation_input_tokens": null,
+                "cache_read_input_tokens": null,
+                "inference_geo": null,
+                "input_tokens": 100,
+                "output_tokens": 20,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "server_tool_use": null,
+                "service_tier": null
+              }
+            },
+            "time": 0.026931040920317173,
+            "call_refs": [
+              [
+                0,
+                1
+              ]
+            ],
+            "call_key": "messages"
+          },
+          "completed": "2026-10-13T17:54:34.656834+00:00",
+          "working_time": 0.026931040920317173
+        },
+        {
+          "uuid": "9uzh4ES5otxQN326Dnak8w",
+          "span_id": "oBSN33KZeUgwhTngzV8DHW",
+          "timestamp": "2026-10-13T17:54:34.657026+00:00",
+          "working_start": 0.03865316603332758,
+          "event": "score",
+          "score": {
+            "value": "C",
+            "answer": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+            "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+            "metadata": {
+              "grading": [
+                {
+                  "id": "hDyAnyT5FkmP8vv6JWU4zt",
+                  "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                  "role": "user"
+                },
+                {
+                  "id": "RK8ijeUy7Z3JRk2gq3gCvd",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                }
+              ]
+            },
+            "history": []
+          },
+          "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+          "intermediate": false,
+          "scorer": "model_graded_qa",
+          "scorer_args": {
+            "model": {
+              "model": "anthropic/claude-fake-1",
+              "config": {
+                "max_tokens": 1024
+              },
+              "base_url": null,
+              "model_args": {
+                "streaming": false
+              }
+            }
+          },
+          "model_usage": {
+            "anthropic/claude-fake-1": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            }
+          }
+        },
+        {
+          "uuid": "Jhf7p4oWDfNyM8kfxcZDSa",
+          "span_id": "oBSN33KZeUgwhTngzV8DHW",
+          "timestamp": "2026-10-13T17:54:34.657148+00:00",
+          "working_start": 0.03877529129385948,
+          "event": "span_end",
+          "id": "oBSN33KZeUgwhTngzV8DHW"
+        },
+        {
+          "uuid": "jgtT4en7iowjmofGzGu4zX",
+          "span_id": "dvVqrNuPQ3JdAZRfLGDCxE",
+          "timestamp": "2026-10-13T17:54:34.657236+00:00",
+          "working_start": 0.03886266611516476,
+          "event": "span_end",
+          "id": "dvVqrNuPQ3JdAZRfLGDCxE"
+        }
+      ],
+      "model_usage": {
+        "anthropic/claude-fake-1": {
+          "input_tokens": 100,
+          "output_tokens": 20,
+          "total_tokens": 120
+        }
+      },
+      "role_usage": {},
+      "started_at": "2026-10-13T17:54:34.478310+00:00",
+      "completed_at": "2026-10-13T17:54:34.663263+00:00",
+      "total_time": 0.185,
+      "working_time": 0.045,
+      "uuid": "Cfyeh3GUr9NNBAE9TRNKGP",
+      "error_retries": [],
+      "attachments": {
+        "8803a0a46dadd7ba3dff542e61dbb9af": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
+      },
+      "events_data": {
+        "messages": [
+          {
+            "id": "hDyAnyT5FkmP8vv6JWU4zt",
+            "content": "attachment://8803a0a46dadd7ba3dff542e61dbb9af",
+            "role": "user"
+          }
+        ],
+        "calls": [
+          {
+            "role": "user",
+            "content": "attachment://8803a0a46dadd7ba3dff542e61dbb9af"
+          }
+        ]
+      },
+      "turn_count": 0
+    },
+    {
+      "id": "c2",
+      "epoch": 3,
+      "input": "I bought shoes 45 days ago and want a refund.",
+      "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+      "messages": [
+        {
+          "id": "4REJcTsi3dWvgGTtdBFX5n",
+          "content": "I bought shoes 45 days ago and want a refund.",
+          "source": "input",
+          "role": "user"
+        },
+        {
+          "id": "fzD8ctK2dygz7HUp9r6rpv",
+          "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+          "source": "generate",
+          "role": "assistant",
+          "model": "stored-outputs"
+        }
+      ],
+      "output": {
+        "model": "stored-outputs",
+        "choices": [
+          {
+            "message": {
+              "id": "fzD8ctK2dygz7HUp9r6rpv",
+              "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+              "source": "generate",
+              "role": "assistant",
+              "model": "stored-outputs"
+            },
+            "stop_reason": "stop"
+          }
+        ],
+        "completion": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it."
+      },
+      "scores": {
+        "model_graded_qa": {
+          "value": "C",
+          "answer": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+          "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+          "metadata": {
+            "grading": [
+              {
+                "id": "FJbwhXVaKEXM6rKotqnYCL",
+                "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                "role": "user"
+              },
+              {
+                "id": "47Ps6ba7iXp6CKsLVTEAvU",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Local fake judge reasoning.\n\nGRADE: C"
+                  }
+                ],
+                "source": "generate",
+                "role": "assistant",
+                "model": "claude-fake-1-served-20260101"
+              }
+            ]
+          },
+          "history": []
+        }
+      },
+      "metadata": {},
+      "store": {},
+      "events": [
+        {
+          "uuid": "XETGR3pyHkkxwfn4hA33Tz",
+          "span_id": "cQRZfaygzUcQ8xbwK6wFrH",
+          "timestamp": "2026-10-13T17:54:34.478559+00:00",
+          "working_start": 3275290.2589555,
+          "event": "span_begin",
+          "id": "cQRZfaygzUcQ8xbwK6wFrH",
+          "type": "init",
+          "name": "init"
+        },
+        {
+          "uuid": "Bt77aNtAtqLTahberZBxtc",
+          "span_id": "cQRZfaygzUcQ8xbwK6wFrH",
+          "timestamp": "2026-10-13T17:54:34.478878+00:00",
+          "working_start": 3275290.259274458,
+          "event": "sample_init",
+          "sample": {
+            "input": "I bought shoes 45 days ago and want a refund.",
+            "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+            "id": "c2"
+          },
+          "state": {
+            "messages": [
+              {
+                "id": "4REJcTsi3dWvgGTtdBFX5n",
+                "content": "I bought shoes 45 days ago and want a refund.",
+                "source": "input",
+                "role": "user"
+              }
+            ],
+            "tools": [],
+            "tool_choice": null,
+            "store": {},
+            "output": {
+              "model": "mockllm/unused-system",
+              "choices": [],
+              "completion": ""
+            },
+            "completed": false,
+            "metadata": {}
+          }
+        },
+        {
+          "uuid": "JFvXDYXA88U7AJuK2uZybf",
+          "span_id": "cQRZfaygzUcQ8xbwK6wFrH",
+          "timestamp": "2026-10-13T17:54:34.478985+00:00",
+          "working_start": 3275290.259381833,
+          "event": "span_end",
+          "id": "cQRZfaygzUcQ8xbwK6wFrH"
+        },
+        {
+          "uuid": "kYdErLqY7gbhzHgGCfwggm",
+          "span_id": "abVcq4MoMcXL2UiVaoMzcr",
+          "timestamp": "2026-10-13T17:54:34.485441+00:00",
+          "working_start": 0.006377458106726408,
+          "event": "span_begin",
+          "id": "abVcq4MoMcXL2UiVaoMzcr",
+          "type": "solvers",
+          "name": "solvers"
+        },
+        {
+          "uuid": "oPbUTTFbTZ4rsJxup9aQc7",
+          "span_id": "88JCAyYpNZ4RtzXbwZMhqM",
+          "timestamp": "2026-10-13T17:54:34.485550+00:00",
+          "working_start": 0.006487290840595961,
+          "event": "span_begin",
+          "id": "88JCAyYpNZ4RtzXbwZMhqM",
+          "parent_id": "abVcq4MoMcXL2UiVaoMzcr",
+          "type": "solver",
+          "name": "replay_stored"
+        },
+        {
+          "uuid": "bhX3n2Zp8wP7eyiQ9HwwF7",
+          "span_id": "88JCAyYpNZ4RtzXbwZMhqM",
+          "timestamp": "2026-10-13T17:54:34.486011+00:00",
+          "working_start": 0.006949583068490028,
+          "event": "state",
+          "changes": [
+            {
+              "op": "add",
+              "path": "/messages/1",
+              "value": {
+                "id": "fzD8ctK2dygz7HUp9r6rpv",
+                "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+                "source": "generate",
+                "role": "assistant",
+                "model": "stored-outputs"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/model",
+              "value": "stored-outputs",
+              "replaced": "mockllm/unused-system"
+            },
+            {
+              "op": "add",
+              "path": "/output/choices/0",
+              "value": {
+                "message": {
+                  "id": "fzD8ctK2dygz7HUp9r6rpv",
+                  "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "stored-outputs"
+                },
+                "stop_reason": "stop"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/completion",
+              "value": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+              "replaced": ""
+            }
+          ]
+        },
+        {
+          "uuid": "moey4v8FLEKewZzr22oUm5",
+          "span_id": "88JCAyYpNZ4RtzXbwZMhqM",
+          "timestamp": "2026-10-13T17:54:34.486143+00:00",
+          "working_start": 0.007080040872097015,
+          "event": "span_end",
+          "id": "88JCAyYpNZ4RtzXbwZMhqM"
+        },
+        {
+          "uuid": "CxCE8P3aoUutZnvGuDtRn9",
+          "span_id": "abVcq4MoMcXL2UiVaoMzcr",
+          "timestamp": "2026-10-13T17:54:34.486237+00:00",
+          "working_start": 0.007174000144004822,
+          "event": "span_end",
+          "id": "abVcq4MoMcXL2UiVaoMzcr"
+        },
+        {
+          "uuid": "HUYekNSb7RiqdGuzTEgGoz",
+          "span_id": "fY2mQheq64Za5WCVZj84KU",
+          "timestamp": "2026-10-13T17:54:34.489836+00:00",
+          "working_start": 0.010772999841719866,
+          "event": "span_begin",
+          "id": "fY2mQheq64Za5WCVZj84KU",
+          "type": "scorers",
+          "name": "scorers"
+        },
+        {
+          "uuid": "7bQr8pR9hGSd9Qa7gn9BvU",
+          "span_id": "jkBnUF2brLVKSm4vH4RBvS",
+          "timestamp": "2026-10-13T17:54:34.489928+00:00",
+          "working_start": 0.010864207986742258,
+          "event": "span_begin",
+          "id": "jkBnUF2brLVKSm4vH4RBvS",
+          "parent_id": "fY2mQheq64Za5WCVZj84KU",
+          "type": "scorer",
+          "name": "model_graded_qa"
+        },
+        {
+          "uuid": "CvC2yL7PZYWXwie9VdmijL",
+          "span_id": "jkBnUF2brLVKSm4vH4RBvS",
+          "timestamp": "2026-10-13T17:54:34.490063+00:00",
+          "working_start": 0.010999457910656929,
+          "event": "model",
+          "model": "anthropic/claude-fake-1",
+          "input": [],
+          "input_refs": [
+            [
+              0,
+              1
+            ]
+          ],
+          "tools": [],
+          "tool_choice": "none",
+          "config": {
+            "max_tokens": 1024
+          },
+          "output": {
+            "model": "claude-fake-1-served-20260101",
+            "choices": [
+              {
+                "message": {
+                  "id": "47Ps6ba7iXp6CKsLVTEAvU",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                },
+                "stop_reason": "stop"
+              }
+            ],
+            "completion": "Local fake judge reasoning.\n\nGRADE: C",
+            "usage": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            },
+            "time": 0.028033459093421698
+          },
+          "call": {
+            "request": {
+              "cache_control": {
+                "type": "ephemeral"
+              },
+              "tools": [],
+              "model": "claude-fake-1",
+              "max_tokens": 1024,
+              "extra_headers": {
+                "x-irid": "mw8uvLLdtCJ664okJ8FU79"
+              }
+            },
+            "response": {
+              "id": "msg_fake_0008",
+              "container": null,
+              "content": [
+                {
+                  "citations": null,
+                  "text": "Local fake judge reasoning.\n\nGRADE: C",
+                  "type": "text"
+                }
+              ],
+              "diagnostics": null,
+              "model": "claude-fake-1-served-20260101",
+              "role": "assistant",
+              "stop_details": null,
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation": null,
+                "cache_creation_input_tokens": null,
+                "cache_read_input_tokens": null,
+                "inference_geo": null,
+                "input_tokens": 100,
+                "output_tokens": 20,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "server_tool_use": null,
+                "service_tier": null
+              }
+            },
+            "time": 0.028033459093421698,
+            "call_refs": [
+              [
+                0,
+                1
+              ]
+            ],
+            "call_key": "messages"
+          },
+          "completed": "2026-10-13T17:54:34.658125+00:00",
+          "working_time": 0.028033459093421698
+        },
+        {
+          "uuid": "BASTXnepTLHRLYQnJk4gTm",
+          "span_id": "jkBnUF2brLVKSm4vH4RBvS",
+          "timestamp": "2026-10-13T17:54:34.658313+00:00",
+          "working_start": 0.03927562525495887,
+          "event": "score",
+          "score": {
+            "value": "C",
+            "answer": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+            "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+            "metadata": {
+              "grading": [
+                {
+                  "id": "FJbwhXVaKEXM6rKotqnYCL",
+                  "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                  "role": "user"
+                },
+                {
+                  "id": "47Ps6ba7iXp6CKsLVTEAvU",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                }
+              ]
+            },
+            "history": []
+          },
+          "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+          "intermediate": false,
+          "scorer": "model_graded_qa",
+          "scorer_args": {
+            "model": {
+              "model": "anthropic/claude-fake-1",
+              "config": {
+                "max_tokens": 1024
+              },
+              "base_url": null,
+              "model_args": {
+                "streaming": false
+              }
+            }
+          },
+          "model_usage": {
+            "anthropic/claude-fake-1": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            }
+          }
+        },
+        {
+          "uuid": "NWRKUjLksmqbNVv2FJn5U4",
+          "span_id": "jkBnUF2brLVKSm4vH4RBvS",
+          "timestamp": "2026-10-13T17:54:34.658433+00:00",
+          "working_start": 0.039395458064973354,
+          "event": "span_end",
+          "id": "jkBnUF2brLVKSm4vH4RBvS"
+        },
+        {
+          "uuid": "jEwJD2S6tCHr7wRShnf9hj",
+          "span_id": "fY2mQheq64Za5WCVZj84KU",
+          "timestamp": "2026-10-13T17:54:34.658521+00:00",
+          "working_start": 0.03948279144242406,
+          "event": "span_end",
+          "id": "fY2mQheq64Za5WCVZj84KU"
+        }
+      ],
+      "model_usage": {
+        "anthropic/claude-fake-1": {
+          "input_tokens": 100,
+          "output_tokens": 20,
+          "total_tokens": 120
+        }
+      },
+      "role_usage": {},
+      "started_at": "2026-10-13T17:54:34.479064+00:00",
+      "completed_at": "2026-10-13T17:54:34.663840+00:00",
+      "total_time": 0.185,
+      "working_time": 0.045,
+      "uuid": "6dzrz8inFZyrVfCJjyto9h",
+      "error_retries": [],
+      "attachments": {
+        "a62565467235aa6087533ab0ae3e0e89": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
+      },
+      "events_data": {
+        "messages": [
+          {
+            "id": "FJbwhXVaKEXM6rKotqnYCL",
+            "content": "attachment://a62565467235aa6087533ab0ae3e0e89",
+            "role": "user"
+          }
+        ],
+        "calls": [
+          {
+            "role": "user",
+            "content": "attachment://a62565467235aa6087533ab0ae3e0e89"
+          }
+        ]
+      },
+      "turn_count": 0
+    },
+    {
+      "id": "c3",
+      "epoch": 3,
+      "input": "Please refund my last order.",
+      "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+      "messages": [
+        {
+          "id": "FnN6BSjJkMBfnQBB4r2BZs",
+          "content": "Please refund my last order.",
+          "source": "input",
+          "role": "user"
+        },
+        {
+          "id": "WXPY5drYkXCFZsgwU2XJy4",
+          "content": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+          "source": "generate",
+          "role": "assistant",
+          "model": "stored-outputs"
+        }
+      ],
+      "output": {
+        "model": "stored-outputs",
+        "choices": [
+          {
+            "message": {
+              "id": "WXPY5drYkXCFZsgwU2XJy4",
+              "content": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+              "source": "generate",
+              "role": "assistant",
+              "model": "stored-outputs"
+            },
+            "stop_reason": "stop"
+          }
+        ],
+        "completion": "Sure, I refunded it twice to be safe. [[strict:fail]]"
+      },
+      "scores": {
+        "model_graded_qa": {
+          "value": "C",
+          "answer": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+          "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+          "metadata": {
+            "grading": [
+              {
+                "id": "DpBFsDgFhQHvzn5xf77j3a",
+                "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[strict:fail]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                "role": "user"
+              },
+              {
+                "id": "kTgxYgx8SsHm6LRMygLUxn",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Local fake judge reasoning.\n\nGRADE: C"
+                  }
+                ],
+                "source": "generate",
+                "role": "assistant",
+                "model": "claude-fake-1-served-20260101"
+              }
+            ]
+          },
+          "history": []
+        }
+      },
+      "metadata": {},
+      "store": {},
+      "events": [
+        {
+          "uuid": "gvh8xebQtNdn5UnjuEvZBb",
+          "span_id": "aEmXgF5cwa2yyi68nb9jz4",
+          "timestamp": "2026-10-13T17:54:34.479301+00:00",
+          "working_start": 3275290.25969725,
+          "event": "span_begin",
+          "id": "aEmXgF5cwa2yyi68nb9jz4",
+          "type": "init",
+          "name": "init"
+        },
+        {
+          "uuid": "EakExWQ3nkbVVpMoksSRT9",
+          "span_id": "aEmXgF5cwa2yyi68nb9jz4",
+          "timestamp": "2026-10-13T17:54:34.479493+00:00",
+          "working_start": 3275290.259889,
+          "event": "sample_init",
+          "sample": {
+            "input": "Please refund my last order.",
+            "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+            "id": "c3"
+          },
+          "state": {
+            "messages": [
+              {
+                "id": "FnN6BSjJkMBfnQBB4r2BZs",
+                "content": "Please refund my last order.",
+                "source": "input",
+                "role": "user"
+              }
+            ],
+            "tools": [],
+            "tool_choice": null,
+            "store": {},
+            "output": {
+              "model": "mockllm/unused-system",
+              "choices": [],
+              "completion": ""
+            },
+            "completed": false,
+            "metadata": {}
+          }
+        },
+        {
+          "uuid": "RztwMTgqmqDrAfFqwheckA",
+          "span_id": "aEmXgF5cwa2yyi68nb9jz4",
+          "timestamp": "2026-10-13T17:54:34.479596+00:00",
+          "working_start": 3275290.259992083,
+          "event": "span_end",
+          "id": "aEmXgF5cwa2yyi68nb9jz4"
+        },
+        {
+          "uuid": "Q2QiK2yjeuXfYbnogRzCFM",
+          "span_id": "ACtTkjvGQViTSTBaGTpbkd",
+          "timestamp": "2026-10-13T17:54:34.486380+00:00",
+          "working_start": 0.006708874832838774,
+          "event": "span_begin",
+          "id": "ACtTkjvGQViTSTBaGTpbkd",
+          "type": "solvers",
+          "name": "solvers"
+        },
+        {
+          "uuid": "ERYZpymuXoCXQfNr4ySR9T",
+          "span_id": "LqD7QNC7rXqRHRouRRchhF",
+          "timestamp": "2026-10-13T17:54:34.486474+00:00",
+          "working_start": 0.006803167052567005,
+          "event": "span_begin",
+          "id": "LqD7QNC7rXqRHRouRRchhF",
+          "parent_id": "ACtTkjvGQViTSTBaGTpbkd",
+          "type": "solver",
+          "name": "replay_stored"
+        },
+        {
+          "uuid": "XP8i3qT4jynVYxYQVokkyT",
+          "span_id": "LqD7QNC7rXqRHRouRRchhF",
+          "timestamp": "2026-10-13T17:54:34.486698+00:00",
+          "working_start": 0.007027207873761654,
+          "event": "state",
+          "changes": [
+            {
+              "op": "add",
+              "path": "/messages/1",
+              "value": {
+                "id": "WXPY5drYkXCFZsgwU2XJy4",
+                "content": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+                "source": "generate",
+                "role": "assistant",
+                "model": "stored-outputs"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/model",
+              "value": "stored-outputs",
+              "replaced": "mockllm/unused-system"
+            },
+            {
+              "op": "add",
+              "path": "/output/choices/0",
+              "value": {
+                "message": {
+                  "id": "WXPY5drYkXCFZsgwU2XJy4",
+                  "content": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "stored-outputs"
+                },
+                "stop_reason": "stop"
+              }
+            },
+            {
+              "op": "replace",
+              "path": "/output/completion",
+              "value": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+              "replaced": ""
+            }
+          ]
+        },
+        {
+          "uuid": "Yip9daFQk8gJha7VQeeZrD",
+          "span_id": "LqD7QNC7rXqRHRouRRchhF",
+          "timestamp": "2026-10-13T17:54:34.486820+00:00",
+          "working_start": 0.007149667013436556,
+          "event": "span_end",
+          "id": "LqD7QNC7rXqRHRouRRchhF"
+        },
+        {
+          "uuid": "XAhpexuAE2gx65ZrrgHLw8",
+          "span_id": "ACtTkjvGQViTSTBaGTpbkd",
+          "timestamp": "2026-10-13T17:54:34.486912+00:00",
+          "working_start": 0.007240874692797661,
+          "event": "span_end",
+          "id": "ACtTkjvGQViTSTBaGTpbkd"
+        },
+        {
+          "uuid": "cNMFZvZdknUKVcFPioWtFV",
+          "span_id": "WCiptyD67mQXmkVq64fzF4",
+          "timestamp": "2026-10-13T17:54:34.490117+00:00",
+          "working_start": 0.010445874650031328,
+          "event": "span_begin",
+          "id": "WCiptyD67mQXmkVq64fzF4",
+          "type": "scorers",
+          "name": "scorers"
+        },
+        {
+          "uuid": "NWBvp6uEha9i3akkr6d5o9",
+          "span_id": "BfXfn3j5Pv33rVxSGjNiai",
+          "timestamp": "2026-10-13T17:54:34.490203+00:00",
+          "working_start": 0.010531916748732328,
+          "event": "span_begin",
+          "id": "BfXfn3j5Pv33rVxSGjNiai",
+          "parent_id": "WCiptyD67mQXmkVq64fzF4",
+          "type": "scorer",
+          "name": "model_graded_qa"
+        },
+        {
+          "uuid": "9aYqKb692nyYfu3k9ohNkd",
+          "span_id": "BfXfn3j5Pv33rVxSGjNiai",
+          "timestamp": "2026-10-13T17:54:34.490333+00:00",
+          "working_start": 0.010661792010068893,
+          "event": "model",
+          "model": "anthropic/claude-fake-1",
+          "input": [],
+          "input_refs": [
+            [
+              0,
+              1
+            ]
+          ],
+          "tools": [],
+          "tool_choice": "none",
+          "config": {
+            "max_tokens": 1024
+          },
+          "output": {
+            "model": "claude-fake-1-served-20260101",
+            "choices": [
+              {
+                "message": {
+                  "id": "kTgxYgx8SsHm6LRMygLUxn",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                },
+                "stop_reason": "stop"
+              }
+            ],
+            "completion": "Local fake judge reasoning.\n\nGRADE: C",
+            "usage": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            },
+            "time": 0.028480583801865578
+          },
+          "call": {
+            "request": {
+              "cache_control": {
+                "type": "ephemeral"
+              },
+              "tools": [],
+              "model": "claude-fake-1",
+              "max_tokens": 1024,
+              "extra_headers": {
+                "x-irid": "cbUdiHiFGD2se8sgk7hqd7"
+              }
+            },
+            "response": {
+              "id": "msg_fake_0009",
+              "container": null,
+              "content": [
+                {
+                  "citations": null,
+                  "text": "Local fake judge reasoning.\n\nGRADE: C",
+                  "type": "text"
+                }
+              ],
+              "diagnostics": null,
+              "model": "claude-fake-1-served-20260101",
+              "role": "assistant",
+              "stop_details": null,
+              "stop_reason": "end_turn",
+              "stop_sequence": null,
+              "type": "message",
+              "usage": {
+                "cache_creation": null,
+                "cache_creation_input_tokens": null,
+                "cache_read_input_tokens": null,
+                "inference_geo": null,
+                "input_tokens": 100,
+                "output_tokens": 20,
+                "output_tokens_details": {
+                  "thinking_tokens": 0
+                },
+                "server_tool_use": null,
+                "service_tier": null
+              }
+            },
+            "time": 0.028480583801865578,
+            "call_refs": [
+              [
+                0,
+                1
+              ]
+            ],
+            "call_key": "messages"
+          },
+          "completed": "2026-10-13T17:54:34.659432+00:00",
+          "working_time": 0.028480583801865578
+        },
+        {
+          "uuid": "g8cn5aWEAZofVpZpXcrrn6",
+          "span_id": "BfXfn3j5Pv33rVxSGjNiai",
+          "timestamp": "2026-10-13T17:54:34.659631+00:00",
+          "working_start": 0.0395456668920815,
+          "event": "score",
+          "score": {
+            "value": "C",
+            "answer": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+            "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+            "metadata": {
+              "grading": [
+                {
+                  "id": "DpBFsDgFhQHvzn5xf77j3a",
+                  "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[strict:fail]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                  "role": "user"
+                },
+                {
+                  "id": "kTgxYgx8SsHm6LRMygLUxn",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Local fake judge reasoning.\n\nGRADE: C"
+                    }
+                  ],
+                  "source": "generate",
+                  "role": "assistant",
+                  "model": "claude-fake-1-served-20260101"
+                }
+              ]
+            },
+            "history": []
+          },
+          "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
+          "intermediate": false,
+          "scorer": "model_graded_qa",
+          "scorer_args": {
+            "model": {
+              "model": "anthropic/claude-fake-1",
+              "config": {
+                "max_tokens": 1024
+              },
+              "base_url": null,
+              "model_args": {
+                "streaming": false
+              }
+            }
+          },
+          "model_usage": {
+            "anthropic/claude-fake-1": {
+              "input_tokens": 100,
+              "output_tokens": 20,
+              "total_tokens": 120
+            }
+          }
+        },
+        {
+          "uuid": "3akuf4dFuvZreN5FrqCJdF",
+          "span_id": "BfXfn3j5Pv33rVxSGjNiai",
+          "timestamp": "2026-10-13T17:54:34.659754+00:00",
+          "working_start": 0.03966904152184725,
+          "event": "span_end",
+          "id": "BfXfn3j5Pv33rVxSGjNiai"
+        },
+        {
+          "uuid": "e4keDxrxKHimjp7WawG7a6",
+          "span_id": "WCiptyD67mQXmkVq64fzF4",
+          "timestamp": "2026-10-13T17:54:34.659842+00:00",
+          "working_start": 0.03975641680881381,
+          "event": "span_end",
+          "id": "WCiptyD67mQXmkVq64fzF4"
+        }
+      ],
+      "model_usage": {
+        "anthropic/claude-fake-1": {
+          "input_tokens": 100,
+          "output_tokens": 20,
+          "total_tokens": 120
+        }
+      },
+      "role_usage": {},
+      "started_at": "2026-10-13T17:54:34.479672+00:00",
+      "completed_at": "2026-10-13T17:54:34.664443+00:00",
+      "total_time": 0.185,
+      "working_time": 0.044,
+      "uuid": "FqtRXuDy2BBySd44JKHBGH",
+      "error_retries": [],
+      "attachments": {
+        "551b26feb1828e1c43479e36c0a34570": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[strict:fail]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
+      },
+      "events_data": {
+        "messages": [
+          {
+            "id": "DpBFsDgFhQHvzn5xf77j3a",
+            "content": "attachment://551b26feb1828e1c43479e36c0a34570",
+            "role": "user"
+          }
+        ],
+        "calls": [
+          {
+            "role": "user",
+            "content": "attachment://551b26feb1828e1c43479e36c0a34570"
+          }
+        ]
+      },
+      "turn_count": 0
+    }
+  ],
+  "reductions": [
+    {
+      "scorer": "model_graded_qa",
+      "samples": [
+        {
+          "value": 1.0,
+          "answer": "Your order arrived damaged, so you are eligible for a full refund. I have started it.",
+          "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+          "metadata": {
+            "grading": [
+              {
+                "id": "G4HdrqXtUPsU7BgDLpaAke",
+                "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                "role": "user"
+              },
+              {
+                "id": "ZQfqPnKZTqsW8yVoBFmYz2",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Local fake judge reasoning.\n\nGRADE: C"
+                  }
+                ],
+                "source": "generate",
+                "role": "assistant",
+                "model": "claude-fake-1-served-20260101"
+              }
+            ]
+          },
+          "history": [],
+          "sample_id": "c1"
+        },
+        {
+          "value": 1.0,
+          "answer": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
+          "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+          "metadata": {
+            "grading": [
+              {
+                "id": "2LScsgUeB7GzhTZNpq2JDg",
+                "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                "role": "user"
+              },
+              {
+                "id": "hddMj5LHAhxkHFtzUkUcGB",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Local fake judge reasoning.\n\nGRADE: C"
+                  }
+                ],
+                "source": "generate",
+                "role": "assistant",
+                "model": "claude-fake-1-served-20260101"
+              }
+            ]
+          },
+          "history": [],
+          "sample_id": "c2"
+        },
+        {
+          "value": 1.0,
+          "answer": "Sure, I refunded it twice to be safe. [[strict:fail]]",
+          "explanation": "Local fake judge reasoning.\n\nGRADE: C",
+          "metadata": {
+            "grading": [
+              {
+                "id": "RpmHqXMkX9bY6ARg76ktpB",
+                "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[strict:fail]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
+                "role": "user"
+              },
+              {
+                "id": "MayJaR5LDrsHWBUuwRAmYY",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Local fake judge reasoning.\n\nGRADE: C"
+                  }
+                ],
+                "source": "generate",
+                "role": "assistant",
+                "model": "claude-fake-1-served-20260101"
+              }
+            ]
+          },
+          "history": [],
+          "sample_id": "c3"
+        }
+      ]
+    }
+  ]
+}

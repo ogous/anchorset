@@ -1,0 +1,21 @@
+{
+  "labels": [
+    "1",
+    "2",
+    "3",
+    "4",
+    "5"
+  ],
+  "classes": {
+    "reply_quality": {
+      "direction": "floor",
+      "minPassRate": 0.8
+    },
+    "policy_safe": {
+      "direction": "floor",
+      "nonCompensable": true,
+      "minPassRate": 1
+    }
+  },
+  "knownFailures": []
+}

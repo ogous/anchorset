@@ -1,0 +1,28 @@
+# The sha256 of a grader file is part of a run's identity, so a checkout must never change its bytes.
+examples/importers/promptfoo/grader-provider.cjs text eol=lf
+examples/importers/inspect/recording_grader.py text eol=lf
+examples/importers/inspect/template.txt text eol=lf
+examples/importers/inspect/instructions.txt text eol=lf
+examples/importers/inspect/regrade.py text eol=lf
+
+# The committed inputs and fixtures are measured bytes (a run records the sha256 of the source it came from): never convert them.
+examples/importers/*/fixtures/*.json -text
+examples/importers/*/bad-fixtures/*.json -text
+examples/importers/*/fixture-inputs/* -text
+examples/importers/*/cases.json -text
+examples/importers/*/bar.json -text
+examples/importers/*/plan.json -text
+examples/importers/FIXTURES.sha256 -text
+
+# The example flow of the third importer: the tests pin the sha256 of these files.
+examples/importers/skill-evals/example-flow/** -text
+
+# The third importer's re-grade script and the files it imports: their sha256 is declared in a re-grade file and
+# feeds a run's judge identity, so a checkout must never change their bytes. The example texts are hashed too.
+examples/importers/skill-evals/*.ts text eol=lf
+examples/importers/skill-evals/*.txt text eol=lf
+examples/importers/shared.ts text eol=lf
+examples/importers/skill-evals/fixtures/*.jsonl -text
+examples/importers/skill-evals/bad-fixtures/*.jsonl -text
+examples/importers/skill-evals/FIXTURES.sha256 -text
+examples/importers/fake-endpoint.ts text eol=lf

@@ -1,0 +1,207 @@
+{
+  "schema": "anchorset.run/v3",
+  "identity": {
+    "caseSetHash": "834f5ed304b1c175672aecad9f00c41f1eca8658e60f4131b2ea84838ec4e4e6",
+    "rubricHash": "77648c7319e3f23c744251c186c247477669aa568ee782c63fbf1ff65c5d0330",
+    "barHash": "7427ac45882381d8b1e936285ac864cba6c3d79f8d5b44a191266ff11b143e3b",
+    "systemModelRequested": "example-model-a",
+    "systemModelServed": "example-model-a-2026-01-15",
+    "systemCallShapeHash": "055d098dbf3e569cf91f368664d770a07983be04590e264760f49483e9c903e3",
+    "systemPromptHash": "66b1737752278036aa7fe208365c76e49ffd58351787f0ddf90bc1be243c41c7",
+    "systemToolsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "systemHarnessVersion": "refund-harness 1.4.0",
+    "judgeDefinitionHash": "eafa30d635a5fff32e6f2d2a2564c4fb1d34a3cbe7307e08d3739ae3c28e0d5e",
+    "judgeModelRequested": "example-judge",
+    "judgeModelServed": "example-judge-2026-02-01",
+    "judgeCallShapeHash": "3c8f437842433074a7a2a14f0e4592a14e64ab55e6e993d04024270dd84f4a1f",
+    "judgeHarnessVersion": "refund-harness 1.4.0",
+    "seed": 20260115,
+    "drawsPerCase": 2
+  },
+  "callShapes": {
+    "system": {
+      "schema": "anchorset.callshape/v1",
+      "endpoint": "example-provider:messages",
+      "apiVersion": "2026-01-01",
+      "betaFlags": [],
+      "thinkingMode": "off",
+      "thinkingBudgetTokens": "NOT_SENT",
+      "effort": "NOT_SENT",
+      "toolChoice": "none",
+      "toolChoiceName": "NOT_SENT",
+      "strictTools": "NOT_SENT",
+      "parallelToolUse": "NOT_SENT",
+      "temperature": 0,
+      "topP": "NOT_SENT",
+      "topK": "NOT_SENT",
+      "frequencyPenalty": "NOT_SENT",
+      "presencePenalty": "NOT_SENT",
+      "samplingSeed": "NOT_SENT",
+      "maxOutputTokens": 512,
+      "stopSequences": "NOT_SENT",
+      "responseFormat": {
+        "kind": "text"
+      },
+      "contextPolicy": "none",
+      "stream": false,
+      "timeoutMs": 30000,
+      "extras": {}
+    },
+    "judge": {
+      "schema": "anchorset.callshape/v1",
+      "endpoint": "example-provider:messages",
+      "apiVersion": "2026-01-01",
+      "betaFlags": [],
+      "thinkingMode": "off",
+      "thinkingBudgetTokens": "NOT_SENT",
+      "effort": "NOT_SENT",
+      "toolChoice": "named",
+      "toolChoiceName": "grade",
+      "strictTools": true,
+      "parallelToolUse": "NOT_SENT",
+      "temperature": 0,
+      "topP": "NOT_SENT",
+      "topK": "NOT_SENT",
+      "frequencyPenalty": "NOT_SENT",
+      "presencePenalty": "NOT_SENT",
+      "samplingSeed": "NOT_SENT",
+      "maxOutputTokens": 256,
+      "stopSequences": "NOT_SENT",
+      "responseFormat": {
+        "kind": "tool",
+        "name": "grade"
+      },
+      "contextPolicy": "none",
+      "stream": false,
+      "timeoutMs": 30000,
+      "extras": {}
+    }
+  },
+  "cases": [
+    {
+      "id": "q01",
+      "klass": "reply_quality",
+      "input": {
+        "message": "How long do refunds usually take to show up?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q02",
+      "klass": "reply_quality",
+      "input": {
+        "message": "I returned the jacket a month ago and still have not seen the refund."
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q03",
+      "klass": "reply_quality",
+      "input": {
+        "message": "Can I return an item I bought on sale?"
+      },
+      "expect": "4"
+    }
+  ],
+  "draws": [
+    {
+      "caseId": "q01",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "f07dde746055dc746fbf23884beb1db0d1f900ef25aca61a3fcdb1f382a9481e",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "6ff00a754f489d65282ce50b77451c70592576db01d69d5a9e25d3ea706b60a3"
+        }
+      ]
+    },
+    {
+      "caseId": "q01",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "unmeasured",
+          "role": "system",
+          "reason": "timeout",
+          "detail": "no response within 30000 ms"
+        },
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "55359e43dd1abd07057e1835a88013753734e60f81ff852009e4835afbf7d2f9",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "23c35fd08c64f7288007635d1bfa6f1f5cb12b3d0264af4d943d30299af14f2a"
+        }
+      ]
+    },
+    {
+      "caseId": "q02",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "unmeasured",
+          "role": "judge",
+          "reason": "parse-failure",
+          "detail": "the grade tool was called with no grade",
+          "outputHash": "0ca15417fbbb59094d427e8dffe28916bbe4431b779293c505a67b6c429771a6",
+          "systemStop": "end",
+          "packetHash": "5e110850821c38e019fa0337db9dc9019ac91a22ab15a25ecf8b17627b960591"
+        },
+        {
+          "kind": "graded",
+          "label": "5",
+          "outputHash": "0ca15417fbbb59094d427e8dffe28916bbe4431b779293c505a67b6c429771a6",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "5e110850821c38e019fa0337db9dc9019ac91a22ab15a25ecf8b17627b960591"
+        }
+      ]
+    },
+    {
+      "caseId": "q02",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "8a4c2b291dd4e8eadba4b8a3565aa12725efd309717582b27031796d7f8c009a",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "a9dcac313c510cec146d1a8c190480de7cd5a9d214b1988119bd0149ddba1c6e"
+        }
+      ]
+    },
+    {
+      "caseId": "q03",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "failed",
+          "reason": "truncated",
+          "detail": "the reply reached maxOutputTokens (512)",
+          "outputHash": "b237e23f9808ae33340381bd330fa70519232549c98263c3111b269004ddf05d",
+          "systemStop": "max-tokens"
+        }
+      ]
+    },
+    {
+      "caseId": "q03",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "84ba1e51dbf86b7b88946806bd0679d445fbea3b68eec8c3b6fda860a5ac2961",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "5bf329b54dab026934c88126b7d20b7151440b87678b05a7a3bc1059e4f6d0b7"
+        }
+      ]
+    }
+  ],
+  "packetBasis": "recorded"
+}

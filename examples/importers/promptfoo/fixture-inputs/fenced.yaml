@@ -1,0 +1,21 @@
+# Re-grade the stored outputs of a refund bot with a grader (example input of fixtures.sh).
+# The recording grader's base URL is the local fake endpoint (examples/importers/fake-endpoint.ts), its one fixed default port.
+# The marker [[fence]] in a stored output makes the fake endpoint wrap its reply in one json code fence, so some replies are
+# fenced and some are bare. The grader reads nothing and records no rule: the importer is told which rule to read under
+# (`--reading`), and these bytes import under the second rule and are refused under the first.
+prompts: ['{{question}}']
+providers:
+  - id: 'file://stored-outputs-provider.cjs'
+    config: { storedFile: stored-fenced.json }
+defaultTest:
+  options:
+    provider:
+      id: 'file://grader-provider.cjs'
+      config: { model: fake-judge-old, max_tokens: 256, temperature: 0, baseUrl: 'http://127.0.0.1:18765', thinking: NOT_SENT, effort: NOT_SENT, maxReasks: 0 }
+  assert:
+    - type: llm-rubric
+      value: The reply follows the refund policy (within 30 days or damaged goods, never more than once).
+tests:
+  - vars: { case_id: c1, question: 'My blender arrived broken. Can I get my money back?' }
+  - vars: { case_id: c2, question: 'I bought shoes 45 days ago and want a refund.' }
+  - vars: { case_id: c3, question: 'Please refund my last order.' }

@@ -1,0 +1,46 @@
+{
+  "schema": "anchorset.judge-change-plan/v1",
+  "barHash": "4f191ee7aa070bc398f55a660e2b3f9b4f8dbc1e0155decf3aa6271a8b367742",
+  "caseSetHash": "a249378e74d87583effec3ef02ac40b3f900ac05e9829aee647a91123e684627",
+  "drawsPerCase": 3,
+  "judges": {
+    "old": {
+      "judgeDefinitionHash": "60d466334a5fda922ba6ff8432c77a8b8dc4c25cf428d2d493e1894f322653ce",
+      "judgeModelRequested": "fake-judge-old",
+      "judgeModelServed": "fake-judge-old-served-20260101",
+      "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
+      "judgeHarnessVersion": "promptfoo 0.123.1; anchorset-recording-grader js sha256:c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621; node v25.6.1; max-reasks 0",
+      "rubricHash": "a24aaadec6fe7060f791524a929acb7397f238b43eaa9b85a5f8bf58de06254f"
+    },
+    "new": {
+      "judgeDefinitionHash": "60d466334a5fda922ba6ff8432c77a8b8dc4c25cf428d2d493e1894f322653ce",
+      "judgeModelRequested": "fake-judge-strict-new",
+      "judgeModelServed": "fake-judge-strict-new-served-20260101",
+      "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
+      "judgeHarnessVersion": "promptfoo 0.123.1; anchorset-recording-grader js sha256:c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621; node v25.6.1; max-reasks 0",
+      "rubricHash": "a24aaadec6fe7060f791524a929acb7397f238b43eaa9b85a5f8bf58de06254f"
+    }
+  },
+  "judgeMoves": [
+    "judgeModelRequested",
+    "judgeModelServed"
+  ],
+  "systems": {
+    "refund-bot": {
+      "old": "bf02f0e5bb2adbf4548d70f6e34721d08178cefb5d33cd08b028515b99f70e06",
+      "new": "33754149214ebf414ae5f90b7d67c2d6dfa667bc7f957ad03fb6423767c7008b"
+    }
+  },
+  "storedOutputs": "system-side-not-compared",
+  "measuredClass": "refund_policy",
+  "cut": "pass",
+  "drawSets": {
+    "estimate": [
+      0,
+      1,
+      2
+    ]
+  },
+  "labelRule": "majority",
+  "pooling": "items-equal"
+}

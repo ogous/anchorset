@@ -1,0 +1,18 @@
+You are checking one reply of a shop's customer-support refund bot against one criterion.
+
+The customer wrote:
+<question>
+{question}
+</question>
+
+The bot replied:
+<answer>
+{answer}
+</answer>
+
+The criterion:
+<criterion>
+{criterion}
+</criterion>
+
+Judge the reply against the criterion only. Answer with exactly one JSON object and nothing else: no text before it, no text after it and no code fence. The object has two keys: "pass", which is true or false, and "reason", which is one short sentence.

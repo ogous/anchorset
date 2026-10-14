@@ -1,0 +1,74 @@
+{
+  "name": "anchorset",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "author": "Ogous Chan Ali",
+  "description": "LLM eval regression gates that refuse to compare runs whose declared identities differ outside the fields you allow, or are unknown, and check whether a judge's verdicts on the same set of items have moved.",
+  "type": "module",
+  "engines": {
+    "node": ">=22.21.0"
+  },
+  "bin": {
+    "anchorset": "dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "NOTICE",
+    "CITATION.cff",
+    "TRADEMARKS.md",
+    "AUTHORSHIP.md",
+    "REUSE.toml",
+    "LICENSES",
+    "docs/CLI.md",
+    "docs/COMPARISON.md",
+    "docs/IMPORTERS.md",
+    "docs/JUDGE_CHANGE.md",
+    "docs/MIGRATIONS.md",
+    "docs/RATINGS_FORMAT.md",
+    "docs/RUN_FORMAT.md",
+    "examples/refund-bot/*.json",
+    "examples/refund-bot/README.md",
+    "examples/run-format/*.json"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && node tools/banner.ts",
+    "test": "node --test 'test/**/*.test.ts'",
+    "test:pack": "bash tools/pack-test.sh",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm test && npm run test:pack",
+    "prepack": "npm run build",
+    "demo:agree": "node src/cli.ts agree --ratings examples/refund-bot/ratings.json",
+    "demo:drift": "node src/cli.ts drift --old examples/refund-bot/anchor_old.json --new examples/refund-bot/anchor_new.json --flag handoff",
+    "demo:flips": "node src/cli.ts flips --run examples/refund-bot/judged.json",
+    "demo:judge-change": "node src/cli.ts judge-change --plan examples/judge-change/plan.json --bar examples/judge-change/bar.json --inputs examples/judge-change/runs",
+    "demo": "node src/cli.ts gate --baseline examples/refund-bot/baseline.json --candidate examples/refund-bot/candidate.json --bar examples/refund-bot/bar.json --allow-differ systemModelServed,systemCallShapeHash"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ogous/anchorset.git"
+  },
+  "homepage": "https://github.com/ogous/anchorset#readme",
+  "bugs": {
+    "url": "https://github.com/ogous/anchorset/issues"
+  },
+  "keywords": [
+    "llm-evaluation",
+    "llm-as-a-judge",
+    "regression-testing",
+    "eval-gate"
+  ]
+}

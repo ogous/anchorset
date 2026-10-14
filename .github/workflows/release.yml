@@ -1,0 +1,69 @@
+# Publishes to npm with provenance, and only when a version tag is pushed. Nothing publishes on a push to a branch
+# or on a pull request. The job runs only in the public repository, so a copy or a fork never publishes.
+# The publish job holds the registry token and the right to sign provenance, so its actions are pinned by commit and it
+# restores no cache. The licence check, which installs a Python package, runs in its own job with read access only,
+# and publish waits for it.
+name: release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: read
+
+jobs:
+  # The licence map, on the committed tree and before any install (see ci.yml). No token and no write access here.
+  licence:
+    if: github.repository == 'ogous/anchorset'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.13'
+      - run: pip install 'reuse[charset-normalizer]==6.2.0'
+      - run: reuse lint
+
+  publish:
+    needs: licence
+    if: github.repository == 'ogous/anchorset'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm provenance: the registry records which workflow built the package
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0 # the whole history, so that the next step can ask whether the tag is on main
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: The tagged commit must be on main
+        run: |
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "the tagged commit $GITHUB_SHA is not on main"; exit 1; }
+      - name: The tag and the manifest's version must agree
+        run: |
+          node -e '
+            const p = JSON.parse(require("fs").readFileSync("package.json", "utf8"));
+            const tag = process.env.GITHUB_REF_NAME;
+            if (tag !== "v" + p.version) { console.error("tag " + tag + " is not v" + p.version); process.exit(1); }
+          '
+      - run: npm ci
+      # The one release gate, the same command ci.yml runs: the manifest is the publishable one (no "private", no
+      # "publishConfig", the public repository.url exactly), the tree holds no path that is never published, and
+      # `npm publish --dry-run` exits 0. It needs the development dependencies, so it runs after npm ci.
+      - name: The release gate on this tree
+        run: node tools/release-tree-check.ts
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:pack
+      - run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

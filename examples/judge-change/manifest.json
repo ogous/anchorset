@@ -1,0 +1,225 @@
+{
+  "schema": "anchorset.study/v1",
+  "study": "the judge-change example (synthetic)",
+  "dataDoi": "NOT_RELEASED",
+  "library": {
+    "name": "anchorset",
+    "version": "0.1.0",
+    "commit": "NOT_RELEASED"
+  },
+  "contracts": {
+    "run": "anchorset.run/v3",
+    "plan": "anchorset.judge-change-plan/v1",
+    "manifest": "anchorset.study/v1"
+  },
+  "inputs": [
+    {
+      "path": "plan.json",
+      "role": "plan",
+      "sha256": "9db970d85285b2249e077d97885619717ce5b5108567d706b89ab57f90d114dc"
+    },
+    {
+      "path": "bar.json",
+      "role": "bar",
+      "sha256": "a1acdf97a024c66128065aceef652819f67c8e7a9a3c85f884173b3fff7a8e75"
+    },
+    {
+      "path": "runs/bot-v1.old-judge.json",
+      "role": "run",
+      "sha256": "34c984138fa9e42a62206259ee475ca6bb1030fa3600ed5cd25ac81fafcfaeee"
+    },
+    {
+      "path": "runs/bot-v1.new-judge.json",
+      "role": "run",
+      "sha256": "897a75cc313da9faefac518b13329cd8ef5b00dae959eb95d183ffd021b3575c"
+    },
+    {
+      "path": "runs/bot-v1.reference.json",
+      "role": "reference",
+      "sha256": "7b2a5b113bf1d21d673e567f0b97505afd788c2431c326fd24e6603d9524b91f"
+    },
+    {
+      "path": "runs/bot-v2.old-judge.json",
+      "role": "run",
+      "sha256": "0cccb9dfd0be04ac4da532ccd83f691c2d078a32698274c70a7120b514cd72b4"
+    },
+    {
+      "path": "runs/bot-v2.new-judge.json",
+      "role": "run",
+      "sha256": "98b96e6580c55e53622293b6186ba064f2c49a0b5f961afed4d9c40795b33ca5"
+    },
+    {
+      "path": "runs/bot-v2.reference.json",
+      "role": "reference",
+      "sha256": "c77415d8dc126d92bb42161cf6abab6df48fea98e183477dead8147056d44bdb"
+    },
+    {
+      "path": "runs/bot-v3.old-judge.json",
+      "role": "run",
+      "sha256": "b09ee7e4eb6ef4e1bbfeafb74bdab2602e4304c31ab933408b1a64f354c90c17"
+    },
+    {
+      "path": "runs/bot-v3.new-judge.json",
+      "role": "run",
+      "sha256": "ae052893aeb7a5761e198b6774eaf67680c2762a513cb3a8f2f6edc49b46ce91"
+    },
+    {
+      "path": "runs/bot-v3.reference.json",
+      "role": "reference",
+      "sha256": "b2f3f0db38d09e1d6f2ac28c4145f4d9179109d762aeedb4abc8dc77f503f6ee"
+    },
+    {
+      "path": "runs/bot-v4.old-judge.json",
+      "role": "run",
+      "sha256": "9c38269dda9a33ba150a0b6523ceca77d0cb9e827fafb70e30c554ddb651de18"
+    },
+    {
+      "path": "runs/bot-v4.new-judge.json",
+      "role": "run",
+      "sha256": "319429b6dca127f4f6108c758d8e6d52096b658ab8c1bfa0d838104ccb0de061"
+    },
+    {
+      "path": "runs/bot-v4.reference.json",
+      "role": "reference",
+      "sha256": "d9d10d1c21b30a066b6db1085503e27d9937652dd7bcfe626475cf60c32a64f9"
+    },
+    {
+      "path": "runs/bot-v5.old-judge.json",
+      "role": "run",
+      "sha256": "af9b4c9df5e9ed83ebc49a49f9b9b78f6b96f1ed32b8863f809e9cb0524e0ade"
+    },
+    {
+      "path": "runs/bot-v5.new-judge.json",
+      "role": "run",
+      "sha256": "4653eb3cd35549ef4b23ff7176a1f1fc7946c4b667125a7cd91a9f9da7fd3ac3"
+    },
+    {
+      "path": "runs/bot-v5.reference.json",
+      "role": "reference",
+      "sha256": "ba14109ca4aad5b417cea113bb7e32884e3930ea9353a624b64c3c794279fc93"
+    },
+    {
+      "path": "generate.ts",
+      "role": "converter",
+      "sha256": "a5ede7794c8243c32ea678d512bc7f8c1a972e588bf3697570e68cba12272c77"
+    }
+  ],
+  "cells": [
+    {
+      "name": "per-draw pass rate, old judge",
+      "path": "/perDrawPassRate/old",
+      "scale": 1,
+      "precision": 3,
+      "expected": "0.469"
+    },
+    {
+      "name": "per-draw pass rate, new judge",
+      "path": "/perDrawPassRate/new",
+      "scale": 1,
+      "precision": 3,
+      "expected": "0.286"
+    },
+    {
+      "name": "per-draw pass rate change (points)",
+      "path": "/perDrawPassRate/change",
+      "scale": 100,
+      "precision": 1,
+      "expected": "-18.3"
+    },
+    {
+      "name": "label pass rate change (points)",
+      "path": "/labelPassRate/change",
+      "scale": 100,
+      "precision": 1,
+      "expected": "-19.2"
+    },
+    {
+      "name": "labels that differ between the judges",
+      "path": "/flips/acrossJudges",
+      "scale": 1,
+      "precision": 3,
+      "expected": "0.275"
+    },
+    {
+      "name": "labels that differ between two sets of one judge",
+      "path": "/flips/withinJudge",
+      "scale": 1,
+      "precision": 3,
+      "expected": "0.167"
+    },
+    {
+      "name": "flips beyond re-asking",
+      "path": "/flips/beyondReask",
+      "scale": 1,
+      "precision": 3,
+      "expected": "0.108"
+    },
+    {
+      "name": "items",
+      "path": "/counts/items",
+      "scale": 1,
+      "precision": 0,
+      "expected": "120"
+    },
+    {
+      "name": "pairs passed by doing nothing only",
+      "path": "/gate/counts/passDoNothingOnly",
+      "scale": 1,
+      "precision": 0,
+      "expected": "0"
+    },
+    {
+      "name": "pairs passed by re-judging only",
+      "path": "/gate/counts/passRejudgedOnly",
+      "scale": 1,
+      "precision": 0,
+      "expected": "5"
+    },
+    {
+      "name": "pairs passed by both",
+      "path": "/gate/counts/passBoth",
+      "scale": 1,
+      "precision": 0,
+      "expected": "1"
+    },
+    {
+      "name": "pairs passed by recalibrating only",
+      "path": "/map/counts/passRecalibratedOnly",
+      "scale": 1,
+      "precision": 0,
+      "expected": "2"
+    },
+    {
+      "name": "pairs passed by re-judging with the cut only",
+      "path": "/map/counts/passRejudgedCutOnly",
+      "scale": 1,
+      "precision": 0,
+      "expected": "1"
+    },
+    {
+      "name": "pairs passed by both cut gates",
+      "path": "/map/counts/passBoth",
+      "scale": 1,
+      "precision": 0,
+      "expected": "6"
+    }
+  ],
+  "cellsSha256": "fe825bb19ec48ad361b56e94ebe9dbd8f2d454ce5f0903c82367ae79191dc932",
+  "excluded": [
+    {
+      "name": "the non-compensable listing",
+      "reason": "a list of cases, not a number"
+    }
+  ],
+  "firstRun": {
+    "date": "2026-10-02",
+    "commit": "NOT_RELEASED",
+    "resultSha256": "79f3cd78c9005a6e2a9c7feee54b9364a74bc9e5afbf3a46d7bcb03060a4733a",
+    "outcome": "every cell matched"
+  },
+  "lastVerified": {
+    "version": "0.1.0",
+    "commit": "NOT_RELEASED",
+    "date": "2026-10-02"
+  }
+}
