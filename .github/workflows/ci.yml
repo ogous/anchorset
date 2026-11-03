@@ -34,10 +34,19 @@ jobs:
       - run: npm run test:pack
       # The one release gate, the same command release.yml runs before it publishes: the manifest is the publishable
       # one, the tree holds no path that is never published, and `npm publish --dry-run` exits 0 (prepack builds
-      # dist/). It sends nothing to the registry.
+      # dist/). It sends nothing to the registry. After a release, main carries a version npm already holds, and the
+      # dry run refuses to publish over it; the gate then runs on the same tree under a prerelease of that version that
+      # npm has never seen (`<version>-ci.<run number>`, dist-tag `ci`), changed in this checkout only.
       - name: The release gate on this tree
         if: matrix.node == 24
-        run: node tools/release-tree-check.ts
+        run: |
+          v="$(node -p 'require("./package.json").version')"
+          if npm view "anchorset@$v" version > /dev/null 2>&1; then
+            echo "anchorset@$v is on npm already: the gate runs on this tree as $v-ci.$GITHUB_RUN_NUMBER"
+            npm version --no-git-tag-version --ignore-scripts "$v-ci.$GITHUB_RUN_NUMBER" > /dev/null
+            export npm_config_tag=ci
+          fi
+          node tools/release-tree-check.ts
 
   # The licence map. `reuse lint` is run on the committed tree, where it ignores the folders git ignores (dist/,
   # node_modules/), and before any install. In a folder that is not a git repository it also reads dist/ and node_modules/

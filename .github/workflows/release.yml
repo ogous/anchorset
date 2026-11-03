@@ -1,7 +1,8 @@
 # Publishes to npm with provenance, and only when a version tag is pushed. Nothing publishes on a push to a branch
 # or on a pull request. The job runs only in the public repository, so a copy or a fork never publishes.
-# The publish job holds the registry token and the right to sign provenance, so its actions are pinned by commit and it
-# restores no cache. The licence check, which installs a Python package, runs in its own job with read access only,
+# It publishes through npm's trusted publishing: the registry accepts this workflow of this repository by its OIDC
+# identity, so no registry token exists, in the repository or anywhere else. The publish job holds the right to
+# request that identity and to sign provenance, so its actions are pinned by commit and it restores no cache. The licence check, which installs a Python package, runs in its own job with read access only,
 # and publish waits for it.
 name: release
 
@@ -35,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # npm provenance: the registry records which workflow built the package
+      id-token: write # trusted publishing and provenance: the registry checks, and records, which workflow built the package
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -64,6 +65,12 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run test:pack
+      # Trusted publishing needs npm 11.5.1 or later; an older npm would fall back to a token, and there is none.
+      - name: npm is recent enough for trusted publishing
+        run: |
+          node -e '
+            const v = require("child_process").execSync("npm --version").toString().trim();
+            const [a, b, c] = v.split(".").map(Number);
+            if (a < 11 || (a === 11 && (b < 5 || (b === 5 && c < 1)))) { console.error("npm " + v + " is older than 11.5.1, which trusted publishing needs"); process.exit(1); }
+          '
       - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
