@@ -70,6 +70,10 @@ which, and how to move it.
   does not hold, and tries it at zero spend with `examples/importers/watch-candidate.sh`. It reports and never adds to
   the list.
 - `tools/study-check.ts` says when a report equals the first run's but for the tool version.
+- **A Claude Code plugin**: one skill file that tells an agent how to run `npx anchorset@0.2.0` and how to report
+  what it printed, with its two manifests. It holds no code and decides nothing: every verdict and every number
+  comes from the CLI. It runs the published package, so it is committed to the repository after the `v0.2.0` tag
+  and the npm release: the tagged tree and the package do not hold it.
 
 ## 0.1.0 (2026-10-16)
 
