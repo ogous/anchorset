@@ -12,6 +12,16 @@ version: 0.1.0
 date-released: "2026-10-16"
 repository-code: "https://github.com/ogous/anchorset"
 doi: 10.5281/zenodo.23358090
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23358090
+    description: "The archived code of anchorset 0.1.0."
+  - type: doi
+    value: 10.5281/zenodo.23358200
+    description: "The study package: the registration text, the judges' scores, the analysis code and its outputs."
+  - type: url
+    value: "https://ogous.dev/publications/llm-judge-under-version-change"
+    description: "The paper on the study behind the method."
 keywords:
   - LLM evaluation
   - LLM-as-a-Judge

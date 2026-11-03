@@ -284,7 +284,8 @@ between the two is about 11 points. On 95% of resamples of the cases it falls be
 `2.5%` to `97.5%`; the shares in the later columns are rounded).
 
 This example is made up. The method comes from a pre-registered study of two upgrades of one judge family on a
-public summarization benchmark ([registration](https://osf.io/y6qm8/)). The study's registered numbers were not
+public summarization benchmark ([paper](https://ogous.dev/publications/llm-judge-under-version-change),
+[registration](https://osf.io/y6qm8/)). The study's registered numbers were not
 computed with this tool; run on the study's stored judgments, it reproduces the corresponding point estimates. At
 the first upgrade the share of labels that pass rose by about 15 points, and 18% of labels differed between the two
 versions, against about 2% for two runs of one version. At the second upgrade the pass share fell by about 10
@@ -351,4 +352,6 @@ It does not run your evals or write your files for you.
 Node 22.21 or later. No runtime dependencies. It can also be used as a TypeScript library.
 
 Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). The code is under Apache-2.0 and the
-docs under CC-BY-4.0. To cite the tool, use [CITATION.cff](CITATION.cff).
+docs under CC-BY-4.0. To cite the tool, use [CITATION.cff](CITATION.cff). The code of this release is archived
+at [doi:10.5281/zenodo.23358090](https://doi.org/10.5281/zenodo.23358090), and the study's data and analysis at
+[doi:10.5281/zenodo.23358200](https://doi.org/10.5281/zenodo.23358200).
