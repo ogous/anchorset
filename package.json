@@ -1,6 +1,6 @@
 {
   "name": "anchorset",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "Apache-2.0",
   "author": "Ogous Chan Ali",
   "description": "LLM eval regression gates that refuse to compare runs whose declared identities differ outside the fields you allow, or are unknown, and check whether a judge's verdicts on the same set of items have moved.",

@@ -1,4 +1,4 @@
-import { assertSameOutputs, assertSamePackets, judgeRejected, runArtifactProblems } from './artifact.ts';
+import { assertSameOutputs, assertSamePackets, judgeRejected, runArtifactProblems, systemNoAnswer } from './artifact.ts';
 import { callShapeDiff } from './callshape.ts';
 import type { RunArtifact } from './artifact.ts';
 import { InputError, RefusalError } from './errors.ts';
@@ -8,7 +8,7 @@ import { barHash, evaluate, parseBarFile, splitBarFile } from './gate.ts';
 import type { BarFile, GateResult } from './gate.ts';
 import { assertComparable, DRAW_COUNT_FIELD, GAP, gateNeverWaives, hashOf, JUDGE_FIELDS, NO_JUDGE } from './identity.ts';
 import type { IdentityField } from './identity.ts';
-import { assertStopsKnown, extraKeys, foldRun, incompleteDetail } from './scoring.ts';
+import { assertStopsKnown, extraKeys, foldRun, incompleteCounts, incompleteDetail } from './scoring.ts';
 import type { ClassSpec, FoldedCase, FoldRunResult } from './scoring.ts';
 import type { BootstrapOptions } from './stats.ts';
 
@@ -18,7 +18,7 @@ export const EXIT_CODES = Object.freeze({
   OK: 0,
   /** Regression: a case broke, a class is below its bar, a non-compensable class failed, or cases are missing. */
   REGRESSION: 1,
-  /** Comparison refused: identities differ outside the declared axes, a must-match value is unknown, or the baseline is incomplete. */
+  /** Comparison refused: identities differ outside the declared axes, a must-match value is unknown, or the baseline is incomplete or holds a slot where the system gave no answer. */
   REFUSED: 2,
   /** Bad command-line usage. */
   USAGE: 64,
@@ -342,6 +342,14 @@ export function gateRuns(baseline: RunArtifact, candidate: RunArtifact, barFile:
       throw new RefusalError('IDENTITY_GAP', ['drawsPerCase'], 'drawsPerCase is unknown, so completeness cannot be checked');
     }
     drawsPerCase = orig === undefined ? { base, cand } : { base, cand, orig };
+    // A rejected request or the system's own error in the baseline hides a case the candidate breaks: the baseline's fail
+    // is no reference for that case, so it drops out of BROKE. Baseline only: in a candidate the slot fails its case.
+    const noAnswer = systemNoAnswer(baseline);
+    if (noAnswer.length > 0) {
+      const name = original === undefined ? 'baseline' : 're-judged baseline';
+      const slots = noAnswer.map((x) => `${x.key} (${x.reason})`).join(', ');
+      throw new RefusalError('INCOMPLETE_RUN', noAnswer.map((x) => x.key), `${name}: the system gave no answer on ${slots}; a slot with no answer cannot show which cases the candidate broke; fix the request or the system and run the baseline again`);
+    }
   } catch (e) {
     if (e instanceof RefusalError) return { kind: 'refused', refusal: e };
     throw e;
@@ -364,10 +372,12 @@ export function gateRuns(baseline: RunArtifact, candidate: RunArtifact, barFile:
   // no packet, and packets that differ from the re-judged baseline's refuse the split alone.
   if (b.incomplete.length > 0) {
     const name = original === undefined ? 'baseline' : 're-judged baseline';
+    const counts = incompleteCounts(name, baseline.cases.length, drawsPerCase.base, b.incomplete);
     const detail = b.incomplete.map((x) => `${x.caseId}: ${incompleteDetail(x)}`).join('; ');
+    const slots = b.incomplete.flatMap((x) => [...x.unmeasured.map((u) => u.drawIndex), ...x.missing].sort((p, q) => p - q).map((i) => `${x.caseId}#${i}`));
     return {
       kind: 'refused',
-      refusal: new RefusalError('INCOMPLETE_RUN', b.incomplete.map((x) => x.caseId), `${name}: ${detail}; an incomplete baseline cannot show which cases the candidate broke`),
+      refusal: new RefusalError('INCOMPLETE_RUN', slots, `${counts}; ${detail}; an incomplete baseline cannot show which cases the candidate broke`),
     };
   }
   const c = fold('candidate', candidate, drawsPerCase.cand);

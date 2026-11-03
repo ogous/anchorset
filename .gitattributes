@@ -4,10 +4,12 @@ examples/importers/inspect/recording_grader.py text eol=lf
 examples/importers/inspect/template.txt text eol=lf
 examples/importers/inspect/instructions.txt text eol=lf
 examples/importers/inspect/regrade.py text eol=lf
+examples/importers/tested-versions.json text eol=lf
 
 # The committed inputs and fixtures are measured bytes (a run records the sha256 of the source it came from): never convert them.
 examples/importers/*/fixtures/*.json -text
 examples/importers/*/bad-fixtures/*.json -text
+examples/importers/*/by-version/**/*.json -text
 examples/importers/*/fixture-inputs/* -text
 examples/importers/*/cases.json -text
 examples/importers/*/bar.json -text

@@ -1,9 +1,9 @@
 export const TOOL_NAME = 'anchorset';
 /** Kept equal to package.json "version" (checked by a test). */
-export const TOOL_VERSION = '0.1.0';
+export const TOOL_VERSION = '0.2.0';
 
 /** The schema string of a ratings file (`agree --ratings`) and of an anchor file (`drift --old`, `--new`); both are required in the file. */
-export const RATINGS_SCHEMA = 'anchorset.ratings/v1';
+export const RATINGS_SCHEMA = 'anchorset.ratings/v2';
 export const ANCHOR_SCHEMA = 'anchorset.anchor/v1';
 
 /**
@@ -13,8 +13,8 @@ export const ANCHOR_SCHEMA = 'anchorset.anchor/v1';
  */
 export const REPORT_SCHEMAS = Object.freeze({
   gate: 'anchorset.gate-report/v1',
-  agree: 'anchorset.agree-report/v1',
-  drift: 'anchorset.drift-report/v1',
-  flips: 'anchorset.flips-report/v1',
+  agree: 'anchorset.agree-report/v2',
+  drift: 'anchorset.drift-report/v2',
+  flips: 'anchorset.flips-report/v2',
   refusal: 'anchorset.refusal/v1',
 } as const);

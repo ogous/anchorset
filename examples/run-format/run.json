@@ -145,8 +145,8 @@
         {
           "kind": "unmeasured",
           "role": "judge",
-          "reason": "parse-failure",
-          "detail": "the grade tool was called with no grade",
+          "reason": "server-error",
+          "detail": "the judge call returned HTTP 500",
           "outputHash": "0ca15417fbbb59094d427e8dffe28916bbe4431b779293c505a67b6c429771a6",
           "systemStop": "end",
           "packetHash": "5e110850821c38e019fa0337db9dc9019ac91a22ab15a25ecf8b17627b960591"

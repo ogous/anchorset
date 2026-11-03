@@ -79,11 +79,11 @@ const draws: Draw[] = [
   { caseId: 'q01', drawIndex: 0, attempts: [graded('q01', 0, '5')] },
   // The first call to the system timed out and was retried. The slot keeps both attempts; only the last one measured anything.
   { caseId: 'q01', drawIndex: 1, attempts: [{ kind: 'unmeasured', role: 'system', reason: 'timeout', detail: 'no response within 30000 ms' }, graded('q01', 1, '4')] },
-  // The judge's first answer could not be parsed. The retry grades the same stored reply: same output, stop and packet.
+  // The judge's first call got a server error. The retry grades the same stored reply: same output, stop and packet.
   {
     caseId: 'q02',
     drawIndex: 0,
-    attempts: [{ kind: 'unmeasured', role: 'judge', reason: 'parse-failure', detail: 'the grade tool was called with no grade', outputHash: q02.outputHash, systemStop: q02.systemStop, packetHash: q02.packetHash }, q02],
+    attempts: [{ kind: 'unmeasured', role: 'judge', reason: 'server-error', detail: 'the judge call returned HTTP 500', outputHash: q02.outputHash, systemStop: q02.systemStop, packetHash: q02.packetHash }, q02],
   },
   { caseId: 'q02', drawIndex: 1, attempts: [graded('q02', 1, '4')] },
   // A truncated reply is the system's own failure. It is never graded and never retried, and it fails the case.

@@ -35,7 +35,8 @@
 //   { "failed": "truncated" | "client-error" | "system-error", "detail": "<text>", "stop": "<stop> | NOT_SENT" }     the system's own failure
 //   { "unmeasured": "<reason>", "role": "system", "detail": "<text>" }                                         no response from the system
 //   { "unmeasured": "<reason>", "role": "judge", "detail": "<text>", "output": "<text>", "stop": "<stop>" }   the judge could not grade
-// The last attempt of a draw is its outcome; every earlier one must be unmeasured (a retry). A judged run's packet hashes are written as
+// The last attempt of a draw is its outcome; every earlier one must be unmeasured (a retry), for a reason that is not final: a judge's
+// parse-failure, content-filter and client-error end the slot. A judged run's packet hashes are written as
 // "UNKNOWN" and its packet basis as "UNKNOWN": this tool cannot record what the judge was shown, so `flips` refuses such a file (IDENTITY_GAP,
 // naming packetBasis). The verdict and exit code of `gate` read no packet: it refuses such a file only for an identity field or a stop that is
 // unknown (a judged run with every identity field stated, and its packets UNKNOWN, passes `gate`). Under `gate --rejudge-of`, though, the

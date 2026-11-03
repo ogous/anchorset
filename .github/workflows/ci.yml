@@ -74,9 +74,30 @@ jobs:
 
   # The importers' examples: the Python grader's self-test, and each tool's rehearsal at zero spend. The commands are
   # those of docs/IMPORTERS.md, through the import step. Every request goes to 127.0.0.1; the key is a dummy value.
-  importers:
-    name: importers
+  # The job runs once per pair of versions that examples/importers/tested-versions.json lists.
+  importer-versions:
+    name: importer versions
     runs-on: ubuntu-latest
+    outputs:
+      inspect: ${{ steps.list.outputs.inspect }}
+      promptfoo: ${{ steps.list.outputs.promptfoo }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - id: list
+        run: |
+          for tool in inspect_ai promptfoo; do
+            node -e "const d=JSON.parse(require('node:fs').readFileSync('examples/importers/tested-versions.json','utf8'));console.log('${tool%%_*}='+JSON.stringify(d.tools['$tool'].versions.map((e)=>e.version)))" >> "$GITHUB_OUTPUT"
+          done
+
+  importers:
+    name: importers (inspect_ai ${{ matrix.inspect }}, promptfoo ${{ matrix.promptfoo }})
+    needs: importer-versions
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        inspect: ${{ fromJSON(needs.importer-versions.outputs.inspect) }}
+        promptfoo: ${{ fromJSON(needs.importer-versions.outputs.promptfoo) }}
     env:
       ANTHROPIC_API_KEY: dummy
       ENDPOINT: http://127.0.0.1:18765
@@ -90,11 +111,14 @@ jobs:
         with:
           python-version: '3.13'
       - run: npm ci
-      # The pinned versions are the ones the examples were made and tested with.
-      - run: pip install inspect_ai==0.3.275
-      - run: npm install --global promptfoo@0.123.1
+      - run: pip install "inspect_ai==${{ matrix.inspect }}"
+      - run: npm install --global "promptfoo@${{ matrix.promptfoo }}"
       - name: The recording grader's self-test
         run: python examples/importers/inspect/selftest.py
+      - name: The walk over the list, on this tool
+        env:
+          ANCHORSET_INSPECT_VENV: ${{ env.pythonLocation }}
+        run: node --test test/importers.versions.test.ts
       - name: Rehearsal, skill-evals
         run: |
           OUT="$(mktemp -d)"
@@ -127,6 +151,7 @@ jobs:
           OUT="$(mktemp -d)"
           PF=examples/importers/promptfoo
           cp -R $PF "$OUT/pf"
+          cp examples/importers/tested-versions.json "$OUT/"
           sed 's/fake-judge-old/fake-judge-strict-new/' "$OUT/pf/promptfooconfig.yaml" > "$OUT/pf/new-judge.yaml"
           PF_ENV=("PROMPTFOO_CONFIG_DIR=$OUT/pfcfg" PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 PROMPTFOO_DISABLE_SHARING=1 PROMPTFOO_DISABLE_REMOTE_GENERATION=true)
           node examples/importers/fake-endpoint.ts --log "$OUT/pf-requests.jsonl" &

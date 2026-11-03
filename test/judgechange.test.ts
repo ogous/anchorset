@@ -449,6 +449,21 @@ test('refusal INCOMPLETE_RUN: a label needs every draw of its set, in both judge
   refused('INCOMPLETE_RUN', 'A/c1#0', () => measure({ Aold: makeRun('A', 'old', {}, silent), Anew: makeRun('A', 'new', {}, silent) }));
 });
 
+test('refusal INCOMPLETE_RUN: a slot with no grade in a class the report does not read still refuses; such a slot stays counted', () => {
+  // o1 is of a class the plan does not measure and that is not non-compensable.
+  for (const reason of ['parse-failure', 'content-filter', 'timeout', 'truncated']) {
+    const last = onSlot('o1', 2, (a) => [unmeasuredJudge(a, reason)]);
+    refused('INCOMPLETE_RUN', `A/o1#2 (new judge: judge ${reason})`, () => measure({ Anew: makeRun('A', 'new', {}, last) }));
+  }
+  const silent = onSlot('o1', 2, () => [unmeasured('system', 'timeout')]);
+  refused('INCOMPLETE_RUN', 'B/o1#2 (old judge: system timeout)', () => measure({ Bold: makeRun('B', 'old', {}, silent), Bnew: makeRun('B', 'new', {}, silent) }));
+  const short: Edit = (d) => d.filter((x) => !(x.caseId === 'o1' && x.drawIndex === 5));
+  refused('INCOMPLETE_RUN', 'B/o1#5 (old judge: missing)', () => measure({ Bold: makeRun('B', 'old', {}, short), Bnew: makeRun('B', 'new', {}, short) }));
+  // A rejected judge call keeps its own refusal, in such a class too.
+  const rejected = onSlot('o1', 2, (a) => [unmeasuredJudge(a, 'client-error')]);
+  refused('MEASUREMENT_NOT_RUNNABLE', 'o1#2', () => measure({ Anew: makeRun('A', 'new', {}, rejected) }));
+});
+
 test('a judge retry that then graded is a measured slot', () => {
   const retried = onSlot('c3', 4, (a) => [unmeasuredJudge(a, 'timeout'), a]);
   // Draw 4 is in the re-ask set: were it dropped, A/c3 would not be read as 4, 4, 4 there.
@@ -463,12 +478,12 @@ test('a judge retry that then graded is a measured slot', () => {
  * (c1-c4, 4 cases x 6 draws = 24 slots), which every number of the report is computed on, and over every slot record
  * of the run file (6 cases x 6 draws = 36: m1 of the non-compensable class and o1 of an unmeasured class included).
  *   Aold  no edit                                                   scored 0 of 24 · file 0 of 36 · no earlier judge attempt
- *   Anew  c3#4: judge timeout, judge parse-failure, then graded      scored and file: a slot with a retry, 2 earlier attempts
+ *   Anew  c3#4: judge timeout, judge transport, then graded          scored and file: a slot with a retry, 2 earlier attempts
  *         c1#0: judge timeout, then graded                           scored and file: a slot with a retry, 1 earlier attempt
  *         m1#2: system timeout, then graded                          a system retry: not a judge retry, in neither count
  *         o1#5: judge truncated, then graded                         file only: o1 is of a class the plan does not measure
- *                                                                   scored 2 of 24 · parse-failure 1, timeout 1 + 1 = 2
- *                                                                   file   3 of 36 · parse-failure 1, timeout 2, truncated 1
+ *                                                                   scored 2 of 24 · timeout 1 + 1 = 2, transport 1
+ *                                                                   file   3 of 36 · timeout 2, transport 1, truncated 1
  *   Bold  c2#1: judge rate-limited, then graded                      scored 1 of 24 · file 1 of 36 · rate-limited 1
  *   Bnew  c4#2: system timeout, judge server-error, then graded      the role filter: the system timeout is not counted
  *                                                                   scored 1 of 24 · file 1 of 36 · server-error 1 (no timeout)
@@ -476,7 +491,7 @@ test('a judge retry that then graded is a measured slot', () => {
  */
 const retryRuns = (): Partial<Runs> => {
   const anew: Edit = (d) => [
-    onSlot('c3', 4, (a) => [unmeasuredJudge(a, 'timeout'), unmeasuredJudge(a, 'parse-failure'), a]),
+    onSlot('c3', 4, (a) => [unmeasuredJudge(a, 'timeout'), unmeasuredJudge(a, 'transport'), a]),
     onSlot('c1', 0, (a) => [unmeasuredJudge(a, 'timeout'), a]),
     onSlot('m1', 2, (a) => [unmeasured('system', 'timeout'), a]),
     onSlot('o1', 5, (a) => [unmeasuredJudge(a, 'truncated'), a]),
@@ -492,8 +507,8 @@ const none = (slots: number) => ({ slotsWithRetry: 0, slots, earlierAttemptsByRe
 const RETRIES_BY_HAND = [
   [none(24), none(36)],
   [
-    { slotsWithRetry: 2, slots: 24, earlierAttemptsByReason: [{ reason: 'parse-failure', attempts: 1 }, { reason: 'timeout', attempts: 2 }] },
-    { slotsWithRetry: 3, slots: 36, earlierAttemptsByReason: [{ reason: 'parse-failure', attempts: 1 }, { reason: 'timeout', attempts: 2 }, { reason: 'truncated', attempts: 1 }] },
+    { slotsWithRetry: 2, slots: 24, earlierAttemptsByReason: [{ reason: 'timeout', attempts: 2 }, { reason: 'transport', attempts: 1 }] },
+    { slotsWithRetry: 3, slots: 36, earlierAttemptsByReason: [{ reason: 'timeout', attempts: 2 }, { reason: 'transport', attempts: 1 }, { reason: 'truncated', attempts: 1 }] },
   ],
   [{ slotsWithRetry: 1, slots: 24, earlierAttemptsByReason: [{ reason: 'rate-limited', attempts: 1 }] }, { slotsWithRetry: 1, slots: 36, earlierAttemptsByReason: [{ reason: 'rate-limited', attempts: 1 }] }],
   [{ slotsWithRetry: 1, slots: 24, earlierAttemptsByReason: [{ reason: 'server-error', attempts: 1 }] }, { slotsWithRetry: 1, slots: 36, earlierAttemptsByReason: [{ reason: 'server-error', attempts: 1 }] }],
@@ -517,9 +532,51 @@ test('judge retries: each run counts its slots that hold a judge retry and its e
   }
 });
 
-test('refusal MEASUREMENT_NOT_RUNNABLE: a judge call the provider rejected, even when a retry then graded', () => {
-  const rejected = onSlot('c3', 4, (a) => [unmeasuredJudge(a, 'client-error'), a]);
+test('refusal MEASUREMENT_NOT_RUNNABLE: a judge call the provider rejected, as the slot\'s last attempt', () => {
+  const rejected = onSlot('c3', 4, (a) => [unmeasuredJudge(a, 'client-error')]);
   refused('MEASUREMENT_NOT_RUNNABLE', 'c3#4', () => measure({ Anew: makeRun('A', 'new', {}, rejected) }));
+  const afterRetry = onSlot('c3', 4, (a) => [unmeasuredJudge(a, 'timeout'), unmeasuredJudge(a, 'client-error')]);
+  refused('MEASUREMENT_NOT_RUNNABLE', 'c3#4', () => measure({ Anew: makeRun('A', 'new', {}, afterRetry) }));
+});
+
+test('the retry rule: an attempt after a final judge reason is invalid input to judge-change, and each stays a refusal as the last attempt', () => {
+  for (const reason of ['parse-failure', 'content-filter', 'client-error']) {
+    const after = onSlot('c3', 4, (a) => [unmeasuredJudge(a, reason), a]);
+    assert.throws(() => measure({ Anew: makeRun('A', 'new', {}, after) }), (e: unknown) => e instanceof InputError && e.code === 'INVALID_ARTIFACT' && e.problems.some((p) => p.includes('Anew.json') && p.includes('.attempts[0]') && p.includes(`the reason ${reason} is final`)), reason);
+  }
+  for (const reason of ['parse-failure', 'content-filter']) {
+    const last = onSlot('c3', 4, (a) => [unmeasuredJudge(a, reason)]);
+    refused('INCOMPLETE_RUN', `A/c3#4 (new judge: judge ${reason})`, () => measure({ Anew: makeRun('A', 'new', {}, last) }));
+  }
+  for (const reason of ['timeout', 'transport', 'server-error', 'rate-limited', 'truncated']) {
+    const retried = onSlot('c3', 4, (a) => [unmeasuredJudge(a, reason), a]);
+    assert.doesNotThrow(() => measure({ Anew: makeRun('A', 'new', {}, retried) }), reason);
+  }
+});
+
+// A hand-worked fixture. The whole run file is counted, whatever class the plan measures: 6 cases x 6 draws = 36 slots per run file.
+//   Anew: c1#0 parse-failure, c1#1 parse-failure, c2#3 content-filter        3 of 36 slots in 2 of 6 cases
+//   Bold and Bnew alike: m1#2 no record, m1#3 system timeout                 2 of 36 slots in 1 of 6 cases each
+test('refusal INCOMPLETE_RUN: the message counts each run file by reason, over every system, and the fields name every slot (a hand-worked fixture)', () => {
+  const anew = (d: Parameters<Edit>[0]) => [
+    onSlot('c1', 0, (a) => [unmeasuredJudge(a, 'parse-failure')]),
+    onSlot('c1', 1, (a) => [unmeasuredJudge(a, 'parse-failure')]),
+    onSlot('c2', 3, (a) => [unmeasuredJudge(a, 'content-filter')]),
+  ].reduce((x, f) => f(x), d);
+  const silent = onSlot('m1', 3, () => [unmeasured('system', 'timeout')]);
+  const short: Edit = (d) => silent(d).filter((x) => !(x.caseId === 'm1' && x.drawIndex === 2));
+  assert.throws(
+    () => measure({ Anew: makeRun('A', 'new', {}, anew), Bold: makeRun('B', 'old', {}, short), Bnew: makeRun('B', 'new', {}, short) }),
+    (e: unknown) => {
+      assert.ok(e instanceof RefusalError && e.code === 'INCOMPLETE_RUN', String(e));
+      assert.match(e.message, /system "A", new judge: 3 of 36 slots in 2 of 6 cases, content-filter 1, parse-failure 2; system "B", old judge: 2 of 36 slots in 1 of 6 cases, no record 1, system timeout 1; system "B", new judge: 2 of 36 slots in 1 of 6 cases, no record 1, system timeout 1; /);
+      assert.deepEqual(e.fields, [
+        'A/c1#0 (new judge: judge parse-failure)', 'A/c1#1 (new judge: judge parse-failure)', 'A/c2#3 (new judge: judge content-filter)',
+        'B/m1#3 (old judge: system timeout)', 'B/m1#2 (old judge: missing)', 'B/m1#3 (new judge: system timeout)', 'B/m1#2 (new judge: missing)',
+      ]);
+      return true;
+    },
+  );
 });
 
 test('refusal UNSUPPORTED_DESIGN: the class and the cut must be what the bar and the cases say', () => {
@@ -741,7 +798,7 @@ test('anchorset judge-change: under each run, its judge retries as counts over t
   const scored = 'judge retries, the 4 scored cases of class "quality":';
   const file = 'judge retries, the run file, every class included:';
   assert.deepEqual(under('Aold.json'), [`    ${scored} 0 of 24 slots hold one · earlier judge attempts: 0`, `    ${file} 0 of 36 slot records hold one · earlier judge attempts: 0`]);
-  assert.deepEqual(under('Anew.json'), [`    ${scored} 2 of 24 slots hold one · earlier judge attempts by reason: parse-failure 1, timeout 2`, `    ${file} 3 of 36 slot records hold one · earlier judge attempts by reason: parse-failure 1, timeout 2, truncated 1`]);
+  assert.deepEqual(under('Anew.json'), [`    ${scored} 2 of 24 slots hold one · earlier judge attempts by reason: timeout 2, transport 1`, `    ${file} 3 of 36 slot records hold one · earlier judge attempts by reason: timeout 2, transport 1, truncated 1`]);
   assert.deepEqual(under('Bold.json'), [`    ${scored} 1 of 24 slots hold one · earlier judge attempts by reason: rate-limited 1`, `    ${file} 1 of 36 slot records hold one · earlier judge attempts by reason: rate-limited 1`]);
   assert.deepEqual(under('Bnew.json'), [`    ${scored} 1 of 24 slots hold one · earlier judge attempts by reason: server-error 1`, `    ${file} 1 of 36 slot records hold one · earlier judge attempts by reason: server-error 1`]);
   const j = JSON.parse(cli('judge-change', ...flags, '--json').stdout) as { inputs: { judgeRetriesScored: unknown; judgeRetries: unknown }[] };

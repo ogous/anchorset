@@ -2130,7 +2130,7 @@ test('ungradedReason: a slot whose every ask was cut says how many asks, and tha
 });
 
 // ---------------------------------------------------------------------------------------------------------------
-// Later additions
+// Cases found after the first build
 // ---------------------------------------------------------------------------------------------------------------
 
 test('a status of an earlier ask is an integer: a fraction, in range or not, is IMPORT_EVIDENCE, never a server error or a rate limit', () => {

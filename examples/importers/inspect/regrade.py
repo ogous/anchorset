@@ -12,6 +12,10 @@
 # JSON format and fail_on_error=True. No response cache is used: this script sets none, the scorer asks for none, and
 # the grader refuses a cache setting. The template and the instructions are always passed as
 # text, never as a path. Without a file flag the script passes the two default texts beside it.
+# The system log itself need not come from a tested version of the tool: it is read for its stored answers only. The script
+# refuses it, before any call, when it does not state how many answers it holds (`results.total_samples`, the dataset's samples
+# times the epochs) or when the number it reads differs. Its sha256 and the version it states are written into the graded log,
+# under `/eval/metadata/anchorset_system_log`, as a recorded claim: nothing compares them and no check rests on them.
 # Every flag is taken at most once and by its whole name, and a flag stated with an empty value is a usage error: the
 # script never picks between two stated settings and never puts a default in place of a stated one.
 # A number is taken only in its plain form, in ASCII digits: `--epochs`, `--max-tokens` and `--timeout-ms` as a positive
@@ -38,9 +42,10 @@
 # refuses), the slot has no record to count, no later slot is called, and the exit is 2.
 #
 # Exit codes: 0 done; 2 refused; 64 usage.
-#   64  the flags, the key, the tool's version or a missing package, a setting the grader refuses, an --out-dir that
+#   64  the flags, the key, the tool's version, the list of tested versions or a missing package, a setting the grader refuses, an --out-dir that
 #       cannot be made or cannot be written to. Nothing was sent.
-#   2   before the eval: a text file or a source log that cannot be read or replayed. Nothing was sent.
+#   2   before the eval: a text file or a source log that cannot be read or replayed, or that does not state how many answers
+#       it holds or holds another number. Nothing was sent.
 #   2   during the eval: a slot whose call failed, a slot the importer will refuse, an eval that did not succeed,
 #       that raised or that was interrupted (Ctrl-C). The slots called before that point were sent and are paid for;
 #       the log, when there is one, is kept and is not importable. The asks of a slot that was interrupted are in no
@@ -50,6 +55,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import importlib.metadata
 import json
 import os
@@ -58,7 +64,11 @@ import sys
 from typing import Any
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-TESTED_INSPECT_VERSION = "0.3.275"
+TESTED_VERSIONS_FILE = os.path.join(os.path.dirname(HERE), "tested-versions.json")
+TESTED_VERSIONS_SCHEMA = "example.tested-versions/v1"
+TESTED_ENTRY_KEYS = {"version", "testedOn", "fixtures", "badFixtures", "runtimes", "gradingPathRead"}
+SYSTEM_LOG_MARKER = "anchorset_system_log"
+GAP = "UNKNOWN"
 EXIT_REFUSED = 2
 EXIT_USAGE = 64
 # The pause before each slot's call, in seconds, in which the tool can cancel a slot after an interrupt (see `guarded_generate`).
@@ -157,6 +167,23 @@ def _stored_content(out: Any) -> Any:
     return getattr(getattr(choices[0], "message", None), "content", None)
 
 
+def count_problems(log: Any, read: int) -> list[str]:
+    """The log must state how many answers it holds, and the number read must be that number. The count is
+    `results.total_samples`: the dataset's samples times the epochs, one per sample entry of the log. The tool fills an unstated
+    field with 0 when it reads the log, so what the file stated is told from what the tool filled in by the fields set. Where the log
+    also states `completed_samples`, that too must be the number read: an answer that did not complete is not a stored output."""
+    results = getattr(log, "results", None)
+    stated = getattr(results, "model_fields_set", None) or set()
+    if "total_samples" not in stated:
+        return ["the log does not state how many answers it holds (results.total_samples)"]
+    problems: list[str] = []
+    if results.total_samples != read:
+        problems.append(f"the log states {results.total_samples} answers (results.total_samples) and {read} were read")
+    if "completed_samples" in stated and results.completed_samples != read:
+        problems.append(f"the log states {results.completed_samples} completed answers (results.completed_samples) and {read} were read")
+    return problems
+
+
 def source_problems(log: Any) -> list[str]:
     """The source-log contract. Every problem names every sample concerned. Nothing is picked or repaired. A field a
     sample lacks is a problem of that sample, never an error of this function."""
@@ -167,6 +194,7 @@ def source_problems(log: Any) -> list[str]:
     if not samples:
         problems.append("the log holds no samples")
         return problems
+    problems.extend(count_problems(log, len(samples)))
     # By type and value: the integer 1 and the string "1" are two ids. They are refused below in their own words.
     by_id: dict[tuple[str, Any], list[Any]] = {}
     for s in samples:
@@ -295,31 +323,137 @@ class SlotRefused(Exception):
     """Raised inside the grader's call when the slot just graded is one the importer will refuse and the re-grade is to stop."""
 
 
-def missing_package(e: ModuleNotFoundError) -> int:
-    """A package this script needs is not installed: one line on stderr that says what to install, and exit 64, never a traceback."""
-    name = e.name or ""
-    if name == "inspect_ai" or name.startswith("inspect_ai."):
-        print(f"usage error: the Python module {e.name!r} is not installed. Install the tool version this importer was tested with: pip install inspect_ai=={TESTED_INSPECT_VERSION}", file=sys.stderr)
-    else:
-        print(f"usage error: the Python module {e.name!r} is not installed (it is a dependency of inspect_ai, or of the scripts beside this one). Install the tool version this importer was tested with, which brings its dependencies: pip install inspect_ai=={TESTED_INSPECT_VERSION}", file=sys.stderr)
+class TestedVersionsProblem(Exception):
+    """The list of tested versions cannot be read or is malformed. The script refuses: it never guesses what was tested."""
+
+
+# The list is a short file: all three readers refuse one over this many bytes.
+TESTED_VERSIONS_MAX_BYTES = 1024 * 1024
+
+
+def is_calendar_date(s: str) -> bool:
+    """A real calendar date, written YYYY-MM-DD, in the years 0001 to 9999. The same arithmetic stands in the two other readers."""
+    m = re.fullmatch(r"([0-9]{4})-([0-9]{2})-([0-9]{2})", s, flags=re.ASCII)
+    if m is None:
+        return False
+    y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    leap = (y % 4 == 0 and y % 100 != 0) or y % 400 == 0
+    return y >= 1 and 1 <= mo <= 12 and 1 <= d <= [31, 29 if leap else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1]
+
+
+def tested_inspect_versions() -> list[str]:
+    """The inspect_ai versions in the one list of tested versions, oldest first. Anything malformed, for either tool, raises."""
+
+    def pairs(items: list[tuple[str, Any]]) -> dict[str, Any]:
+        keys = [k for k, _ in items]
+        if len(set(keys)) != len(keys):
+            raise ValueError("a key is given twice")
+        return dict(items)
+
+    try:
+        with open(TESTED_VERSIONS_FILE, "rb") as f:
+            data = f.read(TESTED_VERSIONS_MAX_BYTES + 1)
+        if len(data) > TESTED_VERSIONS_MAX_BYTES:
+            raise ValueError("over the limit")
+        root = json.loads(data.decode("utf-8"), object_pairs_hook=pairs)
+    except (OSError, ValueError, RecursionError) as e:
+        raise TestedVersionsProblem(f"cannot be read ({type(e).__name__})") from None
+    if not isinstance(root, dict) or set(root) != {"schema", "tools"}:
+        raise TestedVersionsProblem("must be an object with exactly the keys schema and tools")
+    if root["schema"] != TESTED_VERSIONS_SCHEMA:
+        raise TestedVersionsProblem(f"schema must be {TESTED_VERSIONS_SCHEMA}")
+    tools = root["tools"]
+    if not isinstance(tools, dict) or set(tools) != {"inspect_ai", "promptfoo"}:
+        raise TestedVersionsProblem("tools must hold exactly inspect_ai and promptfoo")
+    found: dict[str, list[str]] = {}
+    for name, tool in tools.items():
+        if not isinstance(tool, dict) or set(tool) != {"format", "versions"}:
+            raise TestedVersionsProblem(f"{name} must hold exactly format and versions")
+        if not isinstance(tool["format"], int) or isinstance(tool["format"], bool) or not 1 <= tool["format"] <= 2**53 - 1:
+            raise TestedVersionsProblem(f"{name}.format must be a positive integer")
+        entries = tool["versions"]
+        if not isinstance(entries, list) or not entries:
+            raise TestedVersionsProblem(f"{name}.versions must be a non-empty list")
+        for i, entry in enumerate(entries):
+            at = f"{name}.versions[{i}]"
+            if not isinstance(entry, dict) or set(entry) != TESTED_ENTRY_KEYS:
+                raise TestedVersionsProblem(f"{at} must hold exactly {', '.join(sorted(TESTED_ENTRY_KEYS))}")
+            if not all(isinstance(entry[k], str) and entry[k].strip(JS_WHITE_SPACE) != "" and not any(0xD800 <= ord(c) <= 0xDFFF for c in entry[k]) for k in TESTED_ENTRY_KEYS):
+                raise TestedVersionsProblem(f"{at}: every value must be a non-empty, well-formed string")
+            if re.fullmatch(r"[0-9A-Za-z][0-9A-Za-z.+-]*", entry["version"], flags=re.ASCII) is None:
+                raise TestedVersionsProblem(f"{at}.version is not a version")
+            if not is_calendar_date(entry["testedOn"]):
+                raise TestedVersionsProblem(f"{at}.testedOn must be a real date, YYYY-MM-DD")
+        versions = [e["version"] for e in entries]
+        if len(set(versions)) != len(versions):
+            raise TestedVersionsProblem(f"{name}.versions lists a version twice")
+        found[name] = versions
+    return found["inspect_ai"]
+
+
+def tested_versions_refusal(e: TestedVersionsProblem) -> int:
+    print(f"usage error: examples/importers/tested-versions.json {one_line(str(e))}. Nothing was written and no call was made.", file=sys.stderr)
     return EXIT_USAGE
 
 
-def tool_version_problem() -> str | None:
-    """The one inspect_ai version this importer was tested on. The importer refuses a log of any other version, and it refuses it
-    after the re-grade has been paid for, so the version is checked here, before the first call and in a check too. Not installed
+def missing_package(e: ModuleNotFoundError) -> int:
+    """A package this script needs is not installed: one line on stderr that says what to install, and exit 64, never a traceback."""
+    name = e.name or ""
+    try:
+        newest = tested_inspect_versions()[-1]
+    except TestedVersionsProblem as problem:
+        return tested_versions_refusal(problem)
+    if name == "inspect_ai" or name.startswith("inspect_ai."):
+        print(f"usage error: the Python module {e.name!r} is not installed. Install a tool version this importer was tested with: pip install inspect_ai=={newest}", file=sys.stderr)
+    else:
+        print(f"usage error: the Python module {e.name!r} is not installed (it is a dependency of inspect_ai, or of the scripts beside this one). Install a tool version this importer was tested with, which brings its dependencies: pip install inspect_ai=={newest}", file=sys.stderr)
+    return EXIT_USAGE
+
+
+def tool_version_problem(tested: list[str]) -> str | None:
+    """The inspect_ai versions this importer was tested on. The importer refuses a graded log of any other version, and it refuses it
+    after the re-grade has been paid for, so the installed tool is checked here, before the first call and in a check too. Not installed
     is not answered here: the import that follows says so."""
     try:
         found = importlib.metadata.version("inspect_ai")
     except importlib.metadata.PackageNotFoundError:
         return None
-    if found == TESTED_INSPECT_VERSION:
+    if found in tested:
         return None
     return (
-        f"usage error: inspect_ai {found} is installed, and this importer was tested on inspect_ai {TESTED_INSPECT_VERSION} only; "
-        f"it refuses a log of any other version, after the re-grade is paid for. Install the tested one: pip install inspect_ai=={TESTED_INSPECT_VERSION}. "
+        f"usage error: inspect_ai {one_line(found)} is installed, and this importer was tested on inspect_ai {', '.join(tested)}.\n"
+        "Your system's log need not come from a tested version: it is read for its stored answers, and the run records its\n"
+        "sha256 and the version it states. A log the tested tool cannot read is refused; one it misreads may not be detected. Grade from a separate environment:\n"
+        f"python -m venv .anchorset-grade && .anchorset-grade/bin/pip install inspect_ai=={tested[-1]}\n"
         "Nothing was written and no call was made."
     )
+
+
+# The spellings of a gap: the library's `readsAsGap`, on the same characters.
+GAP_SPELLINGS = {"unknown", "na", "none", "null", "nil", "undefined", "notsent"}
+
+
+def recorded_version(value: Any) -> str:
+    """The version a system log states, as the run may record it, or `UNKNOWN`: when none is stated, when it is not text of visible
+    ASCII (a space, a line feed, a control character or a character outside ASCII counts as unprintable), when it holds `;` or `,`
+    (it stands in a line that uses both), or when it spells a gap. It is never repaired and never copied in part."""
+    if not isinstance(value, str) or re.fullmatch(r"[\x21-\x7e]+", value) is None or ";" in value or "," in value:
+        return GAP
+    return GAP if re.sub(r"[-_ ./]", "", value.lower()) in GAP_SPELLINGS else value
+
+
+def system_log_record(path: str, log: Any) -> dict[str, str]:
+    """What the run records of the system log: its sha256 and the version it states. A recorded claim: nothing compares it."""
+    with open(path, "rb") as f:
+        sha256 = hashlib.sha256(f.read()).hexdigest()
+    packages = getattr(getattr(log, "eval", None), "packages", None)
+    stated = packages.get("inspect_ai") if isinstance(packages, dict) else None
+    return {"sha256": sha256, "tool": "inspect_ai", "version": recorded_version(stated)}
+
+
+def system_log_line(record: dict[str, str]) -> str:
+    stated = GAP if record["version"] == GAP else f"inspect_ai {record['version']}"
+    return f"system log: sha256 {record['sha256']}, stated version {stated} (recorded, not required)"
 
 
 def main(argv: list[str]) -> int:
@@ -435,7 +569,11 @@ def _main(argv: list[str]) -> int:
         return EXIT_REFUSED
 
     # Before the log is read and before anything is sent, in a check and in a run: a tool of another version.
-    version_problem = tool_version_problem()
+    try:
+        tested = tested_inspect_versions()
+    except TestedVersionsProblem as e:
+        return tested_versions_refusal(e)
+    version_problem = tool_version_problem(tested)
     if version_problem is not None:
         print(version_problem, file=sys.stderr)
         return EXIT_USAGE
@@ -460,7 +598,13 @@ def _main(argv: list[str]) -> int:
             print(f"  - {line}", file=sys.stderr)
         return EXIT_REFUSED
     samples = log.samples or []
+    try:
+        system_log = system_log_record(a.log, log)
+    except OSError as e:
+        print(f"refused: the source log cannot be read for its sha256 ({type(e).__name__}): {one_line(str(e))}. Nothing was sent.", file=sys.stderr)
+        return EXIT_REFUSED
     if a.check:
+        print(system_log_line(system_log))
         print(f"check passed: {len(samples)} sample(s), one stored output each; {epochs} epoch(s) would be run. No request was made.")
         return 0
 
@@ -573,7 +717,7 @@ def _main(argv: list[str]) -> int:
 
     graded_api.generate = guarded_generate  # type: ignore[method-assign]
     scorer = model_graded_qa(template=template, instructions=instructions, model=grader)
-    task = Task(name="regrade", dataset=dataset, solver=replay_stored(), scorer=scorer)
+    task = Task(name="regrade", dataset=dataset, solver=replay_stored(), scorer=scorer, metadata={SYSTEM_LOG_MARKER: system_log})
     try:
         os.makedirs(a.out_dir, exist_ok=True)
     except OSError as e:

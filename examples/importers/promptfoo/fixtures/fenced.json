@@ -1,8 +1,8 @@
 {
-  "evalId": "eval-lb7-2026-10-13T17:53:55",
+  "evalId": "eval-sKM-2026-10-30T20:33:56",
   "results": {
     "version": 3,
-    "timestamp": "2026-10-13T17:53:55.174Z",
+    "timestamp": "2026-10-30T20:33:56.595Z",
     "prompts": [
       {
         "id": "d3bcaf71c11c2678899be04d872718325f0916b3b0705e805ee29930663a42e2",
@@ -16,7 +16,7 @@
           "testErrorCount": 0,
           "assertPassCount": 9,
           "assertFailCount": 0,
-          "totalLatencyMs": 7,
+          "totalLatencyMs": 11,
           "tokenUsage": {
             "prompt": 0,
             "completion": 0,
@@ -101,12 +101,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "3b350f61-4513-4bae-ae3f-9e3a28038394",
+                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
                   "callSeq": 1,
-                  "callId": "00250df1-71b4-4c79-af02-ac5c64b2d79a",
+                  "callId": "392794c1-a5dc-4e10-bc7e-46b6c2df9c22",
                   "promptSha256": "6b5739a9670a184fa882d4150b8b04b63c7f745886572fa462fbc819bd16ec09",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -163,8 +163,8 @@
             }
           ]
         },
-        "id": "8825f138-f8b4-4135-b129-028113969c27",
-        "latencyMs": 1,
+        "id": "7e6a0074-f38b-41bc-8bb5-bd261022f23e",
+        "latencyMs": 2,
         "namedScores": {},
         "prompt": {
           "raw": "My blender arrived broken. Can I get my money back?",
@@ -322,12 +322,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "3b350f61-4513-4bae-ae3f-9e3a28038394",
+                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
                   "callSeq": 2,
-                  "callId": "72147946-55a6-47a4-8b8d-0d449dc55d3f",
+                  "callId": "9f04aa67-3563-47bd-844b-f7299324fa58",
                   "promptSha256": "6b5739a9670a184fa882d4150b8b04b63c7f745886572fa462fbc819bd16ec09",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -384,8 +384,8 @@
             }
           ]
         },
-        "id": "cda8f435-ada8-45a0-9577-c7347c795301",
-        "latencyMs": 1,
+        "id": "0a6d3cd9-c28f-45fd-a082-31f3e7f07d27",
+        "latencyMs": 3,
         "namedScores": {},
         "prompt": {
           "raw": "My blender arrived broken. Can I get my money back?",
@@ -543,12 +543,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "3b350f61-4513-4bae-ae3f-9e3a28038394",
+                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
                   "callSeq": 3,
-                  "callId": "d37f3ec6-7dcc-4573-98e6-51d19a92650b",
+                  "callId": "fd066415-fa23-4072-b686-e5837a7552a4",
                   "promptSha256": "6b5739a9670a184fa882d4150b8b04b63c7f745886572fa462fbc819bd16ec09",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -605,7 +605,7 @@
             }
           ]
         },
-        "id": "5bdd187d-e8a0-4c49-883e-e780f74d6e4d",
+        "id": "ba308d59-f039-47df-8b05-2edfca82d256",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -764,12 +764,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "3b350f61-4513-4bae-ae3f-9e3a28038394",
+                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
                   "callSeq": 4,
-                  "callId": "179f5e84-2993-4343-b556-51adc661d65b",
+                  "callId": "45d569d2-b988-4b63-b6f7-6231a6de507c",
                   "promptSha256": "2437e704713d1141a6e4746ff746a9fa6332d3aefd0660ce01c6c727ce08f8b7",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -826,7 +826,7 @@
             }
           ]
         },
-        "id": "9f15900f-e09c-4a58-9868-5399e3f8c077",
+        "id": "4d338ac6-abbe-4d38-a2e2-f8526f6dc898",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -985,12 +985,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "3b350f61-4513-4bae-ae3f-9e3a28038394",
+                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
                   "callSeq": 5,
-                  "callId": "6d23b982-0c2c-47ff-a362-7df0a69d30eb",
+                  "callId": "20205bd2-e955-4840-92fc-eddc3f417717",
                   "promptSha256": "2437e704713d1141a6e4746ff746a9fa6332d3aefd0660ce01c6c727ce08f8b7",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1047,7 +1047,7 @@
             }
           ]
         },
-        "id": "171c0984-6509-4b50-961f-844fd02df9d3",
+        "id": "f1fba261-1f87-4ffd-bddf-b04c7b9f09d7",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -1206,12 +1206,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "3b350f61-4513-4bae-ae3f-9e3a28038394",
+                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
                   "callSeq": 6,
-                  "callId": "48b968b2-aa03-4480-9191-784740cca3cd",
+                  "callId": "b5021b45-2d2e-4366-a819-aa8cd1c8aa24",
                   "promptSha256": "2437e704713d1141a6e4746ff746a9fa6332d3aefd0660ce01c6c727ce08f8b7",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1268,7 +1268,7 @@
             }
           ]
         },
-        "id": "334fa313-34f1-4ccb-bd38-c404460aa928",
+        "id": "d1a498aa-4eb1-44cc-a978-552cd10f433f",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -1427,12 +1427,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "3b350f61-4513-4bae-ae3f-9e3a28038394",
+                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
                   "callSeq": 7,
-                  "callId": "46bba4ae-9e11-468a-91b0-c7b829042f4c",
+                  "callId": "66a3e0aa-c519-4864-8449-849ec0d2eaf3",
                   "promptSha256": "ea3c139b01cf6bd95ccca147d23a019f2775185adfeb2568395463bdd4317259",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1489,7 +1489,7 @@
             }
           ]
         },
-        "id": "321ab281-d4e4-41e3-8680-a2b0eedbed1a",
+        "id": "463ac957-0730-42fe-af1a-b9d9ab0bfe47",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -1648,12 +1648,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "3b350f61-4513-4bae-ae3f-9e3a28038394",
+                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
                   "callSeq": 8,
-                  "callId": "19113ca6-f849-4c7d-a346-c3bc65d0ac38",
+                  "callId": "f2a5506c-30a7-458f-b513-3127da945ab9",
                   "promptSha256": "ea3c139b01cf6bd95ccca147d23a019f2775185adfeb2568395463bdd4317259",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1710,7 +1710,7 @@
             }
           ]
         },
-        "id": "a8d3b3e8-72b6-409c-977c-f53e75fa3280",
+        "id": "d8b12209-2110-44d3-a615-5fb7781020b8",
         "latencyMs": 0,
         "namedScores": {},
         "prompt": {
@@ -1869,12 +1869,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "3b350f61-4513-4bae-ae3f-9e3a28038394",
+                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
                   "callSeq": 9,
-                  "callId": "e63f25d1-fe46-4717-9a47-5757607ecf9a",
+                  "callId": "6335db46-34af-4016-80c8-13d9b2596efb",
                   "promptSha256": "ea3c139b01cf6bd95ccca147d23a019f2775185adfeb2568395463bdd4317259",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1931,8 +1931,8 @@
             }
           ]
         },
-        "id": "97ee0b5b-de09-4012-b4d9-3227013eced2",
-        "latencyMs": 0,
+        "id": "803428e1-806e-440e-8b74-4a03d8bf8194",
+        "latencyMs": 1,
         "namedScores": {},
         "prompt": {
           "raw": "Please refund my last order.",
@@ -2075,8 +2075,8 @@
           }
         }
       },
-      "durationMs": 74,
-      "evaluationDurationMs": 74
+      "durationMs": 92,
+      "evaluationDurationMs": 92
     }
   },
   "config": {
@@ -2151,8 +2151,8 @@
     "nodeVersion": "v25.6.1",
     "platform": "darwin",
     "arch": "arm64",
-    "exportedAt": "2026-10-13T17:53:55.270Z",
-    "evaluationCreatedAt": "2026-10-13T17:53:55.174Z"
+    "exportedAt": "2026-10-30T20:33:56.718Z",
+    "evaluationCreatedAt": "2026-10-30T20:33:56.595Z"
   },
   "vars": [
     "case_id",

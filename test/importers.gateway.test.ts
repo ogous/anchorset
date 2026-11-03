@@ -6,13 +6,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, it } from 'node:test';
 import { gatewayVariableProblem } from '../examples/importers/shared.ts';
-import { TESTED_VERSION as PROMPTFOO_TESTED } from '../examples/importers/promptfoo/import.ts';
-import { TESTED_VERSION as INSPECT_TESTED } from '../examples/importers/inspect/import.ts';
+import { loadTestedVersions } from '../examples/importers/shared.ts';
 
 // Two guards of the paid step, on every path, in the grader files themselves and in `regrade.py`:
 //   1. the gateway variable (ANTHROPIC_BASE_URL): the tools' own Anthropic providers honour it, the recording graders never
 //      read it as an address, so a user behind a gateway would send the gateway's credential to the public host;
-//   2. the tool version: an importer refuses a file of any version but the tested one, and it refuses it after the re-grade
+//   2. the tool version: an importer refuses a file of a version outside the tested list, and it refuses it after the re-grade
 //      has been paid for, so the version is checked before the first call.
 // Nothing here makes a call or reaches a host: a grader is built, never asked.
 
@@ -21,6 +20,10 @@ const GRADER_PATH = join(root, 'examples', 'importers', 'promptfoo', 'grader-pro
 const REGRADE_PY = join(root, 'examples', 'importers', 'inspect', 'regrade.py');
 const GRADER_PY = join(root, 'examples', 'importers', 'inspect', 'recording_grader.py');
 const require = createRequire(import.meta.url);
+const PROMPTFOO_SET = loadTestedVersions('promptfoo').versions;
+const INSPECT_SET = loadTestedVersions('inspect_ai').versions;
+const PROMPTFOO_NEWEST = PROMPTFOO_SET[PROMPTFOO_SET.length - 1] as string;
+const INSPECT_NEWEST = INSPECT_SET[INSPECT_SET.length - 1] as string;
 
 type ProviderClass = new (options: unknown) => unknown;
 /** A fresh copy of the module (its per-process state starts clean). */
@@ -94,11 +97,13 @@ describe('the JavaScript recording grader: the tool version, when promptfoo runs
     fn();
   };
 
-  it('the version it is tested on is the importer\'s own pin', () => {
-    assert.ok(readFileSync(GRADER_PATH, 'utf8').includes(`const TESTED_PROMPTFOO_VERSION = '${PROMPTFOO_TESTED}';`));
+  it('holds no version of its own: it reads the one list', () => {
+    const text = readFileSync(GRADER_PATH, 'utf8');
+    assert.ok(text.includes("path.join(__dirname, '..', 'tested-versions.json')"));
+    assert.doesNotMatch(text, /TESTED_PROMPTFOO_VERSION/);
   });
 
-  it('refuses at construction, before any call, under a promptfoo of another version; it names both versions and the install line', () => {
+  it('refuses at construction, before any call, under a promptfoo of another version; it names the version, the whole set and the install line', () => {
     for (const version of ['0.124.0', '0.123.0', '1.0.0']) {
       const { entry, done } = installed({ name: 'promptfoo', version });
       try {
@@ -106,7 +111,7 @@ describe('the JavaScript recording grader: the tool version, when promptfoo runs
           assert.throws(() => make(), (e: unknown) => {
             const m = (e as Error).message;
             assert.match(m, new RegExp(`^grader: promptfoo ${version.replaceAll('.', '\\.')} is running this grader`));
-            assert.ok(m.includes(`promptfoo ${PROMPTFOO_TESTED}`) && m.includes(`npm install -g promptfoo@${PROMPTFOO_TESTED}`) && m.toLowerCase().includes('no call was made'), m);
+            assert.ok(m.includes(`tested on promptfoo ${PROMPTFOO_SET.join(', ')}`) && m.includes(`npm install --prefix .anchorset-grade promptfoo@${PROMPTFOO_NEWEST}`) && m.toLowerCase().includes('no call was made'), m);
             return true;
           }, version),
         );
@@ -127,8 +132,16 @@ describe('the JavaScript recording grader: the tool version, when promptfoo runs
     }
   });
 
-  it('constructs under the tested version, and when the process is not promptfoo at all', () => {
-    const { entry, done } = installed({ name: 'promptfoo', version: PROMPTFOO_TESTED });
+  it('constructs under each tested version, and when the process is not promptfoo at all', () => {
+    for (const version of PROMPTFOO_SET) {
+      const { entry, done } = installed({ name: 'promptfoo', version });
+      try {
+        under(entry, () => assert.doesNotThrow(() => make(), version));
+      } finally {
+        done();
+      }
+    }
+    const { entry, done } = installed({ name: 'promptfoo', version: PROMPTFOO_NEWEST });
     try {
       under(entry, () => assert.doesNotThrow(() => make()));
     } finally {
@@ -167,11 +180,13 @@ describe('regrade.py: the tool version, before any call', () => {
   const CHECK = ['--log', 'no-such-log.json', '--epochs', '1', '--check'];
   const runWith = (py: string, version: string, args: string[]) => spawnSync(py, ['-c', driver(version), ...args], { encoding: 'utf8', env: { PATH: process.env['PATH'] ?? '' } });
 
-  it('the version it is tested on is the importer\'s own pin', () => {
-    assert.ok(readFileSync(REGRADE_PY, 'utf8').includes(`TESTED_INSPECT_VERSION = "${INSPECT_TESTED}"`));
+  it('holds no version of its own: it reads the one list', () => {
+    const text = readFileSync(REGRADE_PY, 'utf8');
+    assert.ok(text.includes('"tested-versions.json"'));
+    assert.doesNotMatch(text, /TESTED_INSPECT_VERSION/);
   });
 
-  it('exits 64 on another inspect_ai version, in a check and in a run, naming both versions and the install line, and writes nothing', (t) => {
+  it('exits 64 on another inspect_ai version, in a check and in a run, naming the version, the whole set and the install line, and writes nothing', (t) => {
     const py = python();
     if (py === undefined) {
       t.skip('no Python 3.10 or later on this machine');
@@ -181,25 +196,27 @@ describe('regrade.py: the tool version, before any call', () => {
       for (const args of [CHECK, RUN]) {
         const r = runWith(py, version, args);
         assert.equal(r.status, 64, r.stderr);
-        assert.match(r.stderr, new RegExp(`^usage error: inspect_ai ${version.replaceAll('.', '\\.')} is installed, and this importer was tested on inspect_ai ${INSPECT_TESTED} only`));
-        assert.match(r.stderr, new RegExp(`pip install inspect_ai==${INSPECT_TESTED.replaceAll('.', '\\.')}`));
+        assert.ok(r.stderr.startsWith(`usage error: inspect_ai ${version} is installed, and this importer was tested on inspect_ai ${INSPECT_SET.join(', ')}.\n`), r.stderr);
+        assert.ok(r.stderr.includes(`.anchorset-grade/bin/pip install inspect_ai==${INSPECT_NEWEST}`), r.stderr);
         assert.match(r.stderr, /no call was made/);
         assert.doesNotMatch(r.stderr, /Traceback/);
       }
     }
   });
 
-  it('goes on under the tested version (here it ends on the blocked import, which is the next thing it does)', (t) => {
+  it('goes on under each tested version (here it ends on the blocked import, which is the next thing it does)', (t) => {
     const py = python();
     if (py === undefined) {
       t.skip('no Python 3.10 or later on this machine');
       return;
     }
-    for (const args of [CHECK, RUN]) {
-      const r = runWith(py, INSPECT_TESTED, args);
-      assert.equal(r.status, 64, r.stderr);
-      assert.match(r.stderr, /pip install inspect_ai==0\.3\.275/);
-      assert.doesNotMatch(r.stderr, /was tested on inspect_ai/);
+    for (const version of INSPECT_SET) {
+      for (const args of [CHECK, RUN]) {
+        const r = runWith(py, version, args);
+        assert.equal(r.status, 64, r.stderr);
+        assert.ok(r.stderr.includes(`pip install inspect_ai==${INSPECT_NEWEST}`), r.stderr);
+        assert.doesNotMatch(r.stderr, /is installed, and this importer was tested on inspect_ai/);
+      }
     }
   });
 

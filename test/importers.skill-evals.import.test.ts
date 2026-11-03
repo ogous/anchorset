@@ -303,7 +303,7 @@ test('the six judge fields, each written out by hand from the header, the record
   const c = conv(f);
   const r0 = rec(f.rows[0]);
   assert.deepEqual(c.judge, {
-    judgeDefinitionHash: hashOf({ tool: 'skill-evals', rowProfile: 'skill-evals/1', template: f.header.template.text, system: f.header.system.text, selector: { syntax: 'json-pointer-rfc6901/v1', pointer: '/reply' }, tools: [], reading: READING }),
+    judgeDefinitionHash: hashOf({ tool: 'skill-evals', rowProfile: 'skill-evals/1', template: f.header.template.text, system: f.header.system.text, selector: { syntax: 'json-pointer-rfc6901/v1', pointer: '/reply' }, tools: [], reading: READING, maxReasks: 0 }),
     judgeModelRequested: 'fake-judge-old',
     judgeModelServed: 'fake-judge-old-served-20260101',
     judgeCallShapeHash: callShapeHash(r0.callShape as CallShape),
@@ -427,7 +427,7 @@ test('with no selector and no system text, both are "NOT_SENT" in the judge defi
   for (const row of f.rows) row.parts.answer = row.storedOutput;
   rerender(f);
   const c = conv(f);
-  assert.equal(c.judge.judgeDefinitionHash, hashOf({ tool: 'skill-evals', rowProfile: 'skill-evals/1', template: f.header.template.text, system: 'NOT_SENT', selector: 'NOT_SENT', tools: [], reading: READING }));
+  assert.equal(c.judge.judgeDefinitionHash, hashOf({ tool: 'skill-evals', rowProfile: 'skill-evals/1', template: f.header.template.text, system: 'NOT_SENT', selector: 'NOT_SENT', tools: [], reading: READING, maxReasks: 0 }));
   assert.notEqual(c.judge.judgeDefinitionHash, conv(fix()).judge.judgeDefinitionHash);
   const run = parseRunArtifact(JSON.parse(JSON.stringify(c.run)));
   const first = run.draws[0]?.attempts[0] as { packetHash: string; outputHash: string };
@@ -1825,6 +1825,20 @@ test('bad fixture, a used-up bound: every slot whose two asks were cut is listed
   assert.match(e.message, /Keep this file as it is, and do not delete or replace it/);
 });
 
+test('the bound enters the judge definition hash: two bounds give two definition hashes, each the value the harness string states', () => {
+  const at = (max: number) => {
+    const f = fix('reask');
+    for (const r of f.rows) rec(r).reask.max = max;
+    f.header.graderConfig.maxReasks = max;
+    return conv(f).judge;
+  };
+  const [two, three] = [at(2), at(3)];
+  assert.notEqual(two.judgeDefinitionHash, three.judgeDefinitionHash);
+  assert.match(two.judgeHarnessVersion, /; max-reasks 2; script-files sha256:[0-9a-f]{64}$/);
+  assert.match(three.judgeHarnessVersion, /; max-reasks 3; script-files sha256:[0-9a-f]{64}$/);
+  for (const k of ['judgeModelRequested', 'judgeModelServed', 'judgeCallShapeHash', 'rubricHash'] as const) assert.equal(two[k], three[k], k);
+});
+
 test('a header bound that differs from the record is IMPORT_EVIDENCE, and so is a header that states none', () => {
   const f = fix('reask');
   f.header.graderConfig.maxReasks = 3;
@@ -1904,7 +1918,7 @@ test('a re-grade file of the version before is refused with the instruction to r
   }
 });
 
-// ---- later additions ---------------------------------------------------------------------------
+// ---- cases found after the first build ---------------------------------------------------------------------------
 
 test('the run id and the start time of a header are non-empty strings: each, missing, empty or of another type, is IMPORT_SHAPE naming it', () => {
   for (const key of ['regradeRunId', 'startedAt']) {

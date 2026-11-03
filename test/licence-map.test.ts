@@ -12,13 +12,15 @@ import { join } from 'node:path';
 const root = new URL('../', import.meta.url);
 const read = (p: string): string => readFileSync(new URL(p, root), 'utf8');
 
-interface Upstream { readonly tool: string; readonly version: string; readonly copyright: string; readonly notice: string; readonly phrases: readonly string[] }
+interface Upstream { readonly tool: string; readonly versions: readonly string[]; readonly copyright: string; readonly notice: string; readonly phrases: readonly string[] }
+const listed = (tool: string): readonly string[] => (JSON.parse(read('examples/importers/tested-versions.json')) as { tools: Record<string, { versions: { version: string }[] }> }).tools[tool]?.versions.map((e) => e.version) ?? [];
 const UPSTREAM: readonly Upstream[] = [
-  // Copyright lines are those of each release's own licence file (inspect_ai 0.3.275: dist-info/licenses/LICENSE; promptfoo 0.123.1: LICENSE), read on 2026-10-08.
+  // Copyright lines are those of each release's own licence file (inspect_ai: dist-info/licenses/LICENSE; promptfoo: LICENSE), read for
+  // inspect_ai 0.3.275 and promptfoo 0.123.1 on 2026-10-08, and for inspect_ai 0.3.286 and promptfoo 0.125.1 on 2026-10-30: the same lines.
   // `notice` is the line as that file prints it, word for word, which NOTICE carries; `copyright` is the same holder and year in the
   // year-then-holder form of an SPDX-FileCopyrightText field, which REUSE.toml carries.
-  { tool: 'inspect_ai', version: '0.3.275', copyright: '2024 UK AI Security Institute', notice: 'Copyright (c) 2024 UK AI Security Institute', phrases: ['assessing a submitted answer on a given task', 'After assessing the submitted answer'] },
-  { tool: 'promptfoo', version: '0.123.1', copyright: '2025 Promptfoo', notice: 'Copyright (c) Promptfoo 2025', phrases: ['grading output according to a user-specified rubric'] },
+  { tool: 'inspect_ai', versions: listed('inspect_ai'), copyright: '2024 UK AI Security Institute', notice: 'Copyright (c) 2024 UK AI Security Institute', phrases: ['assessing a submitted answer on a given task', 'After assessing the submitted answer'] },
+  { tool: 'promptfoo', versions: listed('promptfoo'), copyright: '2025 Promptfoo', notice: 'Copyright (c) Promptfoo 2025', phrases: ['grading output according to a user-specified rubric'] },
 ];
 
 /** Every file under examples/ (as a path from the repository root) that holds a phrase, by tool. */
@@ -96,7 +98,8 @@ test('LICENSES/ holds the MIT text, and NOTICE names each tool, its version, its
   assert.ok(mit.startsWith('MIT License\n') && mit.includes('Permission is hereby granted, free of charge'), 'LICENSES/MIT.txt is not the MIT text');
   const notice = read('NOTICE').replace(/\s+/g, ' ');
   for (const u of UPSTREAM) {
-    assert.ok(notice.includes(`${u.tool} ${u.version}`), `NOTICE does not name ${u.tool} ${u.version}`);
+    assert.ok(u.versions.length > 0, `${u.tool}: no listed version`);
+    for (const v of u.versions) assert.ok(notice.includes(`${u.tool} ${v}`), `NOTICE does not name ${u.tool} ${v}`);
     assert.ok(notice.includes(u.notice), `NOTICE does not carry the upstream line "${u.notice}" word for word`);
   }
   assert.ok(/\bMIT\b/.test(notice), 'NOTICE does not say MIT');

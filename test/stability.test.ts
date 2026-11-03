@@ -146,7 +146,7 @@ test('repeatFlips, a hand-worked fixture: 1 of 3 one-output cases flipped (0.333
   near(r.differentOutputs.wilson.hi, 0.9055);
   assert.equal(r.ungradedCases, 1);
   // The pooled 2 of 5 is nowhere in the report: it has the two shares and no third.
-  assert.deepEqual(Object.keys(r).sort(), ['bootstrap', 'caseCount', 'cases', 'differentOutputs', 'drawsPerCase', 'oneOutput', 'ungradedCases']);
+  assert.deepEqual(Object.keys(r).sort(), ['bootstrap', 'caseCount', 'cases', 'differentOutputs', 'drawsPerCase', 'notCompared', 'oneOutput', 'ungradedCases']);
 });
 
 // An independent recomputation, not a published reference value: the resamples are drawn again here from the one
@@ -225,11 +225,25 @@ test('repeatFlips refuses an unknown output hash (IDENTITY_GAP), naming the draw
   assert.deepEqual(unknownOutputHashes('not draws'), []);
 });
 
-test('repeatFlips refuses a slot that measured nothing or has no record (INCOMPLETE_RUN), naming the slots: a missing grade could have been the flip', () => {
+test('repeatFlips: an attempt after a final judge reason is invalid input; each final reason as the last attempt refuses with the counts; a system or other judge retry stays valid', () => {
+  for (const reason of ['parse-failure', 'content-filter', 'client-error']) {
+    const after = [judged('a', 0, 'x', 'pass'), slot('a', 1, unmeasured('judge', reason, out('x')), judged('a', 1, 'x', 'pass').attempts[0] as GradedAttempt)];
+    assert.throws(() => repeatFlips(after, 2, ['a'], BOOT), (e: unknown) => e instanceof InputError && e.code === 'INVALID_DRAWS' && e.problems.some((p) => p.includes('attempts[0]') && p.includes(`the reason ${reason} is final`)), reason);
+    const last = [judged('a', 0, 'x', 'pass'), slot('a', 1, unmeasured('judge', reason, out('x')))];
+    assert.throws(() => repeatFlips(last, 2, ['a'], BOOT), (e: unknown) => e instanceof RefusalError && e.code === 'INCOMPLETE_RUN' && e.fields.join() === 'a#1' && e.message.startsWith(`INCOMPLETE_RUN: run: 1 of 2 slots in 1 of 1 cases, ${reason} 1; `), reason);
+  }
+  for (const reason of ['timeout', 'transport', 'server-error', 'rate-limited', 'truncated']) {
+    const retried = [judged('a', 0, 'x', 'pass'), slot('a', 1, unmeasured('judge', reason, out('x')), judged('a', 1, 'x', 'pass').attempts[0] as GradedAttempt)];
+    assert.doesNotThrow(() => repeatFlips(retried, 2, ['a'], BOOT), reason);
+  }
+});
+
+test('repeatFlips refuses a slot that holds no grade or has no record (INCOMPLETE_RUN), naming the slots: a missing grade could have been the flip', () => {
   const noGrade = [judged('a', 0, 'x', 'pass'), slot('a', 1, unmeasured('judge', 'parse-failure', out('x')))];
   assert.throws(() => repeatFlips(noGrade, 2, ['a'], BOOT), (e: unknown) => e instanceof RefusalError && e.code === 'INCOMPLETE_RUN' && e.fields.join() === 'a#1');
   const noRecord = [judged('a', 0, 'x', 'pass'), judged('b', 0, 'y', 'pass'), judged('b', 1, 'y', 'pass')];
-  assert.throws(() => repeatFlips(noRecord, 2, ['a', 'b', 'silent'], BOOT), (e: unknown) => e instanceof RefusalError && e.code === 'INCOMPLETE_RUN' && e.fields.join() === 'a#1,silent#0,silent#1');
+  // Three cases of two draws = 6 slots; a#1, silent#0 and silent#1 have no record: 3 of 6 slots in 2 of 3 cases (a hand-worked count).
+  assert.throws(() => repeatFlips(noRecord, 2, ['a', 'b', 'silent'], BOOT), (e: unknown) => e instanceof RefusalError && e.code === 'INCOMPLETE_RUN' && e.fields.join() === 'a#1,silent#0,silent#1' && e.message.startsWith('INCOMPLETE_RUN: run: 3 of 6 slots in 2 of 3 cases, no record 3; '));
 });
 
 test('repeatFlips refuses one output shown in different packets (PACKET_MISMATCH) or in an unknown packet (IDENTITY_GAP): the judge\'s variation alone needs one packet', () => {

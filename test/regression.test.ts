@@ -431,11 +431,11 @@ test('outputHashOf: UTF-8 text for a string output, canonical JSON otherwise', (
   assert.equal(outputHashOf({ systemError: 'timeout' }), hashOf({ systemError: 'timeout' }));
 });
 
-test('rejudge: a system-error draw carried over with its hash does not block the split', () => {
-  const errHash = outputHashOf({ systemError: 'timeout' });
+test('rejudge: a truncated draw carried over with its hash does not block the split', () => {
+  const errHash = outputHashOf('an answer cut at its cap');
   const withError = (c1: string, identity: RunIdentity): RunArtifact => {
     const draws = graded(c1, 'hi');
-    draws[2] = slot('c2', 0, failedAttempt('system-error', { detail: 'the application threw', outputHash: errHash }));
+    draws[2] = slot('c2', 0, failedAttempt('truncated', { detail: 'cut at the cap', outputHash: errHash }));
     return run(draws, identity);
   };
   const r = gateRuns(withError('lo', judged(newJudge)), C, barFile, { rejudgeOf: withError('hi', judged()), allowDiffer: ['systemModelServed'], bootstrap: boot });
@@ -456,7 +456,7 @@ test('the rejudge hint appears only for a real judge mismatch between two judged
 test('rejudge: no complete case anywhere is refused as an incomplete baseline instead of throwing', () => {
   const empty = (identity: RunIdentity): RunArtifact => run(graded('hi', 'hi').filter((d) => d.drawIndex === 0), identity);
   const r = gateRuns(empty(judged(newJudge)), empty(judged({ ...newJudge, systemModelServed: 'model-x-2026-06-01' })), barFile, { rejudgeOf: empty(judged()), allowDiffer: ['systemModelServed'], bootstrap: boot });
-  refusedWith(r, 'INCOMPLETE_RUN', 'c1,c2');
+  refusedWith(r, 'INCOMPLETE_RUN', 'c1#1,c2#1');
   assert.equal(gateExitCode(r), 2);
 });
 
@@ -492,14 +492,14 @@ test('gateRuns rejects bootstrap options without rejudgeOf', () => {
 test('gateRuns: an incomplete baseline is refused, so a real break cannot hide as NEW', () => {
   // c2 lost a baseline draw; the candidate really breaks c2, and the class still meets its 0.5 bar.
   const r = gateRuns(artifact(full('hi', 'hi').slice(0, 3)), artifact(full('hi', 'lo')), barFile);
-  refusedWith(r, 'INCOMPLETE_RUN', 'c2');
+  refusedWith(r, 'INCOMPLETE_RUN', 'c2#1');
   assert.equal(gateExitCode(r), 2);
 });
 
 test('rejudge: an incomplete re-judged baseline is refused before the gate or the split', () => {
   const dropC2 = (a: RunArtifact): RunArtifact => run(a.draws.filter((d) => !(d.caseId === 'c2' && d.drawIndex === 1)), a.identity);
   const r = gateRuns(dropC2(B), C, barFile, { rejudgeOf: dropC2(A), allowDiffer: ['systemModelServed'], bootstrap: boot });
-  refusedWith(r, 'INCOMPLETE_RUN', 'c2');
+  refusedWith(r, 'INCOMPLETE_RUN', 'c2#1');
   assert.ok(r.kind === 'refused' && r.refusal.message.includes('re-judged baseline'), r.kind === 'refused' ? r.refusal.message : '');
 });
 
@@ -556,7 +556,7 @@ test('rejudge: a rewritten rubric is judge movement, so the re-judged baseline m
 
 test('gateRuns: one unmeasured baseline slot refuses the gate, even beside a measured failure', () => {
   const base = artifact([...full('hi', 'lo').slice(0, 3), slot('c2', 1, unmeasured('system', 'timeout'))]);
-  refusedWith(gateRuns(base, artifact(full('hi', 'hi')), barFile), 'INCOMPLETE_RUN', 'c2');
+  refusedWith(gateRuns(base, artifact(full('hi', 'hi')), barFile), 'INCOMPLETE_RUN', 'c2#1');
 });
 
 test('gateRuns: a candidate slot that timed out leaves its case INCOMPLETE, withholds the class rate and keeps the measured failure', () => {
@@ -581,17 +581,120 @@ const withSlot = (r: RunArtifact, key: string, attempts: (hash: string) => Attem
 const judgeFail = (reason: string, hash: string): Attempt => ({ kind: 'unmeasured', role: 'judge', reason, detail: reason, outputHash: hash, systemStop: 'tool-use', packetHash: PACKET }) as Attempt;
 const regrade = (label: string, hash: string): Attempt => gradedAttempt(label, { judgeStop: 'tool-use', outputHash: hash });
 
-test('gateRuns: a judge 4xx on any attempt refuses the run, even when a retry then graded', () => {
-  const c1 = withSlot(C, 'c2#1', (h) => [judgeFail('client-error', h), regrade('hi', h)]);
+test('gateRuns: a judge 4xx as a slot\'s last attempt refuses the run, baseline or candidate', () => {
+  const c1 = withSlot(C, 'c2#1', (h) => [judgeFail('client-error', h)]);
   refusedWith(gateRuns(B, c1, barFile, { rejudgeOf: A, allowDiffer: ['systemModelServed'] }), 'MEASUREMENT_NOT_RUNNABLE', 'c2#1');
-  const c2 = withSlot(C, 'c2#1', (h) => [judgeFail('client-error', h), judgeFail('timeout', h)]);
+  const c2 = withSlot(C, 'c2#1', (h) => [judgeFail('timeout', h), judgeFail('client-error', h)]);
   refusedWith(gateRuns(B, c2, barFile, { rejudgeOf: A, allowDiffer: ['systemModelServed'] }), 'MEASUREMENT_NOT_RUNNABLE', 'c2#1');
-  const b1 = withSlot(B, 'c1#0', (h) => [judgeFail('client-error', h), regrade('lo', h)]);
+  const b1 = withSlot(B, 'c1#0', (h) => [judgeFail('client-error', h)]);
   refusedWith(gateRuns(b1, C, barFile, { rejudgeOf: A, allowDiffer: ['systemModelServed'] }), 'MEASUREMENT_NOT_RUNNABLE', 'c1#0');
 });
 
+test('the retry rule: gateRuns takes an attempt after a final judge reason as invalid input, naming the run, the path and the reason', () => {
+  for (const reason of ['parse-failure', 'content-filter', 'client-error']) {
+    const c = withSlot(C, 'c2#1', (h) => [judgeFail(reason, h), regrade('hi', h)]);
+    assert.throws(
+      () => gateRuns(B, c, barFile, { rejudgeOf: A, allowDiffer: ['systemModelServed'] }),
+      (e: unknown) => e instanceof InputError && e.code === 'INVALID_ARTIFACT' && e.problems.some((p) => p.startsWith('candidate: artifact.draws[3].attempts[0]') && p.includes(`the reason ${reason} is final`)),
+      reason,
+    );
+  }
+  for (const reason of ['timeout', 'transport', 'server-error', 'rate-limited', 'truncated']) {
+    const c = withSlot(C, 'c2#1', (h) => [judgeFail(reason, h), regrade('hi', h)]);
+    assert.equal(gateRuns(B, c, barFile, { rejudgeOf: A, allowDiffer: ['systemModelServed'], bootstrap: boot }).kind, 'evaluated', reason);
+  }
+});
+
+test('the retry rule, each cell of the table: a final parse-failure or content-filter refuses in a baseline and fails the gate in a candidate', () => {
+  for (const reason of ['parse-failure', 'content-filter']) {
+    const b = withSlot(B, 'c2#1', (h) => [judgeFail(reason, h)]);
+    const inBaseline = gateRuns(b, C, barFile, { rejudgeOf: A, allowDiffer: ['systemModelServed'], bootstrap: boot });
+    refusedWith(inBaseline, 'INCOMPLETE_RUN', 'c2#1');
+    assert.equal(gateExitCode(inBaseline), 2);
+    assert.ok(inBaseline.kind === 'refused' && inBaseline.refusal.message.includes(`re-judged baseline: 1 of 4 slots in 1 of 2 cases, ${reason} 1; `), inBaseline.kind === 'refused' ? inBaseline.refusal.message : '');
+    const c = withSlot(C, 'c2#1', (h) => [judgeFail(reason, h)]);
+    const inCandidate = gateRuns(B, c, barFile, { rejudgeOf: A, allowDiffer: ['systemModelServed'], bootstrap: boot });
+    assert.equal(inCandidate.kind, 'evaluated');
+    if (inCandidate.kind !== 'evaluated') continue;
+    assert.deepEqual(inCandidate.diff.find((d) => d.caseId === 'c2')?.status, 'INCOMPLETE');
+    assert.equal(gateExitCode(inCandidate), 1);
+  }
+});
+
+// The false pass this closes, a hand-worked fixture. Three cases of one class, floor at "hi", bar 0.6; two draws each.
+//                   q01         q02   q03
+//   good baseline   hi  hi      hi    lo     passes 2 of 3
+//   candidate       lo  lo      hi    hi     passes 2 of 3 = 0.667, above the bar
+// q01 went down and q03 came up, so the rate holds and only the diff shows the break: q01 BROKE, exit 1.
+// With baseline q01#0 recorded as a failure, q01 fails in the baseline and reads STILL_FAILING: nothing BROKE and the
+// bar holds, so the same candidate passes. That is exit 0, and the candidate's regression is hidden.
+const noAnswerBar = parseBarFile({ labels: ['lo', 'hi'], classes: { k: { direction: 'floor', minPassRate: 0.6 } }, knownFailures: [] });
+const noAnswerCases: Case[] = ['q01', 'q02', 'q03'].map((id) => ({ id, klass: 'k', input: id, expect: 'hi' }));
+const noAnswerRun = (labels: Record<string, string>, q01First: Attempt | undefined, over = {}): RunArtifact => {
+  const identity = makeJudgedIdentity({ caseSetHash: caseSetHash(noAnswerCases), barHash: barHash(noAnswerBar), drawsPerCase: 2, ...over });
+  const draws = ['q01', 'q02', 'q03'].flatMap((id) => [0, 1].map((i) => slot(id, i, gradedAttempt(labels[id] as string, { judgeStop: 'tool-use', outputHash: sha256Hex(`output ${id}#${i} ${JSON.stringify(over)}`) }))));
+  if (q01First !== undefined) draws[0] = slot('q01', 0, q01First);
+  return { schema: RUN_SCHEMA, identity, callShapes: callShapesFor(identity), cases: noAnswerCases, draws, ...packetBasisFor(identity) };
+};
+const noAnswerBaseline = (first?: Attempt): RunArtifact => noAnswerRun({ q01: 'hi', q02: 'hi', q03: 'lo' }, first);
+const noAnswerCandidate = (first?: Attempt): RunArtifact => noAnswerRun({ q01: 'lo', q02: 'hi', q03: 'hi' }, first, { systemModelServed: 'model-x-2026-06-01' });
+const noAnswerOpts = { allowDiffer: ['systemModelServed'] as const };
+
+test('the baseline refusal closes a false pass: q01 down and q03 fixed, with baseline q01#0 a slot with no answer (a hand-worked fixture)', () => {
+  const good = gateRuns(noAnswerBaseline(), noAnswerCandidate(), noAnswerBar, noAnswerOpts);
+  assert.ok(good.kind === 'evaluated' && good.diff.find((d) => d.caseId === 'q01')?.status === 'BROKE');
+  assert.equal(gateExitCode(good), 1);
+  for (const reason of ['client-error', 'system-error'] as const) {
+    const r = gateRuns(noAnswerBaseline(failedAttempt(reason)), noAnswerCandidate(), noAnswerBar, noAnswerOpts);
+    refusedWith(r, 'INCOMPLETE_RUN', 'q01#0');
+    assert.equal(gateExitCode(r), 2);
+    assert.ok(r.kind === 'refused' && r.refusal.message === `INCOMPLETE_RUN: baseline: the system gave no answer on q01#0 (${reason}); a slot with no answer cannot show which cases the candidate broke; fix the request or the system and run the baseline again`, r.kind === 'refused' ? r.refusal.message : '');
+  }
+});
+
+test('the baseline refusal names every slot with its reason, and a truncated answer stays a failing reference', () => {
+  const b = noAnswerBaseline(failedAttempt('client-error'));
+  const two: RunArtifact = { ...b, draws: b.draws.map((d) => (d.caseId === 'q02' && d.drawIndex === 1 ? slot('q02', 1, failedAttempt('system-error')) : d)) };
+  const r = gateRuns(two, noAnswerCandidate(), noAnswerBar, noAnswerOpts);
+  refusedWith(r, 'INCOMPLETE_RUN', 'q01#0,q02#1');
+  assert.ok(r.kind === 'refused' && r.refusal.message.includes('on q01#0 (client-error), q02#1 (system-error);'), r.kind === 'refused' ? r.refusal.message : '');
+  // The stated limit: an answer cut at its cap is an answer that fails, so it stays a reference and this case reads STILL_FAILING.
+  const cut = gateRuns(noAnswerBaseline(failedAttempt('truncated')), noAnswerCandidate(), noAnswerBar, noAnswerOpts);
+  assert.ok(cut.kind === 'evaluated' && cut.diff.find((d) => d.caseId === 'q01')?.status === 'STILL_FAILING');
+  assert.equal(gateExitCode(cut), 0);
+});
+
+test('the baseline refusal does not change the candidate: a slot with no answer there fails its case, and the gate gives a verdict', () => {
+  for (const reason of ['client-error', 'system-error'] as const) {
+    const r = gateRuns(noAnswerBaseline(), noAnswerRun({ q01: 'hi', q02: 'hi', q03: 'hi' }, failedAttempt(reason), { systemModelServed: 'model-x-2026-06-01' }), noAnswerBar, noAnswerOpts);
+    assert.ok(r.kind === 'evaluated' && r.diff.find((d) => d.caseId === 'q01')?.status === 'BROKE', reason);
+    assert.equal(gateExitCode(r), 1);
+  }
+});
+
+test('the baseline refusal under --rejudge-of: both baselines holding the failure refuse, named as the re-judged baseline', () => {
+  for (const reason of ['client-error', 'system-error'] as const) {
+    const fail = failedAttempt(reason);
+    const original = noAnswerRun({ q01: 'hi', q02: 'hi', q03: 'lo' }, fail);
+    const moved: RunArtifact = { ...original, identity: { ...original.identity, ...newJudge } };
+    const r = gateRuns(moved, noAnswerRun({ q01: 'lo', q02: 'hi', q03: 'hi' }, undefined, { ...newJudge, systemModelServed: 'model-x-2026-06-01' }), noAnswerBar, { rejudgeOf: original, allowDiffer: ['systemModelServed'] });
+    refusedWith(r, 'INCOMPLETE_RUN', 'q01#0');
+    assert.ok(r.kind === 'refused' && r.refusal.message.startsWith(`INCOMPLETE_RUN: re-judged baseline: the system gave no answer on q01#0 (${reason});`), r.kind === 'refused' ? r.refusal.message : '');
+    assert.equal(gateExitCode(r), 2);
+  }
+});
+
+test('the INCOMPLETE_RUN of a gate: fields name every slot, and the message counts the run by reason (a hand-worked fixture)', () => {
+  // Two cases of two draws = 4 slots. c1#1 is a judge parse-failure; c2#0 has no record, c2#1 is a system timeout. So 3 of 4 slots in 2 of 2 cases.
+  const base = withSlot(B, 'c1#1', (h) => [judgeFail('parse-failure', h)]);
+  const short = run(base.draws.filter((d) => !(d.caseId === 'c2' && d.drawIndex === 0)).map((d) => (d.caseId === 'c2' ? slot('c2', 1, unmeasured('system', 'timeout')) : d)), base.identity);
+  const r = gateRuns(short, C, barFile, { allowDiffer: ['systemModelServed'] });
+  refusedWith(r, 'INCOMPLETE_RUN', 'c1#1,c2#0,c2#1');
+  assert.ok(r.kind === 'refused' && r.refusal.message.startsWith('INCOMPLETE_RUN: baseline: 3 of 4 slots in 2 of 2 cases, no record 1, parse-failure 1, system timeout 1; '), r.kind === 'refused' ? r.refusal.message : '');
+});
+
 test('rejudge: a 4xx from the old judge in the original refuses only the split; the gate stands on the re-judged baseline', () => {
-  const a = withSlot(A, 'c2#1', (h) => [judgeFail('client-error', h), regrade('hi', h)]);
+  const a = withSlot(A, 'c2#1', (h) => [judgeFail('client-error', h)]);
   const r = gateRuns(B, C, barFile, { rejudgeOf: a, allowDiffer: ['systemModelServed'], bootstrap: boot });
   assert.equal(r.kind, 'evaluated');
   assert.ok(r.kind === 'evaluated' && r.judgeControl !== undefined && 'refused' in r.judgeControl && r.judgeControl.refused.code === 'MEASUREMENT_NOT_RUNNABLE');
@@ -607,11 +710,11 @@ test('rejudge: an original whose judge could not grade one slot refuses only the
 
 test('rejudge: a slot the system never answered, on both sides, is an incomplete baseline, not a hash gap', () => {
   const noAnswer = (x: RunArtifact) => run(x.draws.map((d) => (d.caseId === 'c2' && d.drawIndex === 1 ? slot('c2', 1, unmeasured('system', 'timeout')) : d)), x.identity);
-  refusedWith(gateRuns(noAnswer(B), C, barFile, { rejudgeOf: noAnswer(A), allowDiffer: ['systemModelServed'] }), 'INCOMPLETE_RUN', 'c2');
+  refusedWith(gateRuns(noAnswer(B), C, barFile, { rejudgeOf: noAnswer(A), allowDiffer: ['systemModelServed'] }), 'INCOMPLETE_RUN', 'c2#1');
 });
 
-test('rejudge: a system 4xx carried over with its record does not block the split', () => {
-  const err = (x: RunArtifact) => run(x.draws.map((d) => (d.caseId === 'c2' && d.drawIndex === 0 ? slot('c2', 0, failedAttempt('client-error', { detail: 'rejected' })) : d)), x.identity);
+test('rejudge: a truncated answer carried over with its record does not block the split', () => {
+  const err = (x: RunArtifact) => run(x.draws.map((d) => (d.caseId === 'c2' && d.drawIndex === 0 ? slot('c2', 0, failedAttempt('truncated', { detail: 'cut at the cap' })) : d)), x.identity);
   const r = gateRuns(err(B), C, barFile, { rejudgeOf: err(A), allowDiffer: ['systemModelServed'], bootstrap: boot });
   assert.ok(r.kind === 'evaluated' && r.judgeControl !== undefined && !('refused' in r.judgeControl));
 });
@@ -641,7 +744,7 @@ test('gateRuns: an error inside a run names the run', () => {
 
 test('rejudge: no response on both sides is an incomplete baseline even when the transport reasons differ', () => {
   const noAnswer = (x: RunArtifact, reason: string) => run(x.draws.map((d) => (d.caseId === 'c2' && d.drawIndex === 1 ? slot('c2', 1, unmeasured('system', reason)) : d)), x.identity);
-  refusedWith(gateRuns(noAnswer(B, 'rate-limited'), C, barFile, { rejudgeOf: noAnswer(A, 'timeout'), allowDiffer: ['systemModelServed'] }), 'INCOMPLETE_RUN', 'c2');
+  refusedWith(gateRuns(noAnswer(B, 'rate-limited'), C, barFile, { rejudgeOf: noAnswer(A, 'timeout'), allowDiffer: ['systemModelServed'] }), 'INCOMPLETE_RUN', 'c2#1');
 });
 
 test('gateRuns: an unknown system stop in any run is refused before folding, naming the draws', () => {

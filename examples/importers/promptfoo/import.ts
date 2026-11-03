@@ -3,7 +3,7 @@
  *
  *   node examples/importers/promptfoo/import.ts --in <result.json> --cases <cases.json> --bar <bar.json> --out <run.json> --reading <rule name>
  *
- * It turns a promptfoo 0.123.1 result file, written by a re-grade through the example recording grader, into an
+ * It turns a promptfoo result file, of a version in `tested-versions.json`, written by a re-grade through the example recording grader, into an
  * `anchorset.run/v3` run file. Every judge field comes from the grader's record or from bytes in the file. The system
  * side and the seed are always "UNKNOWN". The machine's architecture and the output path in the source file are
  * never copied. The reading rule is stated to the importer (`--reading`, no default), not recorded by the grader. A file in which
@@ -35,6 +35,7 @@ import {
   isEntryPoint,
   isObject,
   judgeHarnessVersion,
+  loadTestedVersions,
   noRecordRefusal,
   parseJsonStrict,
   parseRecord,
@@ -52,10 +53,8 @@ import {
   ungradedRefusal,
   valueTypeProblems,
 } from '../shared.ts';
-import type { CasesFile, GraderRecord, Io, Reading, RecordedSlot, SkeletonRow } from '../shared.ts';
+import type { CasesFile, GraderRecord, Io, Reading, RecordedSlot, SkeletonRow, TestedSet } from '../shared.ts';
 
-export const TESTED_VERSION = '0.123.1';
-export const TESTED_FORMAT = 3;
 const GRADER_FILE = 'grader-provider.cjs';
 const STORED_SCHEMA = 'example.stored-output/v1';
 
@@ -108,7 +107,7 @@ export type ConvertResult = {
 };
 
 /** The pure conversion: bytes of a promptfoo result file, the stated cases and the bar, to a run. Writes nothing. */
-export function convertPromptfoo(bytes: Uint8Array, fileName: string, cases: CasesFile, bar: BarFile, readingRule: Reading): ConvertResult {
+export function convertPromptfoo(bytes: Uint8Array, fileName: string, cases: CasesFile, bar: BarFile, readingRule: Reading, tested: TestedSet = loadTestedVersions('promptfoo')): ConvertResult {
   // No default: a missing or unknown name is a usage error, before any byte of the file is read.
   const reading = readingFromFlag(readingRule);
   const { json, sha256: sourceSha256 } = parseSourceFile(bytes, fileName, 'promptfoo');
@@ -116,11 +115,11 @@ export function convertPromptfoo(bytes: Uint8Array, fileName: string, cases: Cas
   // -- the tool version and the format ------------------------------------------------------------------------
   const foundVersion = peek(json, 'metadata', 'promptfooVersion');
   const foundFormat = peek(json, 'results', 'version');
-  if (foundVersion !== TESTED_VERSION || foundFormat !== TESTED_FORMAT) {
+  if (typeof foundVersion !== 'string' || !tested.versions.includes(foundVersion) || foundFormat !== tested.format) {
     throw new ImportRefusal(
       'IMPORT_TOOL_VERSION',
       ['/metadata/promptfooVersion', '/results/version'],
-      `this importer was tested on promptfoo ${TESTED_VERSION} (format ${TESTED_FORMAT}); the file says version ${JSON.stringify(foundVersion ?? 'missing')}, format ${JSON.stringify(foundFormat ?? 'missing')}`,
+      `this importer was tested on promptfoo ${tested.versions.join(', ')} (format ${tested.format}); the file says version ${JSON.stringify(foundVersion ?? 'missing')}, format ${JSON.stringify(foundFormat ?? 'missing')}`,
     );
   }
   const root = asObj(json, '/');
@@ -385,11 +384,11 @@ export function convertPromptfoo(bytes: Uint8Array, fileName: string, cases: Cas
       }),
     }));
   const judge = {
-    judgeDefinitionHash: hashOf({ tool: 'promptfoo', version: TESTED_VERSION, assertion: 'llm-rubric', skeleton, tools: [], reading }),
+    judgeDefinitionHash: hashOf({ tool: 'promptfoo', version: foundVersion, assertion: 'llm-rubric', skeleton, tools: [], reading, maxReasks: rec0.reask.max }),
     judgeModelRequested: rec0.requestedModel,
     judgeModelServed: rec0.servedModel,
     judgeCallShapeHash: callShapeHash(callShape as CallShape),
-    judgeHarnessVersion: judgeHarnessVersion('promptfoo', TESTED_VERSION, rec0),
+    judgeHarnessVersion: judgeHarnessVersion('promptfoo', foundVersion, rec0),
     rubricHash: hashOf({ tool: 'promptfoo', type: rubric.type, value: rubric.value }),
   };
   const caseSet = caseSetHash(roster);
@@ -418,7 +417,7 @@ export function convertPromptfoo(bytes: Uint8Array, fileName: string, cases: Cas
     cases: roster,
     draws,
     packetBasis: 'declared',
-    packetSource: `computed at import from promptfoo ${TESTED_VERSION} result file sha256:${sourceSha256}: the output slot of the rendered grading prompt`,
+    packetSource: `computed at import from promptfoo ${foundVersion} result file sha256:${sourceSha256}: the output slot of the rendered grading prompt; no system log`,
   };
   assertBarHasLabels(bar, draws.flatMap((d) => d.attempts.flatMap((a) => (a.kind === 'graded' ? [a.label] : []))));
   return { run, judge, barHash: barDigest, caseSetHash: caseSet, drawsPerCase: repeat, grader: rec0.grader, sourceSha256, thinkingReplies: thinkingRepliesLine(table.map((r) => r.record)), reasks: reasksLine(table.map((r) => r.record)), readingRule: reading };

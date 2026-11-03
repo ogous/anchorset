@@ -5,19 +5,19 @@
   "drawsPerCase": 3,
   "judges": {
     "old": {
-      "judgeDefinitionHash": "60d466334a5fda922ba6ff8432c77a8b8dc4c25cf428d2d493e1894f322653ce",
+      "judgeDefinitionHash": "aaeb98d48a1bc2ee9e02e5b54c77f3b6c271abf8c478538834233a7abc2a4d49",
       "judgeModelRequested": "fake-judge-old",
       "judgeModelServed": "fake-judge-old-served-20260101",
       "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
-      "judgeHarnessVersion": "promptfoo 0.123.1; anchorset-recording-grader js sha256:c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621; node v25.6.1; max-reasks 0",
+      "judgeHarnessVersion": "promptfoo 0.123.1; anchorset-recording-grader js sha256:cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba; node v25.6.1; max-reasks 0",
       "rubricHash": "a24aaadec6fe7060f791524a929acb7397f238b43eaa9b85a5f8bf58de06254f"
     },
     "new": {
-      "judgeDefinitionHash": "60d466334a5fda922ba6ff8432c77a8b8dc4c25cf428d2d493e1894f322653ce",
+      "judgeDefinitionHash": "aaeb98d48a1bc2ee9e02e5b54c77f3b6c271abf8c478538834233a7abc2a4d49",
       "judgeModelRequested": "fake-judge-strict-new",
       "judgeModelServed": "fake-judge-strict-new-served-20260101",
       "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
-      "judgeHarnessVersion": "promptfoo 0.123.1; anchorset-recording-grader js sha256:c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621; node v25.6.1; max-reasks 0",
+      "judgeHarnessVersion": "promptfoo 0.123.1; anchorset-recording-grader js sha256:cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba; node v25.6.1; max-reasks 0",
       "rubricHash": "a24aaadec6fe7060f791524a929acb7397f238b43eaa9b85a5f8bf58de06254f"
     }
   },
@@ -27,8 +27,8 @@
   ],
   "systems": {
     "refund-bot": {
-      "old": "bf02f0e5bb2adbf4548d70f6e34721d08178cefb5d33cd08b028515b99f70e06",
-      "new": "33754149214ebf414ae5f90b7d67c2d6dfa667bc7f957ad03fb6423767c7008b"
+      "old": "7f26f5234742b774e2054e1a8887f585bc95e2ab8aaea12bf8f3d52d75189fb5",
+      "new": "f58f90625eedb4239613fb27baa0cadceaff31282b7871574d90618ab7a41340"
     }
   },
   "storedOutputs": "system-side-not-compared",

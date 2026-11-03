@@ -23,7 +23,11 @@ const COMPLETING_SYSTEM_STOPS: readonly Stop[] = ['end', 'stop-sequence', 'tool-
 /** Stops after which a judge's grade is complete. Anything else means the judge did not grade. */
 const COMPLETING_JUDGE_STOPS: readonly Stop[] = ['end', 'tool-use'];
 
-/** The system's own failures. Each one fails the draw: they are behaviour under the declared call shape. */
+/**
+ * The system's own failures. Each one fails the draw and is never asked again: they are behaviour under the declared
+ * call shape. In a gate baseline, a rejected request or the system's own error refuses the gate (systemNoAnswer); an
+ * answer cut at its cap stays a failing reference.
+ */
 export const FAIL_REASONS = Object.freeze(['truncated', 'client-error', 'system-error'] as const);
 export type FailReason = (typeof FAIL_REASONS)[number];
 
@@ -47,14 +51,20 @@ export type FailedAttempt = { kind: 'failed'; reason: FailReason; detail: string
 /** No response from the provider. Nothing about the system or the judge was measured. */
 export const TRANSPORT_REASONS = Object.freeze(['timeout', 'transport', 'server-error', 'rate-limited'] as const);
 export type TransportReason = (typeof TRANSPORT_REASONS)[number];
-/** Why a judge could not grade an output the system did produce. A judge's 4xx is 'client-error'. */
-export const JUDGE_UNMEASURED_REASONS = Object.freeze([...TRANSPORT_REASONS, 'truncated', 'content-filter', 'client-error', 'parse-failure'] as const);
+/**
+ * The judge's reasons that end a slot: the judge finished, or the provider decided, and asking again would only pick
+ * among replies. Such an attempt stays on the record as the slot's outcome, and an attempt after one is invalid input.
+ * The other reasons may be asked again: a call that got no reply, and a reply recorded as cut at the output cap.
+ */
+export const JUDGE_FINAL_REASONS = Object.freeze(['content-filter', 'client-error', 'parse-failure'] as const);
+/** Why a judge gave no grade for an output the system did produce. A judge's 4xx is 'client-error'. */
+export const JUDGE_UNMEASURED_REASONS = Object.freeze([...TRANSPORT_REASONS, 'truncated', ...JUDGE_FINAL_REASONS] as const);
 export type JudgeUnmeasuredReason = (typeof JUDGE_UNMEASURED_REASONS)[number];
 
 /**
- * An attempt that measured nothing. role 'system': the system gave no response. role 'judge': the
- * system answered (its output and stop are recorded) but the judge could not grade it; a retry
- * re-grades that same output.
+ * An attempt that obtained no grade. role 'system': the system gave no response. role 'judge': the
+ * system answered (its output and stop are recorded) and the judge gave no grade; if its reason is
+ * not final (JUDGE_FINAL_REASONS), a retry re-grades that same output.
  */
 export type UnmeasuredAttempt =
   | { kind: 'unmeasured'; role: 'system'; reason: TransportReason; detail: string }
@@ -62,7 +72,7 @@ export type UnmeasuredAttempt =
 export type Attempt = GradedAttempt | FailedAttempt | UnmeasuredAttempt;
 /** An attempt that measured the system. */
 export type Measured = GradedAttempt | FailedAttempt;
-/** One draw slot. Its outcome is the last attempt; every earlier attempt must be unmeasured (a retry). */
+/** One draw slot. Its outcome is the last attempt; every earlier attempt must be unmeasured, for a reason that is not final (a retry). */
 export type Draw = { caseId: string; drawIndex: number; attempts: Attempt[] };
 
 export type FoldedCase = {
@@ -159,6 +169,7 @@ export function attemptsProblems(attempts: unknown, at: string, judged?: boolean
   attempts.forEach((a: unknown, i) => {
     const next: unknown = attempts[i + 1];
     if (!isObj(a) || a['kind'] !== 'unmeasured' || a['role'] !== 'judge' || next === undefined) return;
+    if ((JUDGE_FINAL_REASONS as readonly unknown[]).includes(a['reason'])) problems.push(`${at}[${i}]: the reason ${String(a['reason'])} is final; it stays on the record as the slot's outcome, and no attempt may follow it`);
     const sameOutput = isObj(next) && (next['kind'] === 'graded' || (next['kind'] === 'unmeasured' && next['role'] === 'judge'))
       && next['outputHash'] === a['outputHash'] && next['systemStop'] === a['systemStop'] && next['packetHash'] === a['packetHash'];
     if (!sameOutput) problems.push(`${at}[${i + 1}]: a judge retry re-grades the same output (same outputHash, systemStop and packetHash); the system may be called again only after a system-unmeasured attempt`);
@@ -202,11 +213,11 @@ export function unknownStops(draws: readonly Draw[]): string[] {
  * Refuses draws that hold an unknown system stop: nobody observed that the answer completed,
  * so neither the fold nor the flip rate may read it. `what` names the run in the message.
  */
-export function assertStopsKnown(draws: readonly Draw[], what = 'draws', packetSource?: string): void {
+export function assertStopsKnown(draws: readonly Draw[], what = 'draws', packetSource?: string, nextStep?: string): void {
   const slots = unknownStops(draws);
   if (slots.length > 0) {
     // A run an importer wrote never records its system's stop, so the gate can never take it; say where it can go.
-    const hint = packetSource !== undefined && packetSource.startsWith(IMPORTED_PACKET_SOURCE_PREFIX) ? '; imported run: use judge-change (docs/IMPORTERS.md)' : '';
+    const hint = packetSource !== undefined && packetSource.startsWith(IMPORTED_PACKET_SOURCE_PREFIX) ? '; imported run: use judge-change (docs/IMPORTERS.md)' : nextStep === undefined ? '' : `; ${nextStep}`;
     throw new RefusalError('IDENTITY_GAP', slots.map((k) => `systemStop[${k}]`), `${what}: the system stop is unknown on ${slots.join(', ')}; completion is never assumed${hint}`);
   }
 }
@@ -291,7 +302,7 @@ export type IncompleteCase = {
   got: number;
   /** Slot indices with no draw record at all. */
   missing: number[];
-  /** Slots whose final attempt measured nothing, and why. */
+  /** Slots whose final attempt holds no grade, and why. */
   unmeasured: { drawIndex: number; role: 'system' | 'judge'; reason: string }[];
   /** True when a measured draw already fails the case: shown, never folded away. */
   measuredFailure: boolean;
@@ -307,7 +318,28 @@ export function incompleteDetail(x: IncompleteCase): string {
   return `${x.got} of ${x.expected} draws measured${why.length > 0 ? ` (${why.join('; ')})` : ''}`;
 }
 
-/** Which slots of one case measured the system, which measured nothing, and which have no record. */
+/**
+ * The counts an INCOMPLETE_RUN message opens with, for one run file: "new judge: 30 of 1000 slots in 27 of 500 cases,
+ * parse-failure 30". `short` holds the cases with a shortfall; a judge's reason stands as it is, a system's carries its
+ * role, and a slot with no record reads "no record". Reasons are sorted by name. Counts only: never a rate.
+ */
+export function incompleteCounts(name: string, caseCount: number, drawsPerCase: number, short: readonly { caseId: string; unmeasured: readonly { role: 'system' | 'judge'; reason: string }[]; missing: readonly number[] }[]): string {
+  const byReason = new Map<string, number>();
+  const add = (reason: string): void => void byReason.set(reason, (byReason.get(reason) ?? 0) + 1);
+  const cases = new Set<string>();
+  let slots = 0;
+  for (const c of short) {
+    for (const u of c.unmeasured) add(u.role === 'system' ? `system ${u.reason}` : u.reason);
+    for (let i = 0; i < c.missing.length; i++) add('no record');
+    const held = c.unmeasured.length + c.missing.length;
+    slots += held;
+    if (held > 0) cases.add(c.caseId);
+  }
+  const reasons = [...byReason].sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)).map(([reason, n]) => `${reason} ${n}`);
+  return `${name}: ${slots} of ${caseCount * drawsPerCase} slots in ${cases.size} of ${caseCount} cases, ${reasons.join(', ')}`;
+}
+
+/** Which slots of one case measured the system, which hold no grade, and which have no record. */
 export type SlotCount = {
   expected: number;
   measured: { d: Draw; a: Measured }[];

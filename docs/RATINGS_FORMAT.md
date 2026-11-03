@@ -18,7 +18,8 @@ One file holds the labels of two or more graders on the same items. This is
 
 ```json
 {
-  "schema": "anchorset.ratings/v1",
+  "schema": "anchorset.ratings/v2",
+  "raterIdentity": "persistent",
   "categories": ["none", "review", "handoff"],
   "ratings": {
     "rater-a": { "t01": "none", "t02": "none", "t03": "none", "t04": "handoff", … },
@@ -36,7 +37,8 @@ One file holds the labels of two or more graders on the same items. This is
 
 | Field | What it means |
 |---|---|
-| `schema` | Always `"anchorset.ratings/v1"` |
+| `schema` | Always `"anchorset.ratings/v2"` |
+| `raterIdentity` | What the names under `ratings` are: `"persistent"`, `"positional"` or `"UNKNOWN"`. Required, with no default. See below |
 | `categories` | Every label of your scale, including one no grader used |
 | `ratings` | For each grader, the label of each item. At least two graders, and all of them label the same items |
 | `packetHashes` | For each grader, the packet hash of each item. On one item, every grader has the same hash |
@@ -45,6 +47,23 @@ One file holds the labels of two or more graders on the same items. This is
 ```bash
 node src/cli.ts agree --ratings examples/refund-bot/ratings.json
 ```
+
+### What the names are
+
+| `raterIdentity` | Use it when | The report |
+|---|---|---|
+| `persistent` | Each name is one grader, the same one on every item | Overall figures and a row for every pair of graders. Two names give Cohen's kappa |
+| `positional` | The names are places in a list (`slot-1`, `slot-2`), and a place can be a different grader from item to item | No row for a pair. Fleiss' kappa, multi-rater AC1 and mean pairwise observed agreement at any number of positions, two included. The header says positions, and the overall row reads `mean pairwise agreement among positions` |
+| `UNKNOWN` | You don't know which of the two it is | The same figures, and no row for a pair. The header and the overall row say that the names are unknown, not that they are positions. The file is not refused |
+
+A row for a pair compares two graders, so it means nothing where a name is not one grader. Cohen's kappa also reads
+each grader's own share of each label, which depends on the order of a list. The figures used instead read only how
+many ratings each label got on an item, so moving labels between positions within an item leaves the whole report
+unchanged. In `--json`, `raterIdentity` is beside `pairwise`, which is empty, and `identityNote` says why.
+
+Every `agree` report closes its figures with this line, and holds it in `--json` as `scope` (with `--ledger`, the line that reports the ledger record follows it in the text report):
+
+> These figures describe this file only: the tool cannot see how the items or the raters were chosen, or why an item has the ratings it has.
 
 ## The anchor files (`drift`)
 
@@ -89,9 +108,9 @@ is less agreement than luck. They count luck differently. When one label is much
 kappa drops even if the graders mostly agree, and AC1 drops less. So both are printed, with `prevalence`, the
 share of each label.
 
-**`agreement`** is the share of items on which two graders gave the same label. With three or more graders the
-line reads `mean pairwise agreement`: that share, averaged over every pair. It is not the share of items on
-which all of them agree.
+**`agreement`** is the share of items on which two graders gave the same label. With three or more graders, and
+at any number of names that are not `persistent`, the line reads `mean pairwise agreement`: that share, averaged
+over every pair. It is not the share of items on which all of them agree.
 
 **The brackets** after kappa and AC1 (the report also calls them an interval) show how much the number moves when
 the items are drawn again from your own items. They cover the choice of items only: the same judge, asked again,
@@ -126,5 +145,11 @@ make gives `REFUSED` and exit code 2.
 
 ## Limits
 
-- The files do not name the judge. Keeping it the same in both anchor files is up to you.
-- The packet hashes are what your files state. The tool cannot check what a grader really saw.
+- A rating file names no judge, so the tool cannot show that both sets of ratings came from one judge. Keeping it
+  the same in both anchor files is up to you. Every `drift` report says this, and holds it in `--json` as `scope`.
+- A file's rater names and packet hashes are its own statement, and the tool checks neither. It cannot check what a
+  grader really saw, and writing `persistent` over list positions gives pair rows that mean nothing.
+- A list position is not a rater. The graders behind positions are resampled only with their items and may recur
+  across items, so the brackets may be too narrow or too wide.
+- The tool cannot see whether ratings were added or dropped depending on earlier ratings. It cannot see whether a set was filtered on agreement. Either one
+  changes these figures, and only reading how the data were collected shows it.

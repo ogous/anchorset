@@ -8,7 +8,7 @@ import { barHash, parseBarFile, splitBarFile } from './gate.ts';
 import type { BarFile } from './gate.ts';
 import { appendAll, assertComparable, findIllFormed, findNulls, GAP, hashOf, integerProblem, isSha256Hex, MAX_DRAWS_PER_CASE, NO_JUDGE, parseJsonBytes, readsAsGap, sha256Hex } from './identity.ts';
 import type { IdentityField } from './identity.ts';
-import { extraKeys, finalAttempt, judgeRetries, measuredSlots, scoreAttempt, unknownStops } from './scoring.ts';
+import { extraKeys, finalAttempt, incompleteCounts, judgeRetries, measuredSlots, scoreAttempt, unknownStops } from './scoring.ts';
 import type { Case, ClassSpec, Draw, JudgeRetries, LabelSet, Measured } from './scoring.ts';
 import { cohenKappa, gwetAC1 } from './agreement.ts';
 import { fewResamplesWording, forEachResample, intervalWording, levelFloorAt, levelText, MAX_RESAMPLES, NA, nominalLevelOf, nominalLevelCheck, normalQuantile, placeAmong, quantileSorted, smallestConcordantPassN, spreadOf, suppliedPercentilesWording, tangoState, toStat } from './stats.ts';
@@ -918,25 +918,44 @@ function assertDesign(plan: JudgeChangePlan, labels: LabelSet, classes: Readonly
 /** The measured attempts of one case under each judge, and the one packet its graders were shown (absent when no draw reached a rater). */
 type CaseRead = { old: Measured[]; new: Measured[]; packet: string | undefined };
 
-/** For the cases the report reads: every slot measured by both judges, and one stored output per case. */
+const drawsByCase = (run: RunArtifact): Map<string, Draw[]> => {
+  const m = new Map<string, Draw[]>();
+  for (const d of run.draws) { const list = m.get(d.caseId); if (list === undefined) m.set(d.caseId, [d]); else list.push(d); }
+  return m;
+};
+
+/**
+ * Refuses unless every slot of every case of every run file holds an outcome: a slot with no grade stays counted, in a
+ * class the report reads or not. A `failed` attempt is an outcome: the system failed, and the draw fails. It reads all the
+ * run files before it refuses, so the refusal is a count for each one, by reason; its fields name every slot.
+ */
+function assertEverySlotRead(pairs: readonly Pair[], cases: readonly Case[], drawsPerCase: number): void {
+  const incomplete: string[] = [];
+  const counts: string[] = [];
+  for (const p of pairs) {
+    for (const [i, side] of [p.old, p.new].entries()) {
+      const judge = i === 0 ? 'old' : 'new';
+      const draws = drawsByCase(side.run);
+      const short = cases.map((c) => ({ caseId: c.id, ...measuredSlots(draws.get(c.id) ?? [], drawsPerCase) }));
+      for (const s of short) {
+        for (const u of s.unmeasured) incomplete.push(`${p.system}/${s.caseId}#${u.drawIndex} (${judge} judge: ${u.role} ${u.reason})`);
+        for (const m of s.missing) incomplete.push(`${p.system}/${s.caseId}#${m} (${judge} judge: missing)`);
+      }
+      if (short.some((s) => s.unmeasured.length + s.missing.length > 0)) counts.push(incompleteCounts(`system "${p.system}", ${judge} judge`, cases.length, drawsPerCase, short));
+    }
+  }
+  if (incomplete.length > 0) refuse('INCOMPLETE_RUN', incomplete, `${counts.join('; ')}; slots that hold no grade or have no record: ${listed(incomplete)}; a label needs every draw of its set, and a run file is counted whole, every class included`);
+}
+
+/** For the cases the report reads, whose every slot holds a grade (assertEverySlotRead): one stored output per case. */
 function readCases(p: Pair, cases: readonly Case[], drawsPerCase: number): Map<string, CaseRead> {
   const out = new Map<string, CaseRead>();
-  const incomplete: string[] = [];
   const split: string[] = [];
   const views: string[] = [];
-  const byCase = (run: RunArtifact): Map<string, Draw[]> => {
-    const m = new Map<string, Draw[]>();
-    for (const d of run.draws) { const list = m.get(d.caseId); if (list === undefined) m.set(d.caseId, [d]); else list.push(d); }
-    return m;
-  };
-  const olds = byCase(p.old.run);
-  const news = byCase(p.new.run);
+  const olds = drawsByCase(p.old.run);
+  const news = drawsByCase(p.new.run);
   for (const c of cases) {
     const sides = [olds, news].map((m) => measuredSlots(m.get(c.id) ?? [], drawsPerCase));
-    for (const [i, s] of sides.entries()) {
-      for (const u of s.unmeasured) incomplete.push(`${p.system}/${c.id}#${u.drawIndex} (${i === 0 ? 'old' : 'new'} judge: ${u.role} ${u.reason})`);
-      for (const m of s.missing) incomplete.push(`${p.system}/${c.id}#${m} (${i === 0 ? 'old' : 'new'} judge: missing)`);
-    }
     const [o, n] = sides as [ReturnType<typeof measuredSlots>, ReturnType<typeof measuredSlots>];
     // One stored output per case: repeated grades of it are judge noise, repeated system draws are not.
     // The stop is one wherever it is known; a draw whose stop is unknown is listed, not refused.
@@ -950,7 +969,6 @@ function readCases(p: Pair, cases: readonly Case[], drawsPerCase: number): Map<s
     if (packets.size > 1) views.push(`${p.system}/${c.id}`);
     out.set(c.id, { old: o.measured.map((x) => x.a), new: n.measured.map((x) => x.a), packet: [...packets][0] });
   }
-  if (incomplete.length > 0) refuse('INCOMPLETE_RUN', incomplete, `a slot measured nothing or has no record: ${incomplete.join(', ')}; a label needs every draw of its set`);
   if (split.length > 0) refuse('HASH_MISMATCH', split, `a case holds more than one stored output, system outcome or known stop across its draws: ${split.join(', ')}; this measurement reads repeated grades of one stored output`);
   if (views.length > 0) refuse('PACKET_MISMATCH', views, `the draws of a case were shown different packets: ${views.join(', ')}; grades of differing views are not compared`);
   return out;
@@ -1297,6 +1315,7 @@ export function judgeChangeRuns(files: readonly JudgeChangeInput[], barFile: Bar
   const mapMaj: MapData['maj'] = { old: [], new: [] };
   const noScore: string[] = [];
   const verdictRules = new Set<string>();
+  assertEverySlotRead(pairs, [...cases].sort((a, b) => (a.id < b.id ? -1 : 1)), plan.drawsPerCase);
   for (const p of pairs) {
     const read = readCases(p, [...measuredCases, ...fitCases, ...strictCases], plan.drawsPerCase);
     if (plan.map !== undefined) {

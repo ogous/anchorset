@@ -1,8 +1,8 @@
 {
-  "evalId": "eval-AOP-2026-10-13T17:53:51",
+  "evalId": "eval-jut-2026-10-30T20:33:52",
   "results": {
     "version": 3,
-    "timestamp": "2026-10-13T17:53:51.999Z",
+    "timestamp": "2026-10-30T20:33:52.478Z",
     "prompts": [
       {
         "id": "d3bcaf71c11c2678899be04d872718325f0916b3b0705e805ee29930663a42e2",
@@ -16,7 +16,7 @@
           "testErrorCount": 0,
           "assertPassCount": 9,
           "assertFailCount": 0,
-          "totalLatencyMs": 3,
+          "totalLatencyMs": 4,
           "tokenUsage": {
             "prompt": 0,
             "completion": 0,
@@ -99,8 +99,8 @@
             }
           ]
         },
-        "id": "d1042c8b-7865-4b5a-8a19-e0258aa226c8",
-        "latencyMs": 1,
+        "id": "68634c82-a51e-4710-be33-921232357d5d",
+        "latencyMs": 2,
         "namedScores": {},
         "prompt": {
           "raw": "My blender arrived broken. Can I get my money back?",
@@ -238,7 +238,7 @@
             }
           ]
         },
-        "id": "e628d632-b2d3-48e2-bc1b-b770a078db8c",
+        "id": "b64afd2c-5e8a-47cd-b1bf-a08e215e0a83",
         "latencyMs": 0,
         "namedScores": {},
         "prompt": {
@@ -377,8 +377,8 @@
             }
           ]
         },
-        "id": "2a792e6a-94e7-4d72-a0df-22efe0ff5b80",
-        "latencyMs": 0,
+        "id": "1b566fea-be99-47d5-b3fb-b700178b06fe",
+        "latencyMs": 1,
         "namedScores": {},
         "prompt": {
           "raw": "My blender arrived broken. Can I get my money back?",
@@ -516,8 +516,8 @@
             }
           ]
         },
-        "id": "0277370c-c208-44c7-88f3-d84571d0a7e5",
-        "latencyMs": 1,
+        "id": "d6b95d5a-faa4-41b2-b97b-7766adb00819",
+        "latencyMs": 0,
         "namedScores": {},
         "prompt": {
           "raw": "I bought shoes 45 days ago and want a refund.",
@@ -655,7 +655,7 @@
             }
           ]
         },
-        "id": "4f5ea22c-a2e7-495a-a4f9-22126e0a2771",
+        "id": "96e9c69d-3450-43db-be30-dee2dd60b67a",
         "latencyMs": 0,
         "namedScores": {},
         "prompt": {
@@ -794,7 +794,7 @@
             }
           ]
         },
-        "id": "9426a89e-0daf-454a-85b1-524aa7731783",
+        "id": "5e2741f3-7df1-4342-922c-e5d1e04cb31d",
         "latencyMs": 0,
         "namedScores": {},
         "prompt": {
@@ -933,8 +933,8 @@
             }
           ]
         },
-        "id": "dac34cfc-bc8b-4076-a628-3edd163db474",
-        "latencyMs": 0,
+        "id": "e0fcd7d2-95ca-432e-8345-46afc4b5d275",
+        "latencyMs": 1,
         "namedScores": {},
         "prompt": {
           "raw": "Please refund my last order.",
@@ -1072,7 +1072,7 @@
             }
           ]
         },
-        "id": "fe772cdc-5395-4f10-bd14-52d368e05835",
+        "id": "1cf5c6de-f9f9-4770-bd4d-34b3cacd3106",
         "latencyMs": 0,
         "namedScores": {},
         "prompt": {
@@ -1211,8 +1211,8 @@
             }
           ]
         },
-        "id": "c9433658-e5fd-4b67-b338-5a8e2f2d00bf",
-        "latencyMs": 1,
+        "id": "9a93a377-686b-48ed-9d0a-26176df8a64f",
+        "latencyMs": 0,
         "namedScores": {},
         "prompt": {
           "raw": "Please refund my last order.",
@@ -1337,8 +1337,8 @@
           }
         }
       },
-      "durationMs": 80,
-      "evaluationDurationMs": 80
+      "durationMs": 103,
+      "evaluationDurationMs": 103
     }
   },
   "config": {
@@ -1399,8 +1399,8 @@
     "nodeVersion": "v25.6.1",
     "platform": "darwin",
     "arch": "arm64",
-    "exportedAt": "2026-10-13T17:53:52.102Z",
-    "evaluationCreatedAt": "2026-10-13T17:53:51.999Z"
+    "exportedAt": "2026-10-30T20:33:52.613Z",
+    "evaluationCreatedAt": "2026-10-30T20:33:52.478Z"
   },
   "vars": [
     "case_id",

@@ -197,8 +197,8 @@ messages twice each, and a judge grades each answer from 1 to 5. The data is mad
         {
           "kind": "unmeasured",
           "role": "judge",
-          "reason": "parse-failure",
-          "detail": "the grade tool was called with no grade",
+          "reason": "server-error",
+          "detail": "the judge call returned HTTP 500",
           "outputHash": "0ca15417fbbb59094d427e8dffe28916bbe4431b779293c505a67b6c429771a6",
           "systemStop": "end",
           "packetHash": "5e110850821c38e019fa0337db9dc9019ac91a22ab15a25ecf8b17627b960591"
@@ -262,7 +262,7 @@ messages twice each, and a judge grades each answer from 1 to 5. The data is mad
 Three draws show a retry or a failure:
 
 - `q01`, draw 1: the first call to the system timed out, and the second was graded. The last one counts.
-- `q02`, draw 0: the judge's first reply could not be read. The second graded the same answer.
+- `q02`, draw 0: the judge's first call got a server error. The second graded the same answer.
 - `q03`, draw 0: the answer was cut at the token limit. That is a `failed` attempt, with no label.
 
 The run was written for this bar file, [`examples/run-format/bar.json`](../examples/run-format/bar.json). It
@@ -375,7 +375,7 @@ object (`{}` for none) or `"UNKNOWN"`.
 | `betaFlags` | A list of beta flags in lowercase, sorted, none twice |
 | `thinkingMode` | `off`, `adaptive`, `budgeted` or `between-tools` |
 | `thinkingBudgetTokens` | A whole number above 0. Required with `budgeted`; `"NOT_SENT"` otherwise |
-| `effort` | `minimal`, `low`, `medium`, `high`, `xhigh` or `max` |
+| `effort` | `none`, `minimal`, `low`, `medium`, `high`, `xhigh` or `max`. `none` means you sent that word, which is not the same as `"NOT_SENT"` |
 | `toolChoice` | `none`, `auto`, `any` or `named` |
 | `toolChoiceName` | The tool's name. Required with `named`; `"NOT_SENT"` otherwise |
 | `strictTools`, `parallelToolUse`, `stream` | `true` or `false` |
@@ -410,9 +410,11 @@ lists the calls in order, and the last attempt is the draw's result.
 An attempt has a `kind`:
 
 - `graded`: the system answered, and the answer got a label.
-- `failed`: the system failed on its own. The draw fails.
-- `unmeasured`: nothing was measured. Its `role` is `"system"` when the provider sent nothing back, and `"judge"`
-  when the judge could not grade an answer.
+- `failed`: the system failed on its own. The draw fails and is never asked again. In a `gate` baseline, a slot
+  where the system gave no answer (`client-error` or `system-error`) refuses the gate; an answer cut at its cap
+  (`truncated`) stays a failing reference.
+- `unmeasured`: no grade was obtained. Its `role` is `"system"` when the provider sent nothing back, and `"judge"`
+  when the judge gave no grade for an answer.
 
 | Field | On which attempts | What it means | If you do not know it |
 |---|---|---|---|
@@ -422,10 +424,40 @@ An attempt has a `kind`:
 | `reason` | unmeasured, judge | One of those four, or `truncated`, `content-filter`, `client-error` or `parse-failure` (the judge's reply could not be read) | Always known |
 | `detail` | failed, unmeasured | A note for the reader, as text | An empty text |
 | `outputHash` | graded, failed, unmeasured by the judge | The sha256 of the answer's text. For a failed attempt with no answer, a sha256 of the failure note | Always known |
-| `systemStop` | graded, unmeasured by the judge | Why the system stopped: `end`, `stop-sequence`, `tool-use`, `content-filter` or `refusal` | `"UNKNOWN"`; `gate` and `flips` then refuse the run |
+| `systemStop` | graded, unmeasured by the judge | Why the system stopped: `end`, `stop-sequence`, `tool-use`, `content-filter` or `refusal` | `"UNKNOWN"`; `gate` then refuses the run, and `flips` does too unless you declare stored outputs |
 | `systemStop` | failed | `max-tokens` with `truncated`; `"NOT_SENT"` with the other two reasons | Always known |
 | `judgeStop` | graded | Why the judge stopped: `end` or `tool-use` | Always known. `"NO_JUDGE"` when code grades |
 | `packetHash` | graded, unmeasured by the judge | The sha256 of what the judge was shown for this answer | `"UNKNOWN"`. `"NO_JUDGE"` when code grades |
+
+#### What may be asked again
+
+An `unmeasured` attempt may be followed by another only if it is a call that got no reply (`timeout`, `transport`,
+`server-error`, `rate-limited`), on the system's call or the judge's, or a judge's reply recorded as `truncated`.
+
+A judge's `parse-failure`, `content-filter` and `client-error` are final. Such an attempt is the last of its slot: a
+file with an attempt after one is invalid input (exit 65). A slot that ends in one blocks `judge-change` on any file
+that holds it, in any class, and every other command that reads its case:
+
+| Command | Final `parse-failure` or `content-filter` | Final `client-error` |
+|---|---|---|
+| `judge-change` | Exit 2, `INCOMPLETE_RUN` | Exit 2, `MEASUREMENT_NOT_RUNNABLE` |
+| `flips` | Exit 2, `INCOMPLETE_RUN` | Exit 2, `INCOMPLETE_RUN` |
+| `gate`, baseline | Exit 2, `INCOMPLETE_RUN` | Exit 2, `MEASUREMENT_NOT_RUNNABLE` |
+| `gate`, candidate | The case is incomplete, and the gate fails with exit 1 | Exit 2, `MEASUREMENT_NOT_RUNNABLE` |
+
+If a judge's replies often cannot be read, there are three ways on:
+
+1. Read the stored replies under a better stated rule. This makes no new call. The rule is part of the judge's
+   definition, so `judgeDefinitionHash` moves. The `--reading` option of the promptfoo and skill importers does this
+   ([IMPORTERS.md](IMPORTERS.md)).
+2. Change the request so that replies can be read, for example with forced structured output. That is a new call
+   shape and a whole new run.
+3. Report the refusal. The message of `INCOMPLETE_RUN` counts each run file by reason. In `judge-change` a count reads
+   `system "refund-bot", new judge: 30 of 1000 slots in 27 of 500 cases, parse-failure 30`; in `gate` the prefix is
+   `baseline:` (`re-judged baseline:` under `--rejudge-of`), and in `flips` it is `run:`. The fields name every slot.
+
+Removing the cases is not a way on: it selects on the judge's behaviour. The rule covers a slot, not a whole file: a
+file run again until no slot is unreadable looks like any other, and no file can show that it was.
 
 Three rules:
 
@@ -456,7 +488,7 @@ the tool refuses those. A file with unknowns is valid, but an unknown blocks eve
 
 - `gate` needs all sixteen `identity` fields known in both runs, even one you allow to differ, and every
   `systemStop`.
-- `flips` needs `drawsPerCase`, at least two draws per case and every `systemStop`. For a run a judge graded, it also needs recorded packets.
+- `flips` needs `drawsPerCase`, at least two draws per case and every `systemStop`. For a run a judge graded, it also needs recorded packets, `rubricHash` and all five judge fields. With `--stored-outputs system-side-not-compared` a `systemStop` may be `"UNKNOWN"`: the run needs a judge, at least one unknown stop, and one output in each case, one hash, one outcome and one stop.
 - `judge-change` has its own list, in [JUDGE_CHANGE.md](JUDGE_CHANGE.md).
 
 `"NOT_SENT"`, `"NO_JUDGE"` and `"NO_SEED"` count as known.
@@ -478,8 +510,11 @@ A comparison the tool will not make gives `REFUSED`, a code, and exit code 2.
 - `IDENTITY_MISMATCH` → the two runs differ in the fields named. If you changed the system on purpose, add
   `--allow-differ` with the field names; [CLI.md](CLI.md) says which fields can never be listed.
 - `HASH_MISMATCH`, naming `barHash` → the bar file is not the one the run was written for.
-- `INCOMPLETE_RUN` → the baseline (for `flips`, the run) has a draw with no record, or one that ends `unmeasured`.
-  Run it again.
+- `INCOMPLETE_RUN` → the baseline (for `flips`, the run; for `judge-change`, either run, in any class) has a draw with
+  no record, or one that ends `unmeasured`, or a `gate` baseline holds a slot where the system gave no answer (`failed`, with `client-error` or
+  `system-error`). For slots that hold no grade, the message counts each run file by reason, and the fields name the
+  slots. For a baseline with no answer, the message names each slot and its reason and counts nothing. (A rejected judge
+  call under `judge-change` or `gate` is `MEASUREMENT_NOT_RUNNABLE`, which names the draws and counts nothing.) Run it again.
 - `MEASUREMENT_NOT_RUNNABLE` → a judge attempt has the reason `client-error`. Fix the judge call and grade again.
 - `PACKET_MISMATCH`, from `flips` → the packets are `declared`, or differ between draws of one answer. With
   `packetBasis` `"UNKNOWN"` the code is `IDENTITY_GAP`.

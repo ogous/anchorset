@@ -5,19 +5,19 @@
   "drawsPerCase": 3,
   "judges": {
     "old": {
-      "judgeDefinitionHash": "ebd4c237c7600abf7f1b4854668e2426c98d2e98d3172217d20de615241a78fc",
+      "judgeDefinitionHash": "80a2911439e9361d19214df0093034562bc9ec0fdaf10b1e1c9c69f997ae1c4a",
       "judgeModelRequested": "fake-judge-old",
       "judgeModelServed": "fake-judge-old-served-20260101",
       "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
-      "judgeHarnessVersion": "skill-evals skill-evals/1; anchorset-recording-grader js sha256:c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621; node v25.6.1; max-reasks 0; script-files sha256:4ae74d8a128ede1d7aa8f6ddce4cba1dc24b81d6a7c6fcdff7e7cb9ec6593451",
+      "judgeHarnessVersion": "skill-evals skill-evals/1; anchorset-recording-grader js sha256:cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba; node v25.6.1; max-reasks 0; script-files sha256:8fc4f7b4e16061c8c9f28011fc0b2fcc82ff21594412cb8e40c0838c1209322c",
       "rubricHash": "67891b37a9e87086905c0aa9621b995946a58b8a22210614a2304260271ecfc2"
     },
     "new": {
-      "judgeDefinitionHash": "ebd4c237c7600abf7f1b4854668e2426c98d2e98d3172217d20de615241a78fc",
+      "judgeDefinitionHash": "80a2911439e9361d19214df0093034562bc9ec0fdaf10b1e1c9c69f997ae1c4a",
       "judgeModelRequested": "fake-judge-strict-new",
       "judgeModelServed": "fake-judge-strict-new-served-20260101",
       "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
-      "judgeHarnessVersion": "skill-evals skill-evals/1; anchorset-recording-grader js sha256:c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621; node v25.6.1; max-reasks 0; script-files sha256:4ae74d8a128ede1d7aa8f6ddce4cba1dc24b81d6a7c6fcdff7e7cb9ec6593451",
+      "judgeHarnessVersion": "skill-evals skill-evals/1; anchorset-recording-grader js sha256:cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba; node v25.6.1; max-reasks 0; script-files sha256:8fc4f7b4e16061c8c9f28011fc0b2fcc82ff21594412cb8e40c0838c1209322c",
       "rubricHash": "67891b37a9e87086905c0aa9621b995946a58b8a22210614a2304260271ecfc2"
     }
   },
@@ -27,8 +27,8 @@
   ],
   "systems": {
     "refund-bot": {
-      "old": "4e4152c8d32c79ab874e6eb7aec1c4c0a8678ecff0bdc2ff4375cd4bf2457cca",
-      "new": "01a24b88e8c437fd6b8736b0fdfc3ef9a1e20e434ec01b9283861fb63f04c888"
+      "old": "044f799af280a72835b67c059968125f56b66eb7a95abe248fc09d6880044fe7",
+      "new": "0065e91e0845513eadc2d9fb8234b74e958b2b9ba07276a3ab676e0f134ad253"
     }
   },
   "storedOutputs": "system-side-not-compared",

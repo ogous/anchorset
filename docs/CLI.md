@@ -27,6 +27,8 @@ node src/cli.ts judge-change --plan examples/judge-change/plan.json --bar exampl
 The first exits 1, because the example holds a regression. The other four exit 0. `--help` prints every flag. When
 anchorset is installed from npm, the command is `anchorset` where this page shows `node src/cli.ts`.
 
+`flips --stored-outputs system-side-not-compared` says that the graded answers are stored ones whose system stop nobody saw. The report says so first, and `gate` never takes such a file. [RUN_FORMAT.md](RUN_FORMAT.md) lists what the file needs.
+
 `--allow-differ` lists the identity fields that may differ between the two runs. Without it, `gate`
 refuses runs that differ, so a new model name is refused. A judge field and `drawsPerCase` can never be listed, and
 neither can `rubricHash` when a judge graded the runs.
@@ -86,7 +88,8 @@ again. If the two baselines do not record that both judges were shown the same t
 
 Every command takes `--json` and then prints one JSON object on normal output (stdout) in place of the text
 report. A refusal is also one JSON object there, with exit code 2. Usage errors and invalid input stay as text on
-error output (stderr). [MIGRATIONS.md](MIGRATIONS.md) lists the version strings of these objects.
+error output (stderr). [MIGRATIONS.md](MIGRATIONS.md) lists the version strings of these objects. The `agree` and
+`drift` objects hold the sentence that closes the figures of their text report as `scope`: what the figures cannot show.
 
 ## A record of each decision
 

@@ -399,7 +399,7 @@ test('fixtures/reask.regrade.jsonl imports: the first grade of each case is an u
   assert.match(reask.new.stdout, /^re-asks: 3 on 3 of 9 slots \(truncated 3, timeout 0, transport 0, server-error 0, rate-limited 0\); at most 1 per slot$/m);
   assert.match(reask.old.run.identity.judgeHarnessVersion, /; max-reasks 2; script-files sha256:[0-9a-f]{64}$/);
   assert.match(reask.new.run.identity.judgeHarnessVersion, /; max-reasks 1; script-files sha256:[0-9a-f]{64}$/);
-  assert.deepEqual(reaskDiffering, ['judgeModelRequested', 'judgeModelServed', 'judgeHarnessVersion']);
+  assert.deepEqual(reaskDiffering, ['judgeDefinitionHash', 'judgeModelRequested', 'judgeModelServed', 'judgeHarnessVersion']);
   // The criterion is another text than the example's, so the rubric is another; the case set is the same.
   assert.notEqual(reask.old.run.identity.rubricHash, imported.old.run.identity.rubricHash);
   assert.equal(reask.old.run.identity.caseSetHash, imported.old.run.identity.caseSetHash);
@@ -422,7 +422,7 @@ test('re-ask: the same pair is admitted when judgeMoves names it, and every numb
   const plain = judgeChangeRuns([{ name: 'old.json', bytes: imported.old.bytes }, { name: 'new.json', bytes: imported.new.bytes }], bar, planOf());
   const numbers = (r: typeof report) => ({ counts: r.counts, perDraw: r.perDrawPassRate, label: r.labelPassRate, flips: r.flips, nonCompensable: r.nonCompensable, notCompared: r.notCompared });
   assert.deepEqual(numbers(report), numbers(plain));
-  assert.deepEqual(report.judges.moved.map((m) => m.field), ['judgeModelRequested', 'judgeModelServed', 'judgeHarnessVersion']);
+  assert.deepEqual(report.judges.moved.map((m) => m.field), ['judgeDefinitionHash', 'judgeModelRequested', 'judgeModelServed', 'judgeHarnessVersion']);
   // gate refuses the pair, as it refuses every imported run.
   const gate = cli('gate', '--baseline', reask.old.path, '--candidate', reask.new.path, '--bar', join(dir, 'bar.json'), '--allow-differ', WAIVABLE.join(','));
   assert.equal(gate.status, 2, gate.stderr);

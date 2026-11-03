@@ -1,0 +1,79 @@
+# Asks once a week whether the tools the example importers read have a release the list of tested versions does not hold, and
+# tries it at zero spend. It reports and never blocks: it runs on no push and no pull request, so its failure cannot touch any
+# other check, and it adds nothing to the list, since an entry also needs a written read of the tool's grading path.
+# Calls go only to the fake endpoint on 127.0.0.1, with a dummy key, and no secret is named. A package fresh from a registry never
+# runs beside a token that can write: the one job with write access installs nothing and checks nothing out.
+name: tool-watch
+
+on:
+  schedule:
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidate:
+    name: candidate ${{ matrix.tool }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        tool: [inspect_ai, promptfoo]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.13'
+      - run: npm ci
+      - name: Try the latest release, unless the list holds it
+        env:
+          TOOL: ${{ matrix.tool }}
+        run: |
+          WORK="$(mktemp -d)"
+          if [ "$TOOL" = inspect_ai ]; then
+            LATEST="$(python -m pip index versions inspect_ai 2>/dev/null | sed -n '1s/^inspect_ai (\(.*\))$/\1/p')"
+          else
+            LATEST="$(npm view promptfoo version)"
+          fi
+          [ -n "$LATEST" ] || { echo "no latest version of $TOOL was found"; exit 1; }
+          LISTED="$(node -e "const d=JSON.parse(require('node:fs').readFileSync('examples/importers/tested-versions.json','utf8'));console.log(d.tools[process.argv[1]].versions.map((e)=>e.version).join(' '))" "$TOOL")"
+          case " $LISTED " in *" $LATEST "*) echo "$TOOL $LATEST is in the list"; exit 0 ;; esac
+          if [ "$TOOL" = inspect_ai ]; then
+            python -m venv "$WORK/env" && "$WORK/env/bin/pip" install "inspect_ai==$LATEST"
+            python -m venv "$WORK/plain" && "$WORK/plain/bin/pip" install "inspect_ai==$LATEST" anthropic
+            export ANCHORSET_INSPECT_PLAIN_VENV="$WORK/plain"
+          else
+            mkdir "$WORK/env" && npm install --prefix "$WORK/env" "promptfoo@$LATEST"
+          fi
+          bash examples/importers/watch-candidate.sh "$TOOL" "$LATEST" "$WORK/env"
+
+  report:
+    name: report
+    needs: candidate
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RESULT: ${{ needs.candidate.result }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - name: Update the one standing issue
+        run: |
+          TITLE='Tool watch: importer candidates'
+          if [ "$RESULT" = success ]; then
+            BODY="Last watch run: every candidate passes or the list holds the release. A candidate that passed still needs its written read of the grading path before its entry is added. $RUN_URL"
+          else
+            BODY="Last watch run: a candidate failed its fixture run or the walk; the job log names the version and the step. The list does not change. $RUN_URL"
+          fi
+          NUMBER="$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number // empty')"
+          if [ -n "$NUMBER" ]; then gh issue comment "$NUMBER" --body "$BODY"; else gh issue create --title "$TITLE" --body "$BODY"; fi

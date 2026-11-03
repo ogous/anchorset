@@ -26,6 +26,7 @@ import { foldRun, MAX_LABELS, slotProblems, validateLabelSet } from '../src/scor
 import type { Case, ClassSpec, Draw, FoldedCase } from '../src/scoring.ts';
 import { groupDraws } from '../src/stability.ts';
 import { bootstrapCI, MAX_RESAMPLES } from '../src/stats.ts';
+import { RATINGS_SCHEMA } from '../src/version.ts';
 import { main as studyCheck } from '../tools/study-check.ts';
 import { gradedAttempt, makeCallShape, makeIdentity, slot } from './helpers.ts';
 
@@ -394,14 +395,14 @@ test('a label named __proto__ keeps its share in prevalence and in each rater\'s
   const rated = (labels: string[]): Record<string, string> => Object.fromEntries(items.map((id, i) => [id, labels[i] as string]));
   const packets = Object.fromEntries(items.map((id) => [id, hash]));
   const ratings = { r1: rated(['__proto__', '__proto__', 'a', 'a']), r2: rated(['__proto__', 'a', 'a', 'a']) };
-  const report = agreementReport(ratings, { packetHashes: { r1: packets, r2: packets }, categories: ['__proto__', 'a'], bootstrap: { iterations: 50 } });
+  const report = agreementReport(ratings, { packetHashes: { r1: packets, r2: packets }, categories: ['__proto__', 'a'], raterIdentity: 'persistent', bootstrap: { iterations: 50 } });
   const sum = (r: Record<string, number>): number => Object.values(r).reduce((s, x) => s + x, 0);
   assert.deepEqual(Object.entries(report.prevalence), [['__proto__', 0.375], ['a', 0.625]]);
   const pair = report.pairwise[0] as (typeof report.pairwise)[number];
   for (const shares of [report.prevalence, pair.prevalence, pair.marginals.a, pair.marginals.b]) assert.equal(sum(shares), 1);
   assert.deepEqual(Object.entries(pair.marginals.b), [['__proto__', 0.25], ['a', 0.75]]);
   // And in the printed report, and in the JSON a ledger would hash.
-  const text = JSON.stringify({ schema: 'anchorset.ratings/v1', categories: ['__proto__', 'a'], ratings, packetHashes: { r1: packets, r2: packets }, bootstrap: { iterations: 50 } });
+  const text = JSON.stringify({ schema: RATINGS_SCHEMA, raterIdentity: 'persistent', categories: ['__proto__', 'a'], ratings, packetHashes: { r1: packets, r2: packets }, bootstrap: { iterations: 50 } });
   const path = file(text, 'proto.json');
   assert.match(run('agree', '--ratings', path).stdout, /^prevalence {7}__proto__ 0\.375 · a 0\.625$/m);
   assert.deepEqual(Object.keys((JSON.parse(run('agree', '--ratings', path, '--json').stdout) as { prevalence: object }).prevalence), ['__proto__', 'a']);
@@ -426,7 +427,7 @@ test(`at most ${MAX_LABELS} labels or categories: one more is invalid input (65)
     const anchor = file({ schema: 'anchorset.anchor/v1', labels: ids, verdicts: Object.fromEntries(ids.map((l) => [l, l])), packetHashes: Object.fromEntries(ids.map((l) => [l, hash])) }, 'anchor.json');
     invalid(run('drift', '--old', anchor, '--new', anchor, '--flag', 'l0'), new RegExp(`labels: ${count} labels; at most 1000 are read`), `drift, ${count} labels`);
     const one = { ratings: Object.fromEntries(ids.map((l) => [l, l])), packets: Object.fromEntries(ids.map((l) => [l, hash])) };
-    const ratings = file({ schema: 'anchorset.ratings/v1', categories: ids, ratings: { r1: one.ratings, r2: one.ratings }, packetHashes: { r1: one.packets, r2: one.packets } }, 'ratings.json');
+    const ratings = file({ schema: RATINGS_SCHEMA, raterIdentity: 'persistent', categories: ids, ratings: { r1: one.ratings, r2: one.ratings }, packetHashes: { r1: one.packets, r2: one.packets } }, 'ratings.json');
     invalid(run('agree', '--ratings', ratings), new RegExp(`categories: ${count} categories; at most 1000 are read`), `agree, ${count} labels`);
   }
   // A bar file's label set is a label set.

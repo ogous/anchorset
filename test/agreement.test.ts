@@ -169,6 +169,31 @@ test('Fleiss on the encyclopedia table (a hand-worked fixture): P-bar 0.378, Pe-
   close(f.kappa, 0.21, 3);
 });
 
+// A hand-worked fixture, not a published reference value: Fleiss' kappa at two ratings per subject, which the report uses
+// for two names that are not persistent raters. The data are the Cohen table above (20 both yes, 5 and 10 split, 15 both no).
+//   an agreeing subject contributes (2^2 + 0 - 2) / (2 · 1) = 1, a split one (1 + 1 - 2) / (2 · 1) = 0
+//   P-bar = (20 + 15) / 50                                 = 0.70
+//   shares of all 100 ratings: yes (2·20 + 5 + 10) / 100 = 0.55, no 0.45
+//   Pe-bar = 0.55^2 + 0.45^2 = 0.3025 + 0.2025             = 0.505
+//   kappa = (0.70 - 0.505) / (1 - 0.505) = 0.195 / 0.495   = 0.39394      (Cohen's kappa on this table is 0.40)
+//   AC1, multi-rater form: pe = 2 · 0.55 · 0.45 / (2 - 1)  = 0.495; (0.70 - 0.495) / 0.505 = 0.40594
+test('Fleiss kappa at a count of two, a hand-worked fixture: 0.3939 on the Cohen table, with P-bar 0.70, multi-rater AC1 0.4059, and agreementReport gives the same for two positions', () => {
+  const [a, b] = table(20, 5, 10, 15);
+  const cats = ['no', 'yes'];
+  const f = fleissKappa(toCountMatrix(a.map((x, i) => [x, b[i] as string]), cats));
+  close(f.pBar, 0.7, 9);
+  close(f.peBar, 0.505, 9);
+  close(f.kappa, 0.39394, 5);
+  const items = a.map((_, i) => `i${i}`);
+  const ratings = { r1: Object.fromEntries(items.map((id, i) => [id, a[i] as string])), r2: Object.fromEntries(items.map((id, i) => [id, b[i] as string])) };
+  const rep = agreementReport(ratings, { raterIdentity: 'positional', packetHashes: packets(['r1', 'r2'], items), categories: cats, bootstrap: { iterations: 50 } });
+  assert.equal(rep.kappaKind, 'fleiss');
+  close(rep.kappa, 0.39394, 5);
+  close(rep.ac1, 0.40594, 5);
+  close(rep.percentAgreement, 0.7, 9);
+  assert.deepEqual(rep.pairwise, []);
+});
+
 test('Fleiss rejects a varying number of raters per subject', () => {
   assert.throws(() => fleissKappa([[1, 2], [2, 2]]), (e: unknown) => e instanceof InputError && e.code === 'INVALID_ARGUMENT');
   assert.throws(() => fleissKappa([[1, 0]]), InputError);
@@ -206,9 +231,9 @@ test('Gwet AC1 depends on the declared number of categories, a hand-worked fixtu
   assert.throws(() => (gwetAC1 as unknown as (x: string[], y: string[]) => unknown)(a, b), required);
   const items = a.map((_, i) => `i${i}`);
   const ratings = { r1: Object.fromEntries(items.map((id, i) => [id, a[i] as string])), r2: Object.fromEntries(items.map((id, i) => [id, b[i] as string])) };
-  assert.throws(() => (agreementReport as (r: unknown, o: unknown) => unknown)(ratings, { packetHashes: packets(['r1', 'r2'], items) }), required);
+  assert.throws(() => (agreementReport as (r: unknown, o: unknown) => unknown)(ratings, { raterIdentity: 'persistent', packetHashes: packets(['r1', 'r2'], items) }), required);
   // The report carries the scale it used, and its AC1 moves with it while its kappa does not.
-  const on = (categories: string[]) => agreementReport(ratings, { packetHashes: packets(['r1', 'r2'], items), categories, bootstrap: { iterations: 20 } });
+  const on = (categories: string[]) => agreementReport(ratings, { raterIdentity: 'persistent', packetHashes: packets(['r1', 'r2'], items), categories, bootstrap: { iterations: 20 } });
   assert.deepEqual(on(three).categories, three);
   close(on(three).ac1, 0.6013, 4);
   close(on(['no', 'yes']).ac1, 0.4059, 4);
@@ -282,7 +307,7 @@ test('agreementReport: two raters give Cohen kappa, AC1, prevalence and a seeded
   const [a, b] = table(20, 5, 10, 15);
   const items = a.map((_, i) => `i${i}`);
   const ratings = { r1: Object.fromEntries(items.map((id, i) => [id, a[i] as string])), r2: Object.fromEntries(items.map((id, i) => [id, b[i] as string])) };
-  const rep = agreementReport(ratings, { packetHashes: packets(['r1', 'r2'], items), categories: ['no', 'yes'], bootstrap: { iterations: 500, seed: 11 } });
+  const rep = agreementReport(ratings, { raterIdentity: 'persistent', packetHashes: packets(['r1', 'r2'], items), categories: ['no', 'yes'], bootstrap: { iterations: 500, seed: 11 } });
   assert.equal(rep.kappaKind, 'cohen');
   // Two raters: the agreement row is the share of items on which they agree, and the report says which kind it is.
   assert.equal(rep.percentAgreementKind, 'agreeing-share');
@@ -306,9 +331,9 @@ test('agreementReport: two raters give Cohen kappa, AC1, prevalence and a seeded
   //   half-width (1.95996 / 1.07683) · sqrt(0.7·0.3/50 + 3.8415/10000) = 1.82012 · 0.067708 = 0.12324; so [0.5625, 0.8090].
   close(row.percentAgreementWilson.lo, 0.5625, 4);
   close(row.percentAgreementWilson.hi, 0.809, 4);
-  assert.deepEqual(agreementReport(ratings, { packetHashes: packets(['r1', 'r2'], items), categories: ['no', 'yes'], bootstrap: { iterations: 500, seed: 11 } }), rep);
+  assert.deepEqual(agreementReport(ratings, { raterIdentity: 'persistent', packetHashes: packets(['r1', 'r2'], items), categories: ['no', 'yes'], bootstrap: { iterations: 500, seed: 11 } }), rep);
   // From 1,000 resamples the brackets carry their nominal level, 1 − alpha.
-  const levelled = agreementReport(ratings, { packetHashes: packets(['r1', 'r2'], items), categories: ['no', 'yes'], bootstrap: { iterations: 1000, seed: 11 } });
+  const levelled = agreementReport(ratings, { raterIdentity: 'persistent', packetHashes: packets(['r1', 'r2'], items), categories: ['no', 'yes'], bootstrap: { iterations: 1000, seed: 11 } });
   assert.ok(levelled.kappaCI !== 'NA' && levelled.kappaCI.nominalLevel === 0.95 && levelled.ac1CI !== 'NA' && levelled.ac1CI.nominalLevel === 0.95);
   for (const p of levelled.pairwise) assert.ok(p.kappaCI !== 'NA' && p.kappaCI.nominalLevel === 0.95);
 });
@@ -320,7 +345,7 @@ test('agreementReport: two raters give Cohen kappa, AC1, prevalence and a seeded
 test('agreementReport: at high prevalence kappa is undefined on about a third of resamples, so its bracket from 1,000 resamples has no level while AC1 keeps 95% (a hand-worked fixture)', () => {
   const items = Array.from({ length: 20 }, (_, i) => `i${i}`);
   const ratings = { A: Object.fromEntries(items.map((id) => [id, 'ok'])), B: Object.fromEntries(items.map((id, i) => [id, i === 0 ? 'bad' : 'ok'])) };
-  const at = (iterations: number) => agreementReport(ratings, { packetHashes: packets(['A', 'B'], items), categories: ['ok', 'bad'], bootstrap: { iterations, seed: 1 } });
+  const at = (iterations: number) => agreementReport(ratings, { raterIdentity: 'persistent', packetHashes: packets(['A', 'B'], items), categories: ['ok', 'bad'], bootstrap: { iterations, seed: 1 } });
   const rep = at(1000);
   assert.ok(rep.kappaCI !== 'NA' && rep.ac1CI !== 'NA');
   assert.deepEqual([rep.kappaCI.iterations, rep.kappaCI.undefinedResamples, rep.kappaCI.nominalLevel], [1000, 367, 'NA']);
@@ -344,7 +369,7 @@ test('agreementReport with three raters, a hand-worked fixture: the agreement ro
   const items = ['i1', 'i2', 'i3', 'i4'];
   const col = (v: string): Record<string, string> => Object.fromEntries(items.map((id, i) => [id, v[i] as string]));
   const ratings = { r1: col('aaab'), r2: col('aabb'), r3: col('abbb') };
-  const rep = agreementReport(ratings, { packetHashes: packets(['r1', 'r2', 'r3'], items), categories: ['a', 'b'], bootstrap: { iterations: 20 } });
+  const rep = agreementReport(ratings, { raterIdentity: 'persistent', packetHashes: packets(['r1', 'r2', 'r3'], items), categories: ['a', 'b'], bootstrap: { iterations: 20 } });
   assert.equal(rep.kappaKind, 'fleiss');
   assert.equal(rep.percentAgreementKind, 'mean-pairwise');
   close(rep.percentAgreement, 2 / 3, 9);
@@ -366,7 +391,7 @@ test('agreementReport: three or more raters use Fleiss kappa and multi-rater AC1
     const labels = row.flatMap((n, j) => Array.from({ length: n }, () => cats[j] as string));
     labels.forEach((l, r) => ((ratings[`r${String(r).padStart(2, '0')}`] as Record<string, string>)[items[i] as string] = l));
   });
-  const rep = agreementReport(ratings, { packetHashes: packets(Object.keys(ratings), items), categories: cats, bootstrap: { iterations: 200 } });
+  const rep = agreementReport(ratings, { raterIdentity: 'persistent', packetHashes: packets(Object.keys(ratings), items), categories: cats, bootstrap: { iterations: 200 } });
   assert.equal(rep.kappaKind, 'fleiss');
   close(rep.kappa, 0.21, 3);
   assert.equal(rep.pairwise.length, 91);
@@ -382,7 +407,7 @@ test('no pairwise row is a lone kappa: each carries AC1, prevalence and a seeded
   const col = (v: string[]): Record<string, string> => Object.fromEntries(items.map((id, i) => [id, v[i] as string]));
   // A third rater who agrees with the first, so the report has three pairwise rows.
   const ratings = { r1: col(a), r2: col(b), r3: col(a) };
-  const rep = agreementReport(ratings, { packetHashes: packets(['r1', 'r2', 'r3'], items), categories: ['fail', 'pass'], bootstrap: { iterations: 300, seed: 5 } });
+  const rep = agreementReport(ratings, { raterIdentity: 'persistent', packetHashes: packets(['r1', 'r2', 'r3'], items), categories: ['fail', 'pass'], bootstrap: { iterations: 300, seed: 5 } });
   assert.equal(rep.pairwise.length, 3);
   const row = rep.pairwise.find((p) => p.a === 'r1' && p.b === 'r2');
   assert.ok(row !== undefined);
@@ -405,7 +430,7 @@ test('no pairwise row is a lone kappa: each carries AC1, prevalence and a seeded
   assert.equal(same.percentAgreementWilson.hi, 1);
   // Relabelling the categories moves no coefficient and no interval.
   const swap = (r: Record<string, string>): Record<string, string> => Object.fromEntries(Object.entries(r).map(([k, v]) => [k, v === 'pass' ? 'P' : 'F']));
-  const relabelled = agreementReport({ r1: swap(ratings.r1), r2: swap(ratings.r2), r3: swap(ratings.r3) }, { packetHashes: packets(['r1', 'r2', 'r3'], items), categories: ['F', 'P'], bootstrap: { iterations: 300, seed: 5 } });
+  const relabelled = agreementReport({ r1: swap(ratings.r1), r2: swap(ratings.r2), r3: swap(ratings.r3) }, { raterIdentity: 'persistent', packetHashes: packets(['r1', 'r2', 'r3'], items), categories: ['F', 'P'], bootstrap: { iterations: 300, seed: 5 } });
   assert.deepEqual([relabelled.kappa, relabelled.ac1, relabelled.kappaCI, relabelled.ac1CI], [rep.kappa, rep.ac1, rep.kappaCI, rep.ac1CI]);
   assert.deepEqual(relabelled.pairwise.map((p) => [p.kappa, p.ac1, p.kappaCI, p.ac1CI]), rep.pairwise.map((p) => [p.kappa, p.ac1, p.kappaCI, p.ac1CI]));
 });
@@ -415,16 +440,16 @@ test('agreementReport refuses differing packet hashes', () => {
   const ph = packets(['r1', 'r2'], items);
   (ph['r2'] as Record<string, string>)['i2'] = hashOf({ packet: 'i2', view: 'different' });
   assert.throws(
-    () => agreementReport({ r1: { i1: 'a', i2: 'b' }, r2: { i1: 'a', i2: 'a' } }, { packetHashes: ph, categories: ['a', 'b'] }),
+    () => agreementReport({ r1: { i1: 'a', i2: 'b' }, r2: { i1: 'a', i2: 'a' } }, { raterIdentity: 'persistent', packetHashes: ph, categories: ['a', 'b'] }),
     (e: unknown) => e instanceof RefusalError && e.code === 'PACKET_MISMATCH' && e.fields.join() === 'i2',
   );
   const missing = packets(['r1'], items);
-  assert.throws(() => agreementReport({ r1: { i1: 'a', i2: 'b' }, r2: { i1: 'a', i2: 'a' } }, { packetHashes: missing, categories: ['a', 'b'] }), RefusalError);
+  assert.throws(() => agreementReport({ r1: { i1: 'a', i2: 'b' }, r2: { i1: 'a', i2: 'a' } }, { raterIdentity: 'persistent', packetHashes: missing, categories: ['a', 'b'] }), RefusalError);
 });
 
 test('agreementReport refuses raters who rated different items', () => {
   assert.throws(
-    () => agreementReport({ r1: { i1: 'a', i2: 'b' }, r2: { i1: 'a' } }, { packetHashes: packets(['r1', 'r2'], ['i1', 'i2']), categories: ['a', 'b'] }),
+    () => agreementReport({ r1: { i1: 'a', i2: 'b' }, r2: { i1: 'a' } }, { raterIdentity: 'persistent', packetHashes: packets(['r1', 'r2'], ['i1', 'i2']), categories: ['a', 'b'] }),
     (e: unknown) => e instanceof RefusalError && e.code === 'ITEM_SET_MISMATCH',
   );
 });
@@ -436,16 +461,16 @@ test('agreementReport: a caller that omits the packet hashes is refused as a mis
   // No hashes at all is a gap like any other (driftReport refuses it the same way), naming every item.
   for (const packetHashes of [undefined, null, 'abc', {}]) {
     assert.throws(
-      () => agreementReport(ratings, { packetHashes, categories } as never),
+      () => agreementReport(ratings, { packetHashes, categories, raterIdentity: 'persistent' } as never),
       (e: unknown) => e instanceof RefusalError && e.code === 'PACKET_MISMATCH' && e.fields.join(',') === 'i1,i2',
       String(packetHashes),
     );
   }
-  assert.throws(() => agreementReport(ratings, { categories } as never), (e: unknown) => e instanceof RefusalError && e.code === 'PACKET_MISMATCH');
+  assert.throws(() => agreementReport(ratings, { categories, raterIdentity: 'persistent' } as never), (e: unknown) => e instanceof RefusalError && e.code === 'PACKET_MISMATCH');
   // A rater map of another shape names the argument.
   for (const bad of [undefined, null, 'ab', [], { r1: null, r2: { i1: 'x' } }, { r1: { i1: 'yes' }, r2: 'no' }, { r1: [], r2: {} }]) {
     assert.throws(
-      () => agreementReport(bad as never, { packetHashes: packets(['r1', 'r2'], items), categories }),
+      () => agreementReport(bad as never, { raterIdentity: 'persistent', packetHashes: packets(['r1', 'r2'], items), categories }),
       (e: unknown) => e instanceof InputError && e.code === 'INVALID_ARGUMENT' && e.problems.length === 1 && e.problems[0]?.startsWith('agreementReport: ratingsByRater: must map rater -> item -> label') === true,
       JSON.stringify(bad),
     );
@@ -459,7 +484,7 @@ test('agreementReport names the items that are not rated by every rater, and the
   for (const [lacking, odd] of [['rater-a', true], ['rater-c', false]] as const) {
     const ratings = { 'rater-a': odd ? fewer : full, 'rater-b': full, 'rater-c': odd ? full : fewer };
     assert.throws(
-      () => agreementReport(ratings, { packetHashes: packets(['rater-a', 'rater-b', 'rater-c'], items), categories: ['a', 'b'] }),
+      () => agreementReport(ratings, { raterIdentity: 'persistent', packetHashes: packets(['rater-a', 'rater-b', 'rater-c'], items), categories: ['a', 'b'] }),
       (e: unknown) =>
         e instanceof RefusalError &&
         e.code === 'ITEM_SET_MISMATCH' &&
@@ -470,7 +495,7 @@ test('agreementReport names the items that are not rated by every rater, and the
   }
   // Several items and several raters: each item once, sorted, with its own raters.
   assert.throws(
-    () => agreementReport({ r1: { i1: 'a', i2: 'b', i3: 'a' }, r2: { i1: 'a', i3: 'a' }, r3: { i2: 'b', i3: 'a' } }, { packetHashes: packets(['r1', 'r2', 'r3'], ['i1', 'i2', 'i3']), categories: ['a', 'b'] }),
+    () => agreementReport({ r1: { i1: 'a', i2: 'b', i3: 'a' }, r2: { i1: 'a', i3: 'a' }, r3: { i2: 'b', i3: 'a' } }, { raterIdentity: 'persistent', packetHashes: packets(['r1', 'r2', 'r3'], ['i1', 'i2', 'i3']), categories: ['a', 'b'] }),
     (e: unknown) => e instanceof RefusalError && e.fields.join() === 'i1,i2' && e.message === 'ITEM_SET_MISMATCH: raters did not rate the same items: i1 (not rated by r3), i2 (not rated by r2)',
   );
 });

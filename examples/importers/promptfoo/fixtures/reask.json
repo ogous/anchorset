@@ -1,8 +1,8 @@
 {
-  "evalId": "eval-mlx-2026-10-13T17:53:58",
+  "evalId": "eval-NU7-2026-10-30T20:34:00",
   "results": {
     "version": 3,
-    "timestamp": "2026-10-13T17:53:58.577Z",
+    "timestamp": "2026-10-30T20:34:00.710Z",
     "prompts": [
       {
         "id": "d3bcaf71c11c2678899be04d872718325f0916b3b0705e805ee29930663a42e2",
@@ -16,7 +16,7 @@
           "testErrorCount": 0,
           "assertPassCount": 9,
           "assertFailCount": 0,
-          "totalLatencyMs": 8,
+          "totalLatencyMs": 14,
           "tokenUsage": {
             "prompt": 0,
             "completion": 0,
@@ -101,12 +101,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "452c3896-3f9f-495a-a388-dd9f18aa83b9",
+                  "graderRunId": "732c8722-16ac-49a3-bd70-37f44c927965",
                   "callSeq": 2,
-                  "callId": "e9ff9f6f-0db4-49e5-b7d8-9e3b0e573713",
+                  "callId": "ea2c57c8-ebd3-4cfd-8942-56a114fa643b",
                   "promptSha256": "1bf026c1e202b2c6189e42d1cb69482d6b87fc7cc7e67fc19bf9629cefed3327",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -159,7 +159,7 @@
                       {
                         "reason": "truncated",
                         "callSeq": 1,
-                        "callId": "8606d22e-e426-4009-9cc6-e32c141a0de9",
+                        "callId": "e8434e5b-25e1-4962-bb19-ba0e792df442",
                         "httpStatus": 200,
                         "responseId": "msg_fake_0001",
                         "servedModel": "fake-judge-old-served-20260101",
@@ -183,8 +183,8 @@
             }
           ]
         },
-        "id": "a6dd214b-df04-46f7-ad4c-513970cc1404",
-        "latencyMs": 1,
+        "id": "60fc6294-1135-4ea1-bc72-44fde7a23bc8",
+        "latencyMs": 2,
         "namedScores": {},
         "prompt": {
           "raw": "My blender arrived broken. Can I get my money back?",
@@ -342,12 +342,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "452c3896-3f9f-495a-a388-dd9f18aa83b9",
+                  "graderRunId": "732c8722-16ac-49a3-bd70-37f44c927965",
                   "callSeq": 3,
-                  "callId": "28ee6105-da79-4e11-bc20-26d6feab3c8e",
+                  "callId": "e7f99727-9771-4883-85a0-b018777fca18",
                   "promptSha256": "1bf026c1e202b2c6189e42d1cb69482d6b87fc7cc7e67fc19bf9629cefed3327",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -404,8 +404,8 @@
             }
           ]
         },
-        "id": "615c4d3f-f7ae-43f9-944d-c4f3a6ca2388",
-        "latencyMs": 1,
+        "id": "447bd148-ef0d-4b22-8fd5-7292f6386a08",
+        "latencyMs": 3,
         "namedScores": {},
         "prompt": {
           "raw": "My blender arrived broken. Can I get my money back?",
@@ -563,12 +563,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "452c3896-3f9f-495a-a388-dd9f18aa83b9",
+                  "graderRunId": "732c8722-16ac-49a3-bd70-37f44c927965",
                   "callSeq": 4,
-                  "callId": "eaf4c0e5-276f-4d02-bb25-84b26a34669b",
+                  "callId": "4a575db7-3adf-4de6-aab6-799468252d8e",
                   "promptSha256": "1bf026c1e202b2c6189e42d1cb69482d6b87fc7cc7e67fc19bf9629cefed3327",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -625,8 +625,8 @@
             }
           ]
         },
-        "id": "e8788eee-8ab3-4999-a90f-fff4cbbe85f8",
-        "latencyMs": 1,
+        "id": "a33a15c2-0732-4e75-ada8-819ca8f60378",
+        "latencyMs": 2,
         "namedScores": {},
         "prompt": {
           "raw": "My blender arrived broken. Can I get my money back?",
@@ -784,12 +784,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "452c3896-3f9f-495a-a388-dd9f18aa83b9",
+                  "graderRunId": "732c8722-16ac-49a3-bd70-37f44c927965",
                   "callSeq": 6,
-                  "callId": "2e486e1f-b6b7-40d0-95a5-c3b5ac468822",
+                  "callId": "f11a4f67-a451-4048-b272-183b6f4694a7",
                   "promptSha256": "95267c6302f6ae49193b82a8871c297001f9f0b38eeff147c762ed57238f080e",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -842,7 +842,7 @@
                       {
                         "reason": "server-error",
                         "callSeq": 5,
-                        "callId": "39a6bf66-e312-42c6-bf2e-8b53a2649c03",
+                        "callId": "46d4bbb3-0eb1-429e-8e60-8dae1fab4c50",
                         "httpStatus": 529,
                         "detail": "the endpoint answered status 529"
                       }
@@ -854,8 +854,8 @@
             }
           ]
         },
-        "id": "f3bf71b6-3889-4d0a-816c-b581147f72e8",
-        "latencyMs": 1,
+        "id": "cd93e123-2bd1-496f-9591-948aee0ce926",
+        "latencyMs": 2,
         "namedScores": {},
         "prompt": {
           "raw": "I bought shoes 45 days ago and want a refund.",
@@ -1013,12 +1013,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "452c3896-3f9f-495a-a388-dd9f18aa83b9",
+                  "graderRunId": "732c8722-16ac-49a3-bd70-37f44c927965",
                   "callSeq": 7,
-                  "callId": "0af99416-14d2-4f2a-a93c-ae6ebc01f8a3",
+                  "callId": "0fe8dc93-f63c-49b6-a442-e58d916afb65",
                   "promptSha256": "95267c6302f6ae49193b82a8871c297001f9f0b38eeff147c762ed57238f080e",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1075,7 +1075,7 @@
             }
           ]
         },
-        "id": "056b953e-42ec-4f20-b439-aa7057f3d8de",
+        "id": "c0b3e8f1-3a5a-4cf5-bf8c-2116c4e129ec",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -1234,12 +1234,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "452c3896-3f9f-495a-a388-dd9f18aa83b9",
+                  "graderRunId": "732c8722-16ac-49a3-bd70-37f44c927965",
                   "callSeq": 8,
-                  "callId": "737a6ea5-4428-471f-91f1-9a4e0feb4a04",
+                  "callId": "acb89d2f-5559-4513-86ba-7f08995cf6ed",
                   "promptSha256": "95267c6302f6ae49193b82a8871c297001f9f0b38eeff147c762ed57238f080e",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1296,7 +1296,7 @@
             }
           ]
         },
-        "id": "04f33c01-1cdb-43aa-9254-0263db47bf6f",
+        "id": "2ab1cda3-2102-496b-9f8a-3a8503b46e95",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -1455,12 +1455,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "452c3896-3f9f-495a-a388-dd9f18aa83b9",
+                  "graderRunId": "732c8722-16ac-49a3-bd70-37f44c927965",
                   "callSeq": 9,
-                  "callId": "228343d6-9c9a-4471-bbbe-2823aa421215",
+                  "callId": "34706a2d-caf3-4e98-abec-a69b5bea48f3",
                   "promptSha256": "2c52453167233dbd3963774791bd4301aa074c56480e4e22b0d8f060228d0fd2",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1517,7 +1517,7 @@
             }
           ]
         },
-        "id": "f648769c-5ea9-49fc-a755-e38fd55c8120",
+        "id": "92f5abcf-a5c8-4ec2-aa3e-557efe387507",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -1676,12 +1676,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "452c3896-3f9f-495a-a388-dd9f18aa83b9",
+                  "graderRunId": "732c8722-16ac-49a3-bd70-37f44c927965",
                   "callSeq": 10,
-                  "callId": "3adc6836-0146-46ac-b8aa-8a515595c81b",
+                  "callId": "66b3d4ad-9066-4dab-a3f0-5ebea3edf2d3",
                   "promptSha256": "2c52453167233dbd3963774791bd4301aa074c56480e4e22b0d8f060228d0fd2",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1738,7 +1738,7 @@
             }
           ]
         },
-        "id": "d171113e-298e-4ccd-af63-5d29ec3ebebb",
+        "id": "12486c15-cd73-47bd-9ae8-82d5535d493d",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -1897,12 +1897,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "452c3896-3f9f-495a-a388-dd9f18aa83b9",
+                  "graderRunId": "732c8722-16ac-49a3-bd70-37f44c927965",
                   "callSeq": 11,
-                  "callId": "690c423f-73cb-49f3-84ee-b019ce43b957",
+                  "callId": "7f653d7d-f163-47b8-8277-71090cae2817",
                   "promptSha256": "2c52453167233dbd3963774791bd4301aa074c56480e4e22b0d8f060228d0fd2",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1959,8 +1959,8 @@
             }
           ]
         },
-        "id": "588f21d3-37af-4431-99c7-e29f3ae960e1",
-        "latencyMs": 0,
+        "id": "f9dfecce-c010-4445-89d9-a8df9debfe43",
+        "latencyMs": 1,
         "namedScores": {},
         "prompt": {
           "raw": "Please refund my last order.",
@@ -2103,8 +2103,8 @@
           }
         }
       },
-      "durationMs": 2101,
-      "evaluationDurationMs": 2101
+      "durationMs": 2107,
+      "evaluationDurationMs": 2107
     }
   },
   "config": {
@@ -2179,8 +2179,8 @@
     "nodeVersion": "v25.6.1",
     "platform": "darwin",
     "arch": "arm64",
-    "exportedAt": "2026-10-13T17:54:00.707Z",
-    "evaluationCreatedAt": "2026-10-13T17:53:58.577Z"
+    "exportedAt": "2026-10-30T20:34:02.850Z",
+    "evaluationCreatedAt": "2026-10-30T20:34:00.710Z"
   },
   "vars": [
     "case_id",

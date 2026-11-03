@@ -29,8 +29,9 @@ export { EXIT_CODES, gateExitCode, gateRuns, REJUDGE_BOOTSTRAP_DEFAULTS } from '
 export type { AllowedDifference, CaseDiff, CaseStatus, GateRunOptions, GateRunResult, JudgeControl, NewCases } from './regression.ts';
 export type { BootstrapOptions, BootstrapResult, GateState, PercentileInterval, Spread, Stat } from './stats.ts';
 export { agreementReport, DEFAULT_BOOTSTRAP } from './agreement.ts';
-export type { AgreementOptions, AgreementReport, PairAgreement, RaterItems } from './agreement.ts';
+export type { AgreementOptions, AgreementReport, PairAgreement, RaterIdentity, RaterItems } from './agreement.ts';
 export { repeatFlips } from './flips.ts';
+export type { RepeatFlipOptions } from './flips.ts';
 export type { FlipShare, ModalOutput, RepeatBasis, RepeatCase, RepeatFlipReport } from './stability.ts';
 export { driftReport } from './drift.ts';
 export type { DriftClass, DriftOptions, DriftReport, JudgeControlledDelta, LabelDrift } from './drift.ts';

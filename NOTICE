@@ -12,8 +12,9 @@ under CC-BY-4.0; see REUSE.toml for the file-by-file map.
 
 Third-party text under the MIT licence (LICENSES/MIT.txt): examples/importers/inspect/template.txt and
 examples/importers/inspect/instructions.txt are copied from inspect_ai 0.3.275, Copyright (c) 2024 UK AI Security
-Institute; the logs under examples/importers/ record the grading prompts of inspect_ai 0.3.275 and of promptfoo 0.123.1,
-Copyright (c) Promptfoo 2025. REUSE.toml lists each file that holds such a text.
+Institute; the logs under examples/importers/ record the grading prompts of inspect_ai 0.3.275, inspect_ai 0.3.286,
+promptfoo 0.123.1 and promptfoo 0.125.1, Copyright (c) Promptfoo 2025 for the last two. REUSE.toml lists each file that
+holds such a text.
 
 Portions of the source were drafted with AI coding assistants and were
 designed, selected, revised and arranged by the author; see AUTHORSHIP.md.

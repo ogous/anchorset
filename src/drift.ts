@@ -8,6 +8,9 @@ import type { BootstrapOptions, BootstrapResult, PercentileInterval, Stat } from
 
 export type DriftClass = 'counts-stable' | 'threshold-shift' | 'item-shift';
 
+/** True of every pair of files, so it is on every report, in text and as `scope`. Internal: not re-exported from index.ts. */
+export const DRIFT_SCOPE = 'A rating file names no judge, so the tool cannot show that both sets of ratings came from one judge.';
+
 export type DriftOptions = {
   /** The declared, ordered labels. Required: their number enters AC1, so they are never taken from the verdicts that happen to occur. */
   labels: LabelSet;
@@ -64,6 +67,8 @@ export type DriftReport = {
   classification: DriftClass;
   /** What the classification is and is not. Printed beside it in every report. */
   classificationBasis: typeof DRIFT_BASIS;
+  /** What this report cannot show, the same sentence on every report. */
+  scope: typeof DRIFT_SCOPE;
   thresholds: { rateShift: number; overlap: number };
   /**
    * The smallest net change in one label's count (new count minus old count, in either direction) that
@@ -213,6 +218,7 @@ export function driftReport(
     classificationBasis: DRIFT_BASIS,
     thresholds: { rateShift, overlap: ovl },
     rateShiftMinItems: rateShiftMinItems(n, rateShift),
+    scope: DRIFT_SCOPE,
   };
 }
 

@@ -4,7 +4,7 @@ import { InputError, RefusalError } from './errors.ts';
 import { appendAll, findIllFormed, findUnhashable, GAP, hashOf, integerProblem, isSha256Hex, MAX_DRAWS_PER_CASE, NO_JUDGE, validateIdentity } from './identity.ts';
 import type { Gap, NoJudge, RunIdentity } from './identity.ts';
 import { attemptsProblems, extraKeys, finalAttempt, slotProblems } from './scoring.ts';
-import type { Attempt, Case, Draw } from './scoring.ts';
+import type { Attempt, Case, Draw, FailReason } from './scoring.ts';
 
 export const RUN_SCHEMA = 'anchorset.run/v3';
 
@@ -174,12 +174,23 @@ export function caseSetHash(cases: readonly Case[]): string {
 const drawKey = (d: Draw): string => `${d.caseId}#${d.drawIndex}`;
 
 /**
- * Draw keys where the provider rejected a judge call (4xx) on any attempt. A retry that then graded
- * does not clear it: the request changed between attempts, so the recorded judge call shape
- * describes a request the provider refused.
+ * Draw keys where the provider rejected a judge call (4xx). The reason is final, so the attempt is
+ * the slot's last: the recorded judge call shape describes a request the provider refused.
  */
 export function judgeRejected(run: RunArtifact): string[] {
   return run.draws.filter((d) => d.attempts.some((a) => a.kind === 'unmeasured' && a.role === 'judge' && a.reason === 'client-error')).map(drawKey).sort();
+}
+
+/**
+ * The slots of a run where the system gave no answer: the final attempt is `failed` with a rejected request or the
+ * system's own error, each with its reason. An answer cut at its cap is an answer, and is not here. Sorted by draw key.
+ */
+export function systemNoAnswer(run: RunArtifact): { key: string; reason: FailReason }[] {
+  const out = run.draws.flatMap((d) => {
+    const last = d.attempts[d.attempts.length - 1];
+    return last !== undefined && last.kind === 'failed' && last.reason !== 'truncated' ? [{ key: drawKey(d), reason: last.reason }] : [];
+  });
+  return out.sort((x, y) => (x.key < y.key ? -1 : x.key > y.key ? 1 : 0));
 }
 
 /**

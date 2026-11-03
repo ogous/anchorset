@@ -1,12 +1,23 @@
 #!/usr/bin/env bash
 # Regenerates the fixtures of the importers (seventeen good ones and, for each tool, three files the tool wrote in a bad state) from scratch, at zero spend: both tools run against the local fake
-# endpoint, and no provider is reached.
+# endpoint, and no provider is reached. It runs the whole set under the tool versions installed, each of which must be in
+# tested-versions.json. Run it once per version: the versions a matrix walks are the ones that file lists.
 #
-#   ANCHORSET_PROMPTFOO_DIR=<folder holding node_modules/.bin/promptfoo, promptfoo 0.123.1>
-#   ANCHORSET_INSPECT_VENV=<a Python virtual environment with inspect_ai 0.3.275>
+#   ANCHORSET_PROMPTFOO_DIR=<folder holding node_modules/.bin/promptfoo, of a listed version>
+#   ANCHORSET_INSPECT_VENV=<a Python virtual environment with inspect_ai of a listed version>
 #   bash examples/importers/fixtures.sh
 #
-# Optional: FIXTURES_OUT_ROOT (default: this folder) takes the fixtures and FIXTURES.sha256 somewhere else;
+# Where the files go: the first version a tool lists is its reference version, and the whole set is kept for it
+# (<tool>/fixtures, <tool>/bad-fixtures). For any other listed version only the witnesses are kept: the two judges' files, the
+# three bad-state files and, for Inspect, the source log, in the folders its entry names. A whole set is still made and checked for it.
+# The Inspect reference set stands as it was written, before regrade.py wrote a system-log marker: the tests pin it as the file
+# with no marker. So a run under the Inspect reference version must name FIXTURES_OUT_ROOT, and is refused otherwise.
+#
+# One fixture needs the tool's own Anthropic provider: ANCHORSET_INSPECT_PLAIN_VENV names an environment with the same inspect_ai and
+# the anthropic package (inspect_ai 0.3.275 runs on anthropic<2 and fails on 2.3.0; 0.3.286 runs on 2.3.0).
+#
+# Optional: FIXTURES_TOOLS (default: "promptfoo inspect") names the tools to run; "none" only records the hashes again;
+#           FIXTURES_OUT_ROOT (default: this folder) takes the fixtures and FIXTURES.sha256 somewhere else;
 #           FIXTURES_SCRATCH_BASE (default: $TMPDIR or /tmp) is where the scratch folder is made; it must be outside every
 #           git tree. KEEP_SCRATCH=1 keeps the scratch folder.
 #
@@ -16,24 +27,49 @@
 #     `env -i` with a dummy key (where a provider demands one), telemetry, update checks and sharing off, the response
 #     cache off, and every proxy variable pointed at a dead local port, so a request to another host through a client that honours the proxy variables fails;
 #   * every run is made in a scratch folder outside every git tree with RELATIVE output paths, and the results are copied;
+#   * no result holds a path of this machine: promptfoo's config is named through the fixed link /tmp/anchorset-fixtures-pf, and a file that holds one anyway stops the run;
 #   * the grader files are used byte for byte (copies are compared with cmp);
 #   * at the end it records the sha256 of each grader file and of each fixture in FIXTURES.sha256.
-# Exit codes: 0 all twenty-three fixtures made; 2 refused or a step failed; 3 a fixture could not be generated with the installed tools; any other code is a step that failed under `set -e`.
+# Exit codes: 0 every fixture of the tools run was made; 2 refused or a step failed; 3 a fixture could not be generated with the installed tools; any other code is a step that failed under `set -e`.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT_ROOT="${FIXTURES_OUT_ROOT:-$HERE}"
 PORT=18765   # the endpoint's default port (DEFAULT_PORT in fake-endpoint.ts); it is in every call shape, so it is fixed
-PF_VERSION=0.123.1
-IN_VERSION=0.3.275
+TOOLS="${FIXTURES_TOOLS:-promptfoo inspect}"
 die() { echo "fixtures.sh: $*" >&2; exit 2; }
+case " $TOOLS " in *" promptfoo "*) DO_PF=1 ;; *) DO_PF=0 ;; esac
+case " $TOOLS " in *" inspect "*) DO_IN=1 ;; *) DO_IN=0 ;; esac
+for t in $TOOLS; do case "$t" in promptfoo|inspect|none) ;; *) die "FIXTURES_TOOLS names $t; it takes promptfoo, inspect or none" ;; esac; done
 
-: "${ANCHORSET_PROMPTFOO_DIR:?set ANCHORSET_PROMPTFOO_DIR to the folder that holds node_modules/.bin/promptfoo}"
-: "${ANCHORSET_INSPECT_VENV:?set ANCHORSET_INSPECT_VENV to a Python virtual environment with inspect_ai $IN_VERSION}"
-PF_BIN="$ANCHORSET_PROMPTFOO_DIR/node_modules/.bin/promptfoo"
-PY="$ANCHORSET_INSPECT_VENV/bin/python"
-[ -x "$PF_BIN" ] || die "no promptfoo at \$ANCHORSET_PROMPTFOO_DIR/node_modules/.bin/promptfoo"
-[ -x "$PY" ] || die "no python at \$ANCHORSET_INSPECT_VENV/bin/python"
+PF_BIN=""
+PY=""
+if [ "$DO_PF" = 1 ]; then
+  : "${ANCHORSET_PROMPTFOO_DIR:?set ANCHORSET_PROMPTFOO_DIR to the folder that holds node_modules/.bin/promptfoo}"
+  PF_BIN="$ANCHORSET_PROMPTFOO_DIR/node_modules/.bin/promptfoo"
+  [ -x "$PF_BIN" ] || die "no promptfoo at \$ANCHORSET_PROMPTFOO_DIR/node_modules/.bin/promptfoo"
+fi
+if [ "$DO_IN" = 1 ]; then
+  : "${ANCHORSET_INSPECT_VENV:?set ANCHORSET_INSPECT_VENV to a Python virtual environment with a listed inspect_ai}"
+  PY="$ANCHORSET_INSPECT_VENV/bin/python"
+  [ -x "$PY" ] || die "no python at \$ANCHORSET_INSPECT_VENV/bin/python"
+fi
+
+# One field of a listed version's entry, read through the importers' own reader: <tool> <version> <field>. It fails on a version that is not listed.
+entry_field() {
+  node --input-type=module -e '
+    const { loadTestedVersions } = await import(process.argv[1]);
+    const e = loadTestedVersions(process.argv[2]).entries.find((x) => x.version === process.argv[3]);
+    if (e === undefined) process.exit(3);
+    console.log(e[process.argv[4]]);
+  ' "$HERE/shared.ts" "$1" "$2" "$3"
+}
+reference_version() {
+  node --input-type=module -e '
+    const { loadTestedVersions } = await import(process.argv[1]);
+    console.log(loadTestedVersions(process.argv[2]).versions[0]);
+  ' "$HERE/shared.ts" "$1"
+}
 
 # ---- refuse when a provider key (or a provider's credential variable) is set
 keys="$(compgen -e | grep -E '^(ANTHROPIC_[A-Z_]*|OPENAI_[A-Z_]*|AZURE_[A-Z_]*|VERTEX_[A-Z_]*|CLAUDE_CODE_OAUTH_TOKEN|GOOGLE_API_KEY|GEMINI_API_KEY|GOOGLE_APPLICATION_CREDENTIALS|MISTRAL_API_KEY|COHERE_API_KEY|GROQ_API_KEY|XAI_API_KEY|DEEPSEEK_API_KEY|TOGETHER_API_KEY|OPENROUTER_API_KEY|PERPLEXITY_API_KEY|FIREWORKS_API_KEY|REPLICATE_API_TOKEN|HF_TOKEN|HUGGINGFACE_API_KEY|AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_SESSION_TOKEN|AWS_BEARER_TOKEN_BEDROCK)$' || true)"
@@ -50,8 +86,10 @@ node -e 'const [a, b] = process.versions.node.split(".").map(Number); process.ex
 S="$(mktemp -d "${FIXTURES_SCRATCH_BASE:-${TMPDIR:-/tmp}}/anchorset-fixtures.XXXXXX")"
 S="$(cd "$S" && pwd -P)"
 EP_PID=""
+PF_LINK_MADE=0
 cleanup() {
   if [ -n "$EP_PID" ]; then kill "$EP_PID" 2>/dev/null || true; wait "$EP_PID" 2>/dev/null || true; fi
+  if [ "$PF_LINK_MADE" = 1 ]; then rm -f "$PF_ADDRESS"; fi
   if [ "${KEEP_SCRATCH:-0}" != 1 ] && [ -n "${S:-}" ]; then rm -rf "${S:?}"; fi
 }
 trap cleanup EXIT
@@ -66,7 +104,7 @@ TOOL_ENV=(HOME="$S/home" TMPDIR="$S/tmp" LANG=en_US.UTF-8
   DO_NOT_TRACK=1 NO_UPDATE_NOTIFIER=1)
 PF_ENV=(PATH="$NODE_BIN:/usr/bin:/bin" NODE_USE_ENV_PROXY=1 PROMPTFOO_CONFIG_DIR="$S/pfcfg"
   PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 PROMPTFOO_DISABLE_SHARING=1 PROMPTFOO_DISABLE_REMOTE_GENERATION=true)
-PY_ENV=(PATH="$ANCHORSET_INSPECT_VENV/bin:/usr/bin:/bin" PYTHONDONTWRITEBYTECODE=1 PYTHONHASHSEED=0)
+PY_ENV=(PATH="${ANCHORSET_INSPECT_VENV:-}/bin:/usr/bin:/bin" PYTHONDONTWRITEBYTECODE=1 PYTHONHASHSEED=0)
 DUMMY_KEY=dummy-key-for-local-fake-endpoint
 
 # ---- the fake endpoint: started and stopped for each fixture, so every fixture sees response ids from 0001
@@ -89,14 +127,25 @@ expect_requests() { # <name> <n>
   [ "$got" = "$2" ] || die "$1: the endpoint saw $got requests, expected $2"
 }
 
+NOT_MADE=()
 # ---- promptfoo
 P="$HERE/promptfoo"
+if [ "$DO_PF" = 1 ]; then
+# A promptfoo version may write the folder of its config into the result file (config.basePath). The config is named through one
+# fixed link, so that the bytes hold no path of the machine that made them and do not depend on the scratch folder.
+PF_ADDRESS=/tmp/anchorset-fixtures-pf
+ln -sn "$S/pf" "$PF_ADDRESS" 2>/dev/null || die "$PF_ADDRESS exists: another run is making fixtures, or an old one left it; remove it if none is"
+PF_LINK_MADE=1
+# The grader reads the list of tested versions one folder above itself.
+cp "$HERE/tested-versions.json" "$S/tested-versions.json"; cmp -s "$HERE/tested-versions.json" "$S/tested-versions.json" || die "copy of tested-versions.json differs"
 for f in grader-provider.cjs stored-outputs-provider.cjs; do cp "$P/$f" "$S/pf/$f"; cmp -s "$P/$f" "$S/pf/$f" || die "copy of $f differs"; done
 printf '{ "name": "fixtures-work", "private": true, "type": "module" }\n' > "$S/pf/package.json"
 cp "$P/stored.json" "$P/promptfooconfig.yaml" "$S/pf/"
 cp "$P/fixture-inputs/"* "$S/pf/"
 
-[ "$(env -i "${PF_ENV[@]}" "${TOOL_ENV[@]}" "$PF_BIN" --version 2>/dev/null | tail -1)" = "$PF_VERSION" ] || die "promptfoo is not $PF_VERSION"
+PF_VERSION="$(env -i "${PF_ENV[@]}" "${TOOL_ENV[@]}" "$PF_BIN" --version 2>/dev/null | tail -1)"
+PF_FIXTURES="$(entry_field promptfoo "$PF_VERSION" fixtures)" || die "promptfoo $PF_VERSION is not listed in tested-versions.json"
+PF_BAD="$(entry_field promptfoo "$PF_VERSION" badFixtures)"
 
 PF_REQUESTS=9   # the requests the next promptfoo run must make: 9 slots, and the re-asks a fixture rehearses
 pf_run() { # <fixture name> <config> [extra env]
@@ -104,7 +153,7 @@ pf_run() { # <fixture name> <config> [extra env]
   start_ep "pf-$name"
   local rc=0
   (cd "$S/pf" && env -i "${PF_ENV[@]}" "${TOOL_ENV[@]}" ANTHROPIC_API_KEY="$DUMMY_KEY" "$@" \
-    "$PF_BIN" eval -c "$S/pf/$cfg" --repeat 3 --no-cache -j 1 -o "out/$name.json" > "$S/logs/pf-$name.stdout" 2>&1) || rc=$?
+    "$PF_BIN" eval -c "$PF_ADDRESS/$cfg" --repeat 3 --no-cache -j 1 -o "out/$name.json" > "$S/logs/pf-$name.stdout" 2>&1) || rc=$?
   stop_ep
   # 0 = every row passed, 100 = a completed run in which some row failed
   if [ "$rc" != 0 ] && [ "$rc" != 100 ]; then cat "$S/logs/pf-$name.stdout" >&2; die "promptfoo run $name exited $rc"; fi
@@ -134,10 +183,17 @@ PF_REQUESTS=11; pf_run reask reask.yaml
 PF_REQUESTS=11; pf_run reask-new-judge reask-new-judge.yaml
 PF_REQUESTS=10; pf_run bad-reask-exhausted reask-exhausted.yaml
 PF_REQUESTS=9
+fi
 
 # ---- inspect_ai
 I="$HERE/inspect"
-[ "$(env -i "${PY_ENV[@]}" "${TOOL_ENV[@]}" "$PY" -c 'import importlib.metadata as m; print(m.version("inspect_ai"))')" = "$IN_VERSION" ] || die "inspect_ai is not $IN_VERSION"
+if [ "$DO_IN" = 1 ]; then
+IN_VERSION="$(env -i "${PY_ENV[@]}" "${TOOL_ENV[@]}" "$PY" -c 'import importlib.metadata as m; print(m.version("inspect_ai"))')"
+IN_FIXTURES="$(entry_field inspect_ai "$IN_VERSION" fixtures)" || die "inspect_ai $IN_VERSION is not listed in tested-versions.json"
+IN_BAD="$(entry_field inspect_ai "$IN_VERSION" badFixtures)"
+if [ "$IN_VERSION" = "$(reference_version inspect_ai)" ] && [ "$OUT_ROOT" = "$HERE" ]; then
+  die "inspect_ai $IN_VERSION is the reference version, whose committed set stands as the file with no system-log marker; name FIXTURES_OUT_ROOT to run it"
+fi
 py() { (cd "$S/in" && env -i "${PY_ENV[@]}" "${TOOL_ENV[@]}" ANTHROPIC_API_KEY="$DUMMY_KEY" "$@"); }
 one_log() { # <dir> : the one log file in it
   local n; n="$(ls "$1"/*.json 2>/dev/null | wc -l | tr -d ' ')"
@@ -193,7 +249,6 @@ RG_REASKS=0
 
 # the plain log needs Inspect's own Anthropic provider, which needs the `anthropic` package. It comes from a second,
 # separate environment named by ANCHORSET_INSPECT_PLAIN_VENV, used for this one fixture only.
-NOT_MADE=()
 PLAIN_PY="${ANCHORSET_INSPECT_PLAIN_VENV:-}/bin/python"
 if [ -n "${ANCHORSET_INSPECT_PLAIN_VENV:-}" ] && [ -x "$PLAIN_PY" ]; then
   PLAIN_ENV=(PATH="$ANCHORSET_INSPECT_PLAIN_VENV/bin:/usr/bin:/bin" PYTHONDONTWRITEBYTECODE=1 PYTHONHASHSEED=0)
@@ -209,30 +264,48 @@ else
   echo "fixtures.sh: inspect/fixtures/plain.json NOT MADE: set ANCHORSET_INSPECT_PLAIN_VENV to an environment with inspect_ai $IN_VERSION and the anthropic package" >&2
   NOT_MADE+=(inspect/fixtures/plain.json)
 fi
+fi
+
+# ---- no file made here may hold a path of this machine
+if [ -d "$S/stage" ]; then
+  while IFS= read -r f; do
+    if grep -q -F -e "$S" -e "$HOME/" -e '/private''/tmp' -e '/Use''rs/' "$f"; then die "$(basename "$f") holds a path of this machine"; fi
+  done < <(find "$S/stage" -type f)
+fi
 
 # ---- place the fixtures, then record the hashes
-FIXTURES=(promptfoo/fixtures/old-judge.json promptfoo/fixtures/new-judge.json promptfoo/fixtures/plain.json promptfoo/fixtures/short-outputs.json promptfoo/fixtures/thinking.json promptfoo/fixtures/fenced.json
-  promptfoo/fixtures/reask.json promptfoo/fixtures/reask-new-judge.json
-  inspect/fixtures/old-judge.json inspect/fixtures/new-judge.json inspect/fixtures/plain.json inspect/fixtures/long-reply.json
-  inspect/fixtures/source.json inspect/fixtures/short-targets.json inspect/fixtures/thinking.json
-  inspect/fixtures/reask.json inspect/fixtures/reask-new-judge.json
-  promptfoo/bad-fixtures/truncated.json promptfoo/bad-fixtures/no-verdict.json promptfoo/bad-fixtures/reask-exhausted.json
-  inspect/bad-fixtures/truncated.json inspect/bad-fixtures/no-verdict.json inspect/bad-fixtures/reask-exhausted.json)
-mkdir -p "${OUT_ROOT:?}/promptfoo/fixtures" "${OUT_ROOT:?}/inspect/fixtures" "${OUT_ROOT:?}/promptfoo/bad-fixtures" "${OUT_ROOT:?}/inspect/bad-fixtures"
-made=()
-for f in "${FIXTURES[@]}"; do
-  tool="${f%%/*}"; name="${f##*/}"
-  case "$f" in */bad-fixtures/*) name="bad-$name" ;; esac   # staged as bad-<name>, placed as <tool>/bad-fixtures/<name>
-  rm -f "${OUT_ROOT:?}/${f:?}"
-  if [ -f "$S/stage/$tool/$name" ]; then cp "$S/stage/$tool/$name" "$OUT_ROOT/$f"; made+=("$f"); fi
-done
+# The whole set is staged under <tool>/<name>, a bad-state file as <tool>/bad-<name>. Each staged file is placed under the folder
+# the version's entry names: for a version other than the reference, only the witnesses are kept.
+WHOLE_GOOD_PF=(old-judge new-judge plain short-outputs thinking fenced reask reask-new-judge)
+WHOLE_GOOD_IN=(old-judge new-judge plain long-reply source short-targets thinking reask reask-new-judge)
+BAD=(truncated no-verdict reask-exhausted)
+place_tool() { # <tool folder> <fixtures folder> <bad folder> <good names...>
+  local tool=$1 good=$2 bad=$3; shift 3
+  local names=("$@")
+  # Beyond the reference version: the two judges' files and, for Inspect, the system log they were graded from.
+  case "$good" in */by-version/*) names=(old-judge new-judge); if [ "$tool" = inspect ]; then names+=(source); fi ;; esac
+  mkdir -p "${OUT_ROOT:?}/$good" "${OUT_ROOT:?}/$bad"
+  local n
+  for n in "${names[@]}"; do
+    rm -f "${OUT_ROOT:?}/${good:?}/$n.json"
+    if [ -f "$S/stage/$tool/$n.json" ]; then cp "$S/stage/$tool/$n.json" "$OUT_ROOT/$good/$n.json"; made=$((made + 1)); fi
+  done
+  for n in "${BAD[@]}"; do
+    rm -f "${OUT_ROOT:?}/${bad:?}/$n.json"
+    if [ -f "$S/stage/$tool/bad-$n.json" ]; then cp "$S/stage/$tool/bad-$n.json" "$OUT_ROOT/$bad/$n.json"; made=$((made + 1)); fi
+  done
+}
+made=0
+if [ "$DO_PF" = 1 ]; then place_tool promptfoo "$PF_FIXTURES" "$PF_BAD" "${WHOLE_GOOD_PF[@]}"; fi
+if [ "$DO_IN" = 1 ]; then place_tool inspect "$IN_FIXTURES" "$IN_BAD" "${WHOLE_GOOD_IN[@]}"; fi
 sha() { if command -v sha256sum >/dev/null 2>&1; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
 {
-  # the grader files and the inputs they ran with: paths relative to examples/importers
+  # the grader files and the inputs: paths relative to examples/importers. The Inspect reference set was written by an earlier
+  # regrade.py (examples/importers/README.md); these are the files as they are now.
   (cd "$HERE" && sha promptfoo/grader-provider.cjs inspect/recording_grader.py promptfoo/stored-outputs-provider.cjs inspect/regrade.py \
-    inspect/fixture_inputs.py inspect/template.txt inspect/instructions.txt fake-endpoint.ts)
-  # the fixtures: paths relative to the output root
-  (cd "$OUT_ROOT" && sha "${made[@]}")
+    inspect/fixture_inputs.py inspect/template.txt inspect/instructions.txt fake-endpoint.ts tested-versions.json)
+  # every fixture under the output root: paths relative to it, sorted by byte
+  (cd "$OUT_ROOT" && for t in promptfoo inspect; do if [ -d "$t" ]; then find "$t" -type f -name '*.json' \( -path '*/fixtures/*' -o -path '*/bad-fixtures/*' -o -path '*/by-version/*' \); fi; done | LC_ALL=C sort | while IFS= read -r f; do sha "$f"; done)
 } > "$OUT_ROOT/FIXTURES.sha256"
-echo "made ${#made[@]} of ${#FIXTURES[@]} fixtures; hashes in $OUT_ROOT/FIXTURES.sha256"
+echo "made $made fixtures; hashes in $OUT_ROOT/FIXTURES.sha256"
 if [ "${#NOT_MADE[@]}" -gt 0 ]; then echo "NOT MADE: ${NOT_MADE[*]}" >&2; exit 3; fi

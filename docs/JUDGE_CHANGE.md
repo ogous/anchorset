@@ -305,7 +305,8 @@ A refusal prints `REFUSED`, a code, the fields concerned and a sentence, and no 
 - `UNSUPPORTED_DESIGN` → the cut must be a label of your bar, and the class must fit the limits below.
 - `PACKET_MISMATCH` → the judges were not shown the same thing on the draws listed, or a run file does not say
   what was shown. Grade again so that both see the same packet and it is recorded.
-- `ITEM_SET_MISMATCH` or `INCOMPLETE_RUN` → a draw is missing, or has no label, under one judge. Grade it again.
+- `ITEM_SET_MISMATCH` or `INCOMPLETE_RUN` → a draw is missing, or has no label, under one judge, in any class of the
+  file, measured or not. Grade it again.
   Or a reference file does not cover exactly the scored cases, or a file of draws you supplied does not fit them.
 - `invalid input (INVALID_PLAN)` → each line names a key of the plan and what it must be.
 

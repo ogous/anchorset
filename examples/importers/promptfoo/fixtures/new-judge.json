@@ -1,8 +1,8 @@
 {
-  "evalId": "eval-EkA-2026-10-13T17:53:50",
+  "evalId": "eval-DOE-2026-10-30T20:33:51",
   "results": {
     "version": 3,
-    "timestamp": "2026-10-13T17:53:50.967Z",
+    "timestamp": "2026-10-30T20:33:51.068Z",
     "prompts": [
       {
         "id": "d3bcaf71c11c2678899be04d872718325f0916b3b0705e805ee29930663a42e2",
@@ -16,7 +16,7 @@
           "testErrorCount": 0,
           "assertPassCount": 6,
           "assertFailCount": 3,
-          "totalLatencyMs": 3,
+          "totalLatencyMs": 12,
           "tokenUsage": {
             "prompt": 0,
             "completion": 0,
@@ -101,12 +101,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "de061522-6ce7-4aee-bf3d-677a43161815",
+                  "graderRunId": "a6bf8d1c-2af7-4a9e-98b7-c54cda78f650",
                   "callSeq": 1,
-                  "callId": "c5646ff3-9b30-49ab-833e-2ddae70a49bd",
+                  "callId": "2028950a-136b-4a0a-b5d9-e7c0829c8874",
                   "promptSha256": "37e52f125aed1b1477b02e8082d9f55645552ef91d317a38cac0b59f355f85f3",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -163,8 +163,8 @@
             }
           ]
         },
-        "id": "ccc5c80a-0d9a-4d8a-b55a-deb73a025d1d",
-        "latencyMs": 1,
+        "id": "905846cc-6fbe-4970-aea3-8055465bb06e",
+        "latencyMs": 2,
         "namedScores": {},
         "prompt": {
           "raw": "My blender arrived broken. Can I get my money back?",
@@ -322,12 +322,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "de061522-6ce7-4aee-bf3d-677a43161815",
+                  "graderRunId": "a6bf8d1c-2af7-4a9e-98b7-c54cda78f650",
                   "callSeq": 2,
-                  "callId": "4e792456-a734-4a73-95dd-ed59f11b192d",
+                  "callId": "6266fc7d-b715-4357-b507-2ea759fb3817",
                   "promptSha256": "37e52f125aed1b1477b02e8082d9f55645552ef91d317a38cac0b59f355f85f3",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -384,8 +384,8 @@
             }
           ]
         },
-        "id": "a9ac0584-9b79-4d62-a22c-ba829b820522",
-        "latencyMs": 2,
+        "id": "53eb6eda-866f-42f4-8e36-1536361e4faa",
+        "latencyMs": 3,
         "namedScores": {},
         "prompt": {
           "raw": "My blender arrived broken. Can I get my money back?",
@@ -543,12 +543,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "de061522-6ce7-4aee-bf3d-677a43161815",
+                  "graderRunId": "a6bf8d1c-2af7-4a9e-98b7-c54cda78f650",
                   "callSeq": 3,
-                  "callId": "b130869f-db7a-431b-b0d5-975d791457f5",
+                  "callId": "f0c93818-e2f7-4afd-a9a7-9eadd0ee20c2",
                   "promptSha256": "37e52f125aed1b1477b02e8082d9f55645552ef91d317a38cac0b59f355f85f3",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -605,8 +605,8 @@
             }
           ]
         },
-        "id": "77285493-c56b-4d04-89fd-5f89619d388a",
-        "latencyMs": 0,
+        "id": "1881cb30-f9cc-421b-85c9-4fddba766c24",
+        "latencyMs": 1,
         "namedScores": {},
         "prompt": {
           "raw": "My blender arrived broken. Can I get my money back?",
@@ -764,12 +764,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "de061522-6ce7-4aee-bf3d-677a43161815",
+                  "graderRunId": "a6bf8d1c-2af7-4a9e-98b7-c54cda78f650",
                   "callSeq": 4,
-                  "callId": "50c1788a-22b0-451c-ae40-b02975376cf1",
+                  "callId": "90e5a237-7b21-4af4-9259-ce22f65a3343",
                   "promptSha256": "2437e704713d1141a6e4746ff746a9fa6332d3aefd0660ce01c6c727ce08f8b7",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -826,8 +826,8 @@
             }
           ]
         },
-        "id": "fc780548-f874-40a9-9474-9bf588390bda",
-        "latencyMs": 0,
+        "id": "511969a7-ed0d-4681-9453-86c896e11e4e",
+        "latencyMs": 1,
         "namedScores": {},
         "prompt": {
           "raw": "I bought shoes 45 days ago and want a refund.",
@@ -985,12 +985,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "de061522-6ce7-4aee-bf3d-677a43161815",
+                  "graderRunId": "a6bf8d1c-2af7-4a9e-98b7-c54cda78f650",
                   "callSeq": 5,
-                  "callId": "a30bb354-6819-49a4-a83f-6de207c51f78",
+                  "callId": "93ab91a5-5c56-416e-b633-8c0f616f88ed",
                   "promptSha256": "2437e704713d1141a6e4746ff746a9fa6332d3aefd0660ce01c6c727ce08f8b7",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1047,8 +1047,8 @@
             }
           ]
         },
-        "id": "553d02bd-e5b5-4f41-8b65-4234cf2b1e81",
-        "latencyMs": 0,
+        "id": "08593bd1-156d-4133-bf75-a977b11cead2",
+        "latencyMs": 1,
         "namedScores": {},
         "prompt": {
           "raw": "I bought shoes 45 days ago and want a refund.",
@@ -1206,12 +1206,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "de061522-6ce7-4aee-bf3d-677a43161815",
+                  "graderRunId": "a6bf8d1c-2af7-4a9e-98b7-c54cda78f650",
                   "callSeq": 6,
-                  "callId": "b3c6e506-2fb0-45d9-9dfb-128343553125",
+                  "callId": "14e80b2d-80e5-43b0-bd51-6f39721dfabc",
                   "promptSha256": "2437e704713d1141a6e4746ff746a9fa6332d3aefd0660ce01c6c727ce08f8b7",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1268,8 +1268,8 @@
             }
           ]
         },
-        "id": "ce762520-215f-472f-8fbc-bd1addfc9c63",
-        "latencyMs": 0,
+        "id": "982716eb-d615-4470-a309-92d2eccb2407",
+        "latencyMs": 1,
         "namedScores": {},
         "prompt": {
           "raw": "I bought shoes 45 days ago and want a refund.",
@@ -1428,12 +1428,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "de061522-6ce7-4aee-bf3d-677a43161815",
+                  "graderRunId": "a6bf8d1c-2af7-4a9e-98b7-c54cda78f650",
                   "callSeq": 7,
-                  "callId": "7923a1fe-c827-4a2b-997b-4079790ad102",
+                  "callId": "fadb8b6e-7f17-41b8-a5b6-5747834875da",
                   "promptSha256": "2c52453167233dbd3963774791bd4301aa074c56480e4e22b0d8f060228d0fd2",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1490,8 +1490,8 @@
             }
           ]
         },
-        "id": "79af30e9-4bee-4aff-81ba-41ce9550a31b",
-        "latencyMs": 0,
+        "id": "733f98a9-9ecd-468f-86df-821a98707787",
+        "latencyMs": 1,
         "namedScores": {},
         "prompt": {
           "raw": "Please refund my last order.",
@@ -1650,12 +1650,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "de061522-6ce7-4aee-bf3d-677a43161815",
+                  "graderRunId": "a6bf8d1c-2af7-4a9e-98b7-c54cda78f650",
                   "callSeq": 8,
-                  "callId": "bc5155c1-9016-442d-90f4-70b620e0e6ef",
+                  "callId": "7a50a727-2125-49c2-b8ab-44b09ca38144",
                   "promptSha256": "2c52453167233dbd3963774791bd4301aa074c56480e4e22b0d8f060228d0fd2",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1712,8 +1712,8 @@
             }
           ]
         },
-        "id": "b44c8c86-344a-4214-9e5b-3dc30a84ed9c",
-        "latencyMs": 0,
+        "id": "9710697a-99a6-4108-98de-1ed41c121ca6",
+        "latencyMs": 1,
         "namedScores": {},
         "prompt": {
           "raw": "Please refund my last order.",
@@ -1872,12 +1872,12 @@
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "c7fd3073564245724fa10201fd21e6913f55cf22876ac233c7376aa7e72c1621",
+                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "de061522-6ce7-4aee-bf3d-677a43161815",
+                  "graderRunId": "a6bf8d1c-2af7-4a9e-98b7-c54cda78f650",
                   "callSeq": 9,
-                  "callId": "f4c6bcef-c164-4e8c-ab47-ba6d1b3510f9",
+                  "callId": "d7c4b215-1603-4b4a-b1f1-0f23535083e7",
                   "promptSha256": "2c52453167233dbd3963774791bd4301aa074c56480e4e22b0d8f060228d0fd2",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1934,8 +1934,8 @@
             }
           ]
         },
-        "id": "5be6aac1-e860-4316-b495-317325cc5b6f",
-        "latencyMs": 0,
+        "id": "eb42a2db-7326-4b7d-8e47-a4dfefa828fd",
+        "latencyMs": 1,
         "namedScores": {},
         "prompt": {
           "raw": "Please refund my last order.",
@@ -2078,8 +2078,8 @@
           }
         }
       },
-      "durationMs": 74,
-      "evaluationDurationMs": 74
+      "durationMs": 100,
+      "evaluationDurationMs": 100
     }
   },
   "config": {
@@ -2149,8 +2149,8 @@
     "nodeVersion": "v25.6.1",
     "platform": "darwin",
     "arch": "arm64",
-    "exportedAt": "2026-10-13T17:53:51.063Z",
-    "evaluationCreatedAt": "2026-10-13T17:53:50.967Z"
+    "exportedAt": "2026-10-30T20:33:51.197Z",
+    "evaluationCreatedAt": "2026-10-30T20:33:51.068Z"
   },
   "vars": [
     "case_id",

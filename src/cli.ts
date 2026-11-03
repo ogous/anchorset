@@ -2,8 +2,8 @@
 import { readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { agreementReport, DEFAULT_BOOTSTRAP } from './agreement.ts';
-import type { AgreementReport } from './agreement.ts';
+import { agreementReport, DEFAULT_BOOTSTRAP, RATER_IDENTITIES } from './agreement.ts';
+import type { AgreementReport, RaterIdentity } from './agreement.ts';
 import { parseRunArtifact } from './artifact.ts';
 import { noLevelNote, resampleBracketWording, resamplesText, suppliedPercentilesWording } from './stats.ts';
 import type { BootstrapOptions, PercentileInterval } from './stats.ts';
@@ -20,7 +20,7 @@ import type { IdentityField } from './identity.ts';
 import { appendRecord, checkLedgerFile, makeGateRecord, makeJudgeChangeRecord, makeRatingsRecord } from './ledger.ts';
 import { EXIT_CODES, gateExitCode, gateRuns, REJUDGE_BOOTSTRAP_DEFAULTS } from './regression.ts';
 import { extraKeys, finalAttempt, incompleteDetail } from './scoring.ts';
-import { repeatFlips } from './flips.ts';
+import { repeatFlips, STORED_OUTPUTS_DECLARED } from './flips.ts';
 import { unknownOutputHashes } from './stability.ts';
 import type { FlipShare, RepeatFlipReport } from './stability.ts';
 import type { GateRunResult, JudgeControl } from './regression.ts';
@@ -42,18 +42,22 @@ const USAGE_GATE = `  anchorset gate --baseline <run.json> --candidate <run.json
       recorded too.`;
 const USAGE_AGREE = `  anchorset agree --ratings <file.json> [--ledger <path>] [--json]
       Agreement between raters who were shown the same packets: kappa with Gwet's AC1, prevalence
-      and a seeded bootstrap interval for each, overall and for every pair. The seed is the file's.
-      A measurement: it never exits 1.`;
+      and a seeded bootstrap interval for each, overall and, where the file says its names are persistent
+      raters, for every pair. The seed is the file's. A measurement: it never exits 1.`;
 const USAGE_DRIFT = `  anchorset drift --old <file.json> --new <file.json> --flag <label,...>
                   [--bootstrap-seed <uint32>] [--ledger <path>] [--json]
       One judge's verdicts on the same anchor items, before and after. Both files must carry a
-      packet hash for every item, and the two must be equal. A measurement: it never exits 1.`;
+      packet hash for every item, and the two must be equal. A rating file names no judge, so that
+      both came from one judge is not shown. A measurement: it never exits 1.`;
 const USAGE_LEDGER_NOTE = `      --ledger (agree, drift): appends one record of the report: the sha256 of every file read,
       the seed, and the report itself.`;
-const USAGE_FLIPS = `  anchorset flips --run <run.json> [--bootstrap-seed <uint32>] [--json]
+const USAGE_FLIPS = `  anchorset flips --run <run.json> [--stored-outputs system-side-not-compared] [--bootstrap-seed <uint32>] [--json]
       Label flips among the repeat draws of one run. Cases whose draws graded one stored output
       (the grader's variation alone) and cases whose draws hold different outputs (system and
-      grader variation mixed) are reported apart and never pooled. A measurement: it never exits 1.`;
+      grader variation mixed) are reported apart and never pooled. A measurement: it never exits 1.
+      --stored-outputs: says the graded texts are stored ones whose system stop nobody observed. Needs recorded
+      packets, a known judge and rubric, one output in each case, and at least one unknown stop. It is not
+      recorded in any hash.`;
 const USAGE_JUDGE_CHANGE = `  anchorset judge-change --plan <plan.json> --bar <bar.json> --inputs <dir> [--ledger <path>] [--json]
       Two judges graded the same stored outputs; reports what changed in the labels. <dir> must hold
       only the files the plan names by sha256, and may also hold the plan, the bar and the --ledger file,
@@ -447,11 +451,11 @@ const shares = (p: Record<string, number>): string => Object.entries(p).map(([k,
 const wilsonText = (w: { lo: number; hi: number }): string => `(Wilson 95% [${fmt(w.lo)}, ${fmt(w.hi)}])`;
 
 /** What the brackets of an agreement or drift report are: said once, under the numbers, with the seed. */
-function bracketsLine(b: BootstrapOptions, categories: number, fixed: string, printed: readonly (PercentileInterval | 'NA')[]): string {
+function bracketsLine(b: BootstrapOptions, categories: number, fixed: string, printed: readonly (PercentileInterval | 'NA')[], limit = ''): string {
   // The level is decided per bracket, on the resamples its statistic was defined on, so the line says which rows it does not cover.
   const marked = printed.filter((ci) => ci !== 'NA' && noLevelNote(ci) !== '').length;
   const rows = marked === 0 ? '' : `; ${marked} of the ${printed.length} brackets above ${marked === 1 ? 'is' : 'are'} marked "no level" and ${marked === 1 ? 'is' : 'are'} not such an interval: the statistic was undefined on too many resamples`;
-  return `brackets: ${resampleBracketWording('items', fixed, b)}${rows}; ${resamplesText(b.iterations)}, seed ${b.seed}, ${categories} categories; it says nothing about another draw of a judge`;
+  return `brackets: ${resampleBracketWording('items', fixed, b)}${rows}; ${resamplesText(b.iterations)}, seed ${b.seed}, ${categories} categories; it says nothing about another draw of a judge${limit}`;
 }
 
 /** Whether a value of the judge-change report is one of its withheld markers, not a number or "NA". */
@@ -460,19 +464,43 @@ const isWithheld = (x: unknown): x is Withheld => typeof x === 'object' && x !==
 /** The record of a report in the ledger, as one line: where it went and what it hashes to. */
 const traceLine = (at: { line: number; recordHash: string }, resultHash: string): string => `ledger: line ${at.line} · record ${at.recordHash} · result ${resultHash}`;
 
+/** The words of a report whose names are not persistent raters: nothing here may read as a comparison of raters. */
+const NOT_RATERS = {
+  positional: {
+    header: (n: number) => `${n} rating positions per item, no rater identity`,
+    among: 'among positions',
+    behind: 'the raters behind the positions are',
+  },
+  UNKNOWN: {
+    header: (n: number) => `${n} names per item, and the names are unknown: the file does not say who or what they stand for`,
+    among: 'among unknown names',
+    behind: 'whoever rated under these names is',
+  },
+} as const;
+
 function printAgreement(io: Io, r: AgreementReport): void {
-  io.out(`raters ${r.raters.join(', ')} · items ${r.itemCount} · packet hashes equal for every item, as the file states`);
+  const words = r.raterIdentity === 'persistent' ? undefined : NOT_RATERS[r.raterIdentity];
+  io.out(`${words === undefined ? `raters ${r.raters.join(', ')}` : words.header(r.raters.length)} · items ${r.itemCount} · packet hashes equal for every item, as the file states`);
   io.out(`${pad(`${r.kappaKind} kappa`, 17)}${fmt(r.kappa)} ${bracket(r.kappaCI)}`);
   io.out(`gwet AC1         ${fmt(r.ac1)} ${bracket(r.ac1CI)}`);
-  // With three or more raters this is Fleiss' P-bar, the mean share of agreeing pairs of raters, not the share of items on which all agree.
-  io.out(r.percentAgreementKind === 'mean-pairwise' ? `mean pairwise agreement (Fleiss P̄)  ${fmt(r.percentAgreement)}  (not the share of items on which every rater agrees)` : `agreement        ${fmt(r.percentAgreement)}`);
+  // With three or more persistent raters this is Fleiss' P-bar, the mean share of agreeing pairs of raters, not the share of items on which all agree.
+  if (words !== undefined) io.out(`mean pairwise agreement ${words.among} (Fleiss P̄)  ${fmt(r.percentAgreement)}  (not the share of items on which all of them agree)`);
+  else io.out(r.percentAgreementKind === 'mean-pairwise' ? `mean pairwise agreement (Fleiss P̄)  ${fmt(r.percentAgreement)}  (not the share of items on which every rater agrees)` : `agreement        ${fmt(r.percentAgreement)}`);
   io.out(`prevalence       ${shares(r.prevalence)}`);
   for (const p of r.pairwise) {
     io.out(`  ${p.a} vs ${p.b}: kappa ${fmt(p.kappa)} ${bracket(p.kappaCI)} · AC1 ${fmt(p.ac1)} ${bracket(p.ac1CI)} · agreement ${fmt(p.percentAgreement)} ${wilsonText(p.percentAgreementWilson)}`);
     io.out(`    prevalence ${shares(p.prevalence)}  (the two raters pooled)`);
     io.out(`    ${p.a}: ${shares(p.marginals.a)}  ·  ${p.b}: ${shares(p.marginals.b)}`);
   }
-  io.out(bracketsLine(r.bootstrap, r.categories.length, 'the raters and their labels', [r.kappaCI, r.ac1CI, ...r.pairwise.flatMap((p) => [p.kappaCI, p.ac1CI])]));
+  if (r.identityNote !== undefined) io.out(r.identityNote);
+  io.out(bracketsLine(
+    r.bootstrap,
+    r.categories.length,
+    words === undefined ? 'the raters and their labels' : 'the labels',
+    [r.kappaCI, r.ac1CI, ...r.pairwise.flatMap((p) => [p.kappaCI, p.ac1CI])],
+    words === undefined ? '' : `; ${words.behind} resampled only with their items and may recur across items, so the brackets may be too narrow or too wide`,
+  ));
+  io.out(r.scope);
 }
 
 function cmdAgree(argv: readonly string[], io: Io): number {
@@ -491,6 +519,8 @@ function cmdAgree(argv: readonly string[], io: Io): number {
   appendAll(problems, extraKeys(file, RATINGS_KEYS, 'ratings'));
   if (!isNestedStringMap(file['ratings'])) problems.push('ratings: must map rater -> item -> label');
   if (!isNestedStringMap(file['packetHashes'])) problems.push('packetHashes: must map rater -> item -> sha256');
+  // Required, with no default: a default would state, for the file, that its names are raters.
+  if (!RATER_IDENTITIES.includes(file['raterIdentity'])) problems.push('raterIdentity: required: "persistent", "positional" or "UNKNOWN"');
   // Required: the number of categories enters AC1, so two files with the same ratings and different scales differ, and none is guessed.
   if (file['categories'] === undefined) problems.push('categories: required: the declared scale as a string array, every category listed whether or not it was used');
   else if (!isStringArray(file['categories'])) problems.push('categories: must be a string array');
@@ -509,6 +539,7 @@ function cmdAgree(argv: readonly string[], io: Io): number {
     ...agreementReport(file['ratings'] as Record<string, Record<string, string>>, {
       packetHashes: file['packetHashes'] as Record<string, Record<string, string>>,
       categories: file['categories'] as string[],
+      raterIdentity: file['raterIdentity'] as RaterIdentity,
       ...(boot === undefined ? {} : { bootstrap: boot as Partial<BootstrapOptions> }),
     }),
   };
@@ -532,7 +563,7 @@ function cmdAgree(argv: readonly string[], io: Io): number {
 type VerdictFile = { labels: string[]; verdicts: Record<string, string>; packetHashes?: Record<string, string> };
 
 /** The top-level keys of a ratings file and of an anchor file (docs/RATINGS_FORMAT.md). Any other is invalid input. */
-const RATINGS_KEYS = ['schema', 'categories', 'ratings', 'packetHashes', 'bootstrap'] as const;
+const RATINGS_KEYS = ['schema', 'raterIdentity', 'categories', 'ratings', 'packetHashes', 'bootstrap'] as const;
 const ANCHOR_KEYS = ['schema', 'labels', 'verdicts', 'packetHashes'] as const;
 
 function parseVerdictFile(x: unknown, name: string): VerdictFile {
@@ -573,6 +604,7 @@ function printDrift(io: Io, r: DriftReport): void {
   // The class reads net counts and the flagged sets, so moves that cancel leave it as it was: the changed-label count beside it shows them.
   const changed = r.transition.counts.reduce((sum, row, i) => sum + row.reduce((s, n, j) => (i === j ? s : s + n), 0), 0);
   io.out(`classification   ${r.classification} · ${changed} of ${r.itemCount} items changed label  (${r.classificationBasis})`);
+  io.out(r.scope);
 }
 
 function cmdDrift(argv: readonly string[], io: Io): number {
@@ -623,6 +655,8 @@ const FLIPS_TABLE_MAX = 30;
 
 function printFlips(io: Io, r: RepeatFlipReport, grader: string, packets: string): void {
   const n = r.drawsPerCase;
+  const storedNote = r.notCompared.fields.length === 0 ? '' : `stored outputs, declared by --stored-outputs: the system stop is unknown on ${r.notCompared.unknownStopDraws} of ${r.notCompared.draws} draws. These shares hold for the stored texts as they stand, a cut-off answer included, and claim nothing about what produced them.`;
+  if (storedNote !== '') io.out(storedNote);
   io.out('repeat draws of one run: a measurement. It has no verdict and never exits 1.');
   io.out(`${r.caseCount} cases · ${n} draws per case · grader: ${grader} · packets: ${packets}`);
   io.out(`a case is flipped when its ${n} draws did not all get the same label. Each share below is a share of cases with at least one disagreeing draw among ${n}: it rises with the number of draws, and it is not the rate at which one grade changes.`);
@@ -636,7 +670,10 @@ function printFlips(io: Io, r: RepeatFlipReport, grader: string, packets: string
     io.out(`${head}${s.degenerate ? `degenerate (${why}); not a bound` : bracket(s.bootstrap)}`);
   };
   io.out('');
-  io.out(`one output: every draw of the case graded the same stored output${packets === NO_JUDGE ? '' : ', shown in the same packet'}, so its labels differ by the grader alone`);
+  io.out(packets === NO_JUDGE
+    ? 'one output: every draw of the case states the same output hash, under the one grader this run states, so the file names no other source for a label difference.'
+    : 'one output: every draw of the case states the same output hash and the same packet hash, under the one judge this run states, so the file names no other source for a label difference. It cannot show what a provider or a harness did unseen.');
+  if (storedNote !== '') io.out(storedNote);
   block(r.oneOutput);
   io.out('different outputs: the draws of the case hold more than one output, so a label difference mixes system and grader variation; never pooled with the share above');
   block(r.differentOutputs);
@@ -656,8 +693,12 @@ function printFlips(io: Io, r: RepeatFlipReport, grader: string, packets: string
 }
 
 function cmdFlips(argv: readonly string[], io: Io): number {
-  const flags = parseFlags(argv, { run: 'string', 'bootstrap-seed': 'string', json: 'boolean' }, ['run']);
+  const flags = parseFlags(argv, { run: 'string', 'stored-outputs': 'string', 'bootstrap-seed': 'string', json: 'boolean' }, ['run']);
   const seed = seedFlag(flags, DEFAULT_BOOTSTRAP.seed);
+  const stored = str(flags, 'stored-outputs');
+  if (stored !== undefined && stored !== STORED_OUTPUTS_DECLARED) {
+    throw new InputError('INVALID_ARGUMENT', [`--stored-outputs: must be ${STORED_OUTPUTS_DECLARED}, got ${stored}`]);
+  }
   const path = str(flags, 'run') as string;
   const read = readJsonFile(path);
   // An unknown output hash is a refusal, named before the parser calls the file malformed: draws nobody hashed cannot be shown to share an output.
@@ -672,7 +713,7 @@ function cmdFlips(argv: readonly string[], io: Io): number {
     if (e instanceof InputError) throw new InputError(e.code, e.problems.map((p) => `--run ${path}: ${p}`));
     throw e;
   }
-  const report = repeatFlips(run, { ...DEFAULT_BOOTSTRAP, seed });
+  const report = repeatFlips(run, { ...DEFAULT_BOOTSTRAP, seed }, stored === undefined ? {} : { storedOutputs: stored });
   const judged = run.identity.judgeDefinitionHash !== NO_JUDGE;
   if (flags.has('json')) {
     const about = { sha256: sha256Hex(read.bytes), grader: judged ? 'judge' : 'code', packetBasis: run.packetBasis, ...(run.packetSource === undefined ? {} : { packetSource: run.packetSource }) };

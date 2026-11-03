@@ -1,5 +1,6 @@
 {
-  "schema": "anchorset.ratings/v1",
+  "schema": "anchorset.ratings/v2",
+  "raterIdentity": "persistent",
   "categories": [
     "none",
     "review",

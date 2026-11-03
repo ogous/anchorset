@@ -1,0 +1,47 @@
+{
+  "schema": "example.tested-versions/v1",
+  "tools": {
+    "inspect_ai": {
+      "format": 2,
+      "versions": [
+        {
+          "version": "0.3.275",
+          "testedOn": "2026-10-30",
+          "fixtures": "inspect/fixtures",
+          "badFixtures": "inspect/bad-fixtures",
+          "runtimes": "python 3.13.1, node 25.6.1",
+          "gradingPathRead": "the first version tested: model_graded_qa, its default texts and its log were read when the importer was written"
+        },
+        {
+          "version": "0.3.286",
+          "testedOn": "2026-10-30",
+          "fixtures": "inspect/by-version/0.3.286",
+          "badFixtures": "inspect/by-version/0.3.286/bad",
+          "runtimes": "python 3.13.1, node 25.6.1",
+          "gradingPathRead": "Read on 2026-10-30 against 0.3.275. scorer/_model.py, which holds model_graded_qa, its default template and instructions and its grade pattern, is the same file (sha256 75c525f7a869fcf829bd83b66ad2431acae80f2a6fef8f2bfa5c11ec5a0e2817). scorer/_score.py now runs each scorer inside a scope that names where a model call came from; it changes no text and no grade. model/_model.py reworks waits, attempts, cost and input preparation around the provider's generate call, and the grader is that generate call. The log gains optional fields (sentinel settings, a sample description, logged_samples) that the importer does not read. A fixture run cannot show how a real reply is judged; this read found no change to it."
+        }
+      ]
+    },
+    "promptfoo": {
+      "format": 3,
+      "versions": [
+        {
+          "version": "0.123.1",
+          "testedOn": "2026-10-30",
+          "fixtures": "promptfoo/fixtures",
+          "badFixtures": "promptfoo/bad-fixtures",
+          "runtimes": "node 25.6.1",
+          "gradingPathRead": "the first version tested: the llm-rubric matcher and its result file were read when the importer was written"
+        },
+        {
+          "version": "0.125.1",
+          "testedOn": "2026-10-30",
+          "fixtures": "promptfoo/by-version/0.125.1",
+          "badFixtures": "promptfoo/by-version/0.125.1/bad",
+          "runtimes": "node 25.6.1",
+          "gradingPathRead": "Read on 2026-10-30 against 0.123.1, in the published bundle. matchesLlmRubric is the same text. The verdict moved from `parsed.pass ?? true` to deriveVerdictFromGrader, which decides by the score when pass is absent, and fails the row when there is neither. A reply with a boolean pass, the only reply a reading rule admits, keeps that pass and the same score and threshold rule, and the importer refuses a row where the tool wrote another label. The result file gains config.basePath, which the importer does not read. The file:// grader id and a 127.0.0.1 baseUrl came through the written config unchanged on the fixture run; an https address was not run. A fixture run cannot show how a real reply is judged; this read found no change for an admitted reply."
+        }
+      ]
+    }
+  }
+}

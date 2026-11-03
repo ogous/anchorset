@@ -46,9 +46,9 @@ test('every --json report names its contract and the tool as its first two keys'
   }
   assert.deepEqual(REPORT_SCHEMAS, {
     gate: 'anchorset.gate-report/v1',
-    agree: 'anchorset.agree-report/v1',
-    drift: 'anchorset.drift-report/v1',
-    flips: 'anchorset.flips-report/v1',
+    agree: 'anchorset.agree-report/v2',
+    drift: 'anchorset.drift-report/v2',
+    flips: 'anchorset.flips-report/v2',
     refusal: 'anchorset.refusal/v1',
   });
   // The gate's object keeps `kind` and `exitCode`, which the plugin and the verdict lines are read by.
@@ -107,7 +107,7 @@ test('a usage error and invalid input stay text on stderr under --json, and an e
 });
 
 test('a ratings file and an anchor file name their own format: without it, or with another, the file is invalid input (65)', () => {
-  assert.equal(RATINGS_SCHEMA, 'anchorset.ratings/v1');
+  assert.equal(RATINGS_SCHEMA, 'anchorset.ratings/v2');
   assert.equal(ANCHOR_SCHEMA, 'anchorset.anchor/v1');
   const ratings = JSON.parse(readFileSync(ex('ratings.json'), 'utf8')) as Record<string, unknown>;
   const anchor = JSON.parse(readFileSync(ex('anchor_old.json'), 'utf8')) as Record<string, unknown>;
@@ -115,11 +115,11 @@ test('a ratings file and an anchor file name their own format: without it, or wi
   assert.equal(anchor['schema'], ANCHOR_SCHEMA);
   const noRatings = run('agree', '--ratings', changed('ratings.json', (f) => void delete f['schema']));
   assert.equal(noRatings.status, 65, noRatings.stderr);
-  assert.match(noRatings.stderr, /^ {2}- ratings\.schema: required, and must be "anchorset\.ratings\/v1"$/m);
+  assert.match(noRatings.stderr, /^ {2}- ratings\.schema: required, and must be "anchorset\.ratings\/v2"$/m);
   assert.equal(noRatings.stdout, '');
-  const otherRatings = run('agree', '--ratings', changed('ratings.json', (f) => void (f['schema'] = 'anchorset.ratings/v2')));
+  const otherRatings = run('agree', '--ratings', changed('ratings.json', (f) => void (f['schema'] = 'anchorset.ratings/v1')));
   assert.equal(otherRatings.status, 65);
-  assert.match(otherRatings.stderr, /ratings\.schema: required, and must be "anchorset\.ratings\/v1"/);
+  assert.match(otherRatings.stderr, /ratings\.schema: required, and must be "anchorset\.ratings\/v2"/);
   const noAnchor = run('drift', '--old', changed('anchor_old.json', (f) => void delete f['schema']), '--new', ex('anchor_new.json'), '--flag', 'handoff');
   assert.equal(noAnchor.status, 65, noAnchor.stderr);
   assert.match(noAnchor.stderr, /^ {2}- old\.schema: required, and must be "anchorset\.anchor\/v1"$/m);

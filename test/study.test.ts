@@ -9,6 +9,7 @@ import { readLedger } from '../src/ledger.ts';
 import { atPointer, checkStudyCells, parseStudyManifest, printed, STUDY_ROLES, studyInputName, studyManifestProblems, studyPathProblems } from '../src/study.ts';
 import { JUDGE_CHANGE_FILE_ROLES } from '../src/judgechange.ts';
 import type { StudyManifest } from '../src/study.ts';
+import { TOOL_VERSION } from '../src/version.ts';
 
 const root = join(import.meta.dirname, '..');
 const example = join(root, 'examples', 'judge-change');
@@ -101,10 +102,44 @@ test('study-check re-runs the example manifest: every cell matches, exit 0', () 
   const r = check(join(example, 'manifest.json'));
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /the judge-change example \(synthetic\): 14 of 14 in-scope cells match \(1 excluded, each with its reason\)/);
-  const j = JSON.parse(check(join(example, 'manifest.json'), '--json').stdout) as { matched: number; mismatches: unknown[]; resultSha256: string; firstRunResultSha256: string };
+  const j = JSON.parse(check(join(example, 'manifest.json'), '--json').stdout) as { matched: number; mismatches: unknown[]; resultSha256: string; firstRunResultSha256: string; firstRunReport: string };
   assert.deepEqual([j.matched, j.mismatches], [14, []]);
-  // This version still produces the report of the first run, byte for byte.
-  assert.equal(j.resultSha256, j.firstRunResultSha256);
+  // The first run was made by the manifest's library version. This version produces the same report but for the
+  // version it names: byte for byte when the two versions are one, and otherwise the hash differs and the check says why.
+  if (manifest().library.version === TOOL_VERSION) {
+    assert.equal(j.resultSha256, j.firstRunResultSha256);
+    assert.equal(j.firstRunReport, 'byte for byte');
+    assert.match(r.stdout, /this report is the first run's, byte for byte\n/);
+  } else {
+    assert.notEqual(j.resultSha256, j.firstRunResultSha256);
+    assert.equal(j.firstRunReport, 'apart from the tool version');
+    assert.ok(r.stdout.includes(`this report is the first run's apart from the tool version (${manifest().library.version} in the manifest, ${TOOL_VERSION} here)\n`), r.stdout);
+  }
+});
+
+test('study-check: a report that is not the first run\'s says so, and one whose manifest names this version is byte for byte', () => {
+  const run = (m: StudyManifest) => {
+    const dir = copy(`first-run-${m.firstRun.resultSha256.slice(0, 8)}-${m.library.version}`);
+    writeFileSync(join(dir, 'manifest.json'), JSON.stringify(m, null, 2));
+    return check(join(dir, 'manifest.json'));
+  };
+  const m = manifest();
+  const other = run({ ...m, firstRun: { ...m.firstRun, resultSha256: '0'.repeat(64) } });
+  assert.equal(other.status, 0, other.stderr);
+  assert.match(other.stdout, /this report differs from the first run's in some field outside the cells, or in a cell\n/);
+  const now = JSON.parse(check(join(example, 'manifest.json'), '--json').stdout) as { resultSha256: string };
+  const same = run({ ...m, library: { ...m.library, version: TOOL_VERSION }, firstRun: { ...m.firstRun, resultSha256: now.resultSha256 } });
+  assert.equal(same.status, 0, same.stderr);
+  assert.match(same.stdout, /this report is the first run's, byte for byte\n/);
+  // A first run that differs in its version and in one more field is not "apart from the tool version".
+  const report = JSON.parse(spawnSync(process.execPath, [join(root, 'src', 'cli.ts'), 'judge-change', '--plan', join(example, 'plan.json'), '--bar', join(example, 'bar.json'), '--inputs', join(example, 'runs'), '--json'], { encoding: 'utf8' }).stdout) as Record<string, unknown> & { tool: Record<string, unknown> };
+  const oneMore = hashOf({ ...report, tool: { ...report.tool, version: '0.0.9' }, kind: 'not the same' });
+  const both = run({ ...m, library: { ...m.library, version: '0.0.9' }, firstRun: { ...m.firstRun, resultSha256: oneMore } });
+  assert.equal(both.status, 0, both.stderr);
+  assert.match(both.stdout, /this report differs from the first run's in some field outside the cells, or in a cell\n/);
+  // And the same first run with only its version changed is: the line names both versions.
+  const onlyVersion = run({ ...m, library: { ...m.library, version: '0.0.9' }, firstRun: { ...m.firstRun, resultSha256: hashOf({ ...report, tool: { ...report.tool, version: '0.0.9' } }) } });
+  assert.ok(onlyVersion.stdout.includes(`this report is the first run's apart from the tool version (0.0.9 in the manifest, ${TOOL_VERSION} here)\n`), onlyVersion.stdout);
 });
 
 test('study-check: a published value that no longer matches exits 1 and names the cell; nothing is rewritten', () => {
@@ -198,7 +233,9 @@ test('one report hash: the command, its ledger record, study-check and the manif
   const fromCheck = (JSON.parse(check(join(example, 'manifest.json'), '--json').stdout) as { resultSha256: string }).resultSha256;
   assert.equal(fromLedger, fromCli);
   assert.equal(fromCheck, fromCli);
-  assert.equal(manifest().firstRun.resultSha256, fromCli);
+  // The first run's report names the manifest's library version; with that one field set back, it is this report.
+  const report = JSON.parse(cli.stdout) as { tool: { name: string; version: string } };
+  assert.equal(manifest().firstRun.resultSha256, hashOf({ ...report, tool: { ...report.tool, version: manifest().library.version } }));
   // The hash covers each file's name, and a name is the file's own name, never its folder.
   assert.equal(studyInputName('runs/bot-v1.old-judge.json'), 'bot-v1.old-judge.json');
   assert.equal(studyInputName('plan.json'), 'plan.json');

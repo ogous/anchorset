@@ -5,7 +5,7 @@
   "drawsPerCase": 3,
   "judges": {
     "old": {
-      "judgeDefinitionHash": "7690de71ae719a4a421773659b1bdb06cf011d470e8b5090aaa821440d326c46",
+      "judgeDefinitionHash": "27fd6f11c669fe9c67b59bca5d0eac1d220e0ec7741ec7270b26d1547abce725",
       "judgeModelRequested": "fake-judge-old",
       "judgeModelServed": "fake-judge-old-served-20260101",
       "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
@@ -13,7 +13,7 @@
       "rubricHash": "44e2a3d180162d04d6a52c5dd059c2bb61a6866dc3a591fd244e8af733fe48c4"
     },
     "new": {
-      "judgeDefinitionHash": "7690de71ae719a4a421773659b1bdb06cf011d470e8b5090aaa821440d326c46",
+      "judgeDefinitionHash": "27fd6f11c669fe9c67b59bca5d0eac1d220e0ec7741ec7270b26d1547abce725",
       "judgeModelRequested": "fake-judge-strict-new",
       "judgeModelServed": "fake-judge-strict-new-served-20260101",
       "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
@@ -27,8 +27,8 @@
   ],
   "systems": {
     "refund-bot": {
-      "old": "da4d1937c1ee864b99400d73b83fcae75ff4dfa9c753bc46e679da523fe11c7d",
-      "new": "d39c01ce99182535247a45b4ee79d721489f20e8d7bcf5f15779b733a49177e6"
+      "old": "9d48a7a5900124f5a8676b8c4813da9c0606b63e0611fcb204df2a4640561f52",
+      "new": "ffc67f2f08a59dc335f190903d7423e11211aa0871a31e3de731d587c4addf88"
     }
   },
   "storedOutputs": "system-side-not-compared",

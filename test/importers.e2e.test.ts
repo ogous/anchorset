@@ -534,7 +534,8 @@ for (const tool of TOOLS) {
     assert.match(reask.new.stdout, /^re-asks: 2 on 2 of 9 slots \(truncated 1, timeout 0, transport 0, server-error 1, rate-limited 0\); at most 1 per slot$/m);
     assert.match(reask.old.run.identity.judgeHarnessVersion, /; max-reasks 2$/);
     assert.match(reask.new.run.identity.judgeHarnessVersion, /; max-reasks 1$/);
-    assert.deepEqual(differing, ['judgeModelRequested', 'judgeModelServed', 'judgeHarnessVersion']);
+    // The bound is in both: the harness string states it, and it enters the judge's definition hash.
+    assert.deepEqual(differing, ['judgeDefinitionHash', 'judgeModelRequested', 'judgeModelServed', 'judgeHarnessVersion']);
     // But for the bound, the two harness strings are one.
     assert.equal(reask.old.run.identity.judgeHarnessVersion.replace(/max-reasks 2$/, ''), reask.new.run.identity.judgeHarnessVersion.replace(/max-reasks 1$/, ''));
   });
@@ -561,7 +562,7 @@ for (const tool of TOOLS) {
   test(`re-ask (${tool}): the same pair is admitted when judgeMoves names it, and every number equals that of the pair without re-asks`, () => {
     const plan = parseJudgeChangePlan(planFor(differing));
     const report = judgeChangeRuns(files, bar, plan);
-    assert.deepEqual(report.judges.moved.map((m) => m.field), ['judgeModelRequested', 'judgeModelServed', 'judgeHarnessVersion']);
+    assert.deepEqual(report.judges.moved.map((m) => m.field), ['judgeDefinitionHash', 'judgeModelRequested', 'judgeModelServed', 'judgeHarnessVersion']);
     // The pair without re-asks: the two example fixtures, the same two judges on stored outputs without the markers.
     const plain = judgeChangeRuns(filesOf(tool), bar, planOf(tool));
     assert.deepEqual(numbersOf(report), numbersOf(plain));

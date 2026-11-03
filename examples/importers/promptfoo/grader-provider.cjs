@@ -52,10 +52,13 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 
-// The one promptfoo version this grader and its importer were tested on. The importer refuses a result file of any other
-// version, and it refuses it after the re-grade has been paid for; so when promptfoo itself runs this file, the grader
-// stops before its first call under any other version.
-const TESTED_PROMPTFOO_VERSION = '0.123.1';
+// The promptfoo versions this grader and its importer were tested on stand in one list, tested-versions.json, one folder up.
+// The importer refuses a result file of any other version, and it refuses it after the re-grade has been paid for; so when
+// promptfoo itself runs this file, the grader stops before its first call under any other version. A list that cannot be read
+// or is malformed stops it too: it never guesses what was tested. The list is not read when promptfoo is not the host.
+const TESTED_VERSIONS_FILE = path.join(__dirname, '..', 'tested-versions.json');
+const TESTED_VERSIONS_SCHEMA = 'example.tested-versions/v1';
+const TESTED_ENTRY_KEYS = ['badFixtures', 'fixtures', 'gradingPathRead', 'runtimes', 'testedOn', 'version'];
 const RECORD_SCHEMA = 'example.grader-evidence/v7';
 const CALL_SHAPE_SCHEMA = 'anchorset.callshape/v1';
 const NOT_SENT = 'NOT_SENT';
@@ -240,12 +243,70 @@ function hostPromptfooVersion() {
   }
 }
 
-/** Refuses, before any call, a promptfoo of any version but the tested one. */
+/** The list is a short file: all three readers refuse one over this many bytes. */
+const TESTED_VERSIONS_MAX_BYTES = 1024 * 1024;
+
+/** A real calendar date, written YYYY-MM-DD, in the years 0001 to 9999. The same arithmetic stands in the two other readers. */
+function isCalendarDate(s) {
+  const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(s);
+  if (m === null) return false;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  return y >= 1 && mo >= 1 && mo <= 12 && d >= 1 && d <= [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1];
+}
+
+/** The promptfoo versions in the one list of tested versions, oldest first. Anything malformed, for either tool, throws. */
+function testedPromptfooVersions() {
+  const bad = (what) => new Error(`grader: examples/importers/tested-versions.json ${what}. No call was made.`);
+  const onlyKeys = (o, keys) => isObject(o) && Object.keys(o).sort().join() === keys.join();
+  let root;
+  let formatsPlain = true;
+  try {
+    const bytes = fs.readFileSync(TESTED_VERSIONS_FILE);
+    if (bytes.length > TESTED_VERSIONS_MAX_BYTES) throw new Error('over the limit');
+    // Bytes that are not UTF-8 stop here, and a byte order mark stays in the text, where the parser refuses it.
+    const text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(bytes);
+    // `2.0` and `2e0` parse to 2: a format is told by how it is written, which the parser gives the reviver.
+    root = JSON.parse(text, (key, value, context) => {
+      if (key === 'format' && typeof value === 'number' && !/^[1-9][0-9]*$/.test(context?.source ?? '')) formatsPlain = false;
+      return value;
+    });
+    // JSON.parse keeps the last of two equal keys: a list that gives a key twice is told by reading it back with the keys counted.
+    const keys = text.match(/"(?:[^"\\]|\\.)*"\s*:/g) ?? [];
+    const counted = (v) => (Array.isArray(v) ? v.reduce((n, x) => n + counted(x), 0) : isObject(v) ? Object.values(v).reduce((n, x) => n + 1 + counted(x), 0) : 0);
+    if (keys.length !== counted(root)) throw new Error('a key is given twice');
+  } catch (e) {
+    throw bad(`cannot be read (${e.name})`);
+  }
+  if (!formatsPlain) throw bad('a format must be written as a plain positive whole number');
+  if (!onlyKeys(root, ['schema', 'tools'])) throw bad('must be an object with exactly the keys schema and tools');
+  if (root.schema !== TESTED_VERSIONS_SCHEMA) throw bad(`schema must be ${TESTED_VERSIONS_SCHEMA}`);
+  if (!onlyKeys(root.tools, ['inspect_ai', 'promptfoo'])) throw bad('tools must hold exactly inspect_ai and promptfoo');
+  for (const name of ['inspect_ai', 'promptfoo']) {
+    const tool = root.tools[name];
+    if (!onlyKeys(tool, ['format', 'versions'])) throw bad(`${name} must hold exactly format and versions`);
+    if (!Number.isSafeInteger(tool.format) || tool.format < 1) throw bad(`${name}.format must be a positive integer`);
+    if (!Array.isArray(tool.versions) || tool.versions.length === 0) throw bad(`${name}.versions must be a non-empty list`);
+    for (const [i, entry] of tool.versions.entries()) {
+      const at = `${name}.versions[${i}]`;
+      if (!onlyKeys(entry, TESTED_ENTRY_KEYS)) throw bad(`${at} must hold exactly ${TESTED_ENTRY_KEYS.join(', ')}`);
+      if (!TESTED_ENTRY_KEYS.every((k) => typeof entry[k] === 'string' && entry[k].trim() !== '' && entry[k].isWellFormed())) throw bad(`${at}: every value must be a non-empty, well-formed string`);
+      if (!/^[0-9A-Za-z][0-9A-Za-z.+-]*$/.test(entry.version)) throw bad(`${at}.version is not a version`);
+      if (!isCalendarDate(entry.testedOn)) throw bad(`${at}.testedOn must be a real date, YYYY-MM-DD`);
+    }
+    if (new Set(tool.versions.map((e) => e.version)).size !== tool.versions.length) throw bad(`${name}.versions lists a version twice`);
+  }
+  return root.tools.promptfoo.versions.map((e) => e.version);
+}
+
+/** Refuses, before any call, a promptfoo of a version outside the tested list. */
 function assertTestedPromptfoo() {
   const found = hostPromptfooVersion();
-  if (found === undefined || found === TESTED_PROMPTFOO_VERSION) return;
+  if (found === undefined) return;
+  const tested = testedPromptfooVersions();
+  if (tested.includes(found)) return;
   const what = found === 'unreadable' ? 'a promptfoo whose version cannot be read' : `promptfoo ${found}`;
-  throw new Error(`grader: ${what} is running this grader; the importer was tested on promptfoo ${TESTED_PROMPTFOO_VERSION} only and refuses a result file of any other version, after the re-grade is paid for. Install the tested one: npm install -g promptfoo@${TESTED_PROMPTFOO_VERSION}. No call was made.`);
+  throw new Error(`grader: ${what} is running this grader; the importer was tested on promptfoo ${tested.join(', ')} and refuses a result file of any other version, after the re-grade is paid for. Your stored answers need not change. Grade from a separate environment: npm install --prefix .anchorset-grade promptfoo@${tested[tested.length - 1]}. No call was made.`);
 }
 
 /**

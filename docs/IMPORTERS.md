@@ -16,9 +16,10 @@ You need:
 - Node 22.21 or later.
 - A clone of this repository. The importers are examples under `examples/importers/`. Run every command on this
   page from the repository root.
-- For promptfoo: version 0.123.1 exactly (`npm install -g promptfoo@0.123.1`). Any other version is refused.
-- For Inspect: `inspect_ai` 0.3.275 exactly (`pip install inspect_ai==0.3.275`), on Python 3.10 or later. Any other
-  version is refused.
+- For promptfoo: version 0.123.1 or 0.125.1 exactly (`npm install -g promptfoo@0.125.1`). Any other version is refused.
+- For Inspect: `inspect_ai` 0.3.275 or 0.3.286 exactly (`pip install inspect_ai==0.3.286`), on Python 3.10 or later. Any
+  other version is refused. The log of your system's own run may come from any version: see
+  [What is and is not pinned](#what-is-and-is-not-pinned).
 - For the skill's result folder: no tool.
 - An Anthropic API key, for the paid step only.
 
@@ -33,11 +34,13 @@ Before you pay for a call:
 - A draw whose call fails leaves no record of its calls. They may be billed, and the error message is the only trace
   of them. promptfoo also keeps no record of a draw whose last reply was cut at the cap.
 - Imported run files work with `judge-change` only. `gate` and `flips` refuse them.
-- The scripts as shipped were run against Anthropic's API on 2026-10-13, on the small example of each source. Six of
-  seven imports succeeded; one promptfoo import was refused because five of its nine replies were not a single JSON
-  object. Not tried there: a re-ask, a rate limit, a
-  server error, a timeout, a model that rejects a thinking or effort setting, or `judge-change` on real imported
-  files.
+- The scripts were run against Anthropic's API on 2026-10-13, on the small example of each source, with promptfoo
+  0.123.1 and `inspect_ai` 0.3.275. Six of seven imports succeeded; one promptfoo import was refused because five of its
+  nine replies were not a single JSON object. Since then the JavaScript grader has changed only in where it reads the
+  tested versions. The Inspect script `regrade.py` has since gained checks made before any call (the tested-versions list,
+  the stated answer count) and a record of the system log, run against the stand-in only. Promptfoo 0.125.1 and `inspect_ai` 0.3.286 have also run against the stand-in only. Not tried there: a
+  re-ask, a rate limit, a server error, a timeout, a model that rejects a thinking or effort setting, or `judge-change`
+  on real imported files.
 
 ## Try it first, at no cost
 
@@ -86,9 +89,13 @@ call, and promptfoo reports every row as an error. Unset it.
 
 An importer never overwrites its `--out`. Use a new name to import again.
 
-Grade both judges on the same Node or Python version and with the same number of re-asks. Otherwise the two run
-files differ in one more judge field, `judgeHarnessVersion`, and `judge-change` refuses them unless you list it in
-`--judge-moves`.
+Grade both judges on the same tool version, the same Node or Python version and with the same number of re-asks.
+Otherwise the two run files differ in one more judge field, `judgeHarnessVersion`, and `judge-change` refuses them
+unless you list it in `--judge-moves`. Two numbers of re-asks, or two tool versions, differ in `judgeDefinitionHash` as
+well, so a run under another number, or a saved run from an older install, needs both fields listed. To measure a tool upgrade, grade the same model under the two tool versions with the same template, reading rule, re-ask
+bound and runtime, and list those two fields as the moves. The report shows that the two fields moved, not what moved
+inside them, so keeping the rest the same is up to you. A second draw set of one judge (`drawSets.reask`) shows how far
+the judge differs from itself.
 
 For a real judge, the address is `https://api.anthropic.com`. Export `ANTHROPIC_API_KEY` once in your shell, from
 your secret store, and drop the inline `ANTHROPIC_API_KEY=dummy` from the commands below. Do not type a key into a
@@ -104,6 +111,7 @@ earlier promptfoo result.
 
 ```bash
 cp -R examples/importers/promptfoo "$OUT/pf"
+cp examples/importers/tested-versions.json "$OUT/"
 export PROMPTFOO_CONFIG_DIR="$OUT/pfcfg" PROMPTFOO_DISABLE_TELEMETRY=1 PROMPTFOO_DISABLE_UPDATE=1 PROMPTFOO_DISABLE_SHARING=1 PROMPTFOO_DISABLE_REMOTE_GENERATION=true
 ```
 
@@ -166,7 +174,10 @@ node src/cli.ts judge-change --plan "$OUT/pf-plan.json" --bar "$OUT/pf/bar.json"
 **If it stops:**
 
 - promptfoo exits 1 and writes no file → give the config as a full path, as above.
-- `IMPORT_TOOL_VERSION` → the file comes from another promptfoo. Install 0.123.1 and grade again.
+- `IMPORT_TOOL_VERSION` → the file comes from another promptfoo. Install a tested one and grade again. Your
+  `stored.json` does not change.
+- `grader: promptfoo <version> is running this grader` → grade from a separate environment, as the message says:
+  `npm install --prefix .anchorset-grade promptfoo@0.125.1`, then run `.anchorset-grade/node_modules/.bin/promptfoo`.
 - `IMPORT_NO_RECORD` → the file was not graded through the example grading script. Name `grader-provider.cjs` in
   the config, as the example does, and grade again.
 - `IMPORT_CACHE` → the run lacked `--no-cache`. Grade again with it.
@@ -223,16 +234,48 @@ your own grading prompt, add `--template-file` and `--instructions-file`.
 
 **If it stops:**
 
-- `usage error: inspect_ai <version> is installed` → install 0.3.275. A log from another version gives
-  `IMPORT_TOOL_VERSION` at import.
+- `usage error: inspect_ai <version> is installed` → your own log does not need to change. Grade from a separate
+  environment: `python -m venv .anchorset-grade && .anchorset-grade/bin/pip install inspect_ai==0.3.286`. A graded file
+  from an untested version gives `IMPORT_TOOL_VERSION` at import.
 - `refused: the source log cannot be replayed` → the message lists each sample and the reason. Every sample needs
-  one question, one target and one answer, each as plain text.
+  one question, one target and one answer, each as plain text, and the log must state how many answers it holds:
+  it is refused when it does not state `results.total_samples`, or when that number differs from what is read.
 - `REFUSED the re-grade stopped at the first slot the importer will refuse` → usually a reply was cut or did not
   end in a grade line. No later call was made. Raise `--max-tokens` or fix the instructions, and grade again with
   a new `--out-dir`.
 - `IMPORT_NO_RECORD`, or `IMPORT_SHAPE` naming `/eval/scorers` → the log was not graded through the example
   grading script. Grade again with `regrade.py`.
 - `IMPORT_SHAPE`, "this is the packed log format" → import the JSON log that `regrade.py` wrote.
+
+### What is and is not pinned
+
+| Thing | Status |
+|---|---|
+| The tool that re-grades, and the file an importer reads | Pinned to the tested versions. Refused otherwise |
+| The file format the importer reads | Pinned, for each tool |
+| Your system's log and the tool that wrote it | Not pinned. The run records its sha256 and the version it states. Refused if the tested tool cannot read it, if it cannot be replayed, or if it does not state how many answers it holds or holds another number. A log the tested tool cannot read is refused; one it misreads may not be detected. |
+| What wrote the stated version | Not checked: the value is what the log says, and it is a recorded claim, which nothing compares |
+| Python and Node | Not pinned. Recorded in `judgeHarnessVersion` |
+
+The run's `packetSource` ends with what it knows of the system log:
+
+| Ending | When |
+|---|---|
+| `; system log sha256:<hash>, stated version inspect_ai <version>` | `regrade.py` read the log, which states that version |
+| `; system log sha256:<hash>, stated version UNKNOWN` | The log states none, or one that is unprintable, holds `;` or `,`, or spells a gap |
+| `; system log UNKNOWN` | A graded Inspect file with no marker |
+| `; no system log` | promptfoo, where there is none: you write the stored answers by hand |
+
+A malformed or duplicate marker refuses. A file with no marker records `; system log UNKNOWN`. A marker does not show who wrote it: a hand-written file can carry one, which stays a stated limit.
+
+An entry in `examples/importers/tested-versions.json` means the fixtures were run on that version against the stand-in and
+that someone read the tool's changes to its grading path. A run against the stand-in cannot show how a real reply is
+judged, which is why the read is there. There is no flag to go outside the list. Anyone can edit the file in their own
+clone, and a run made that way carries no claim from this repository.
+
+Where a tool's own file states no version, as the eval-building skill's result folder does, its importer pins a row
+profile, the set of row shapes its reader accepts, refuses a file outside it and records the tool's version as `UNKNOWN`.
+A changed tool that writes the same row shapes is not detected.
 
 ### The eval-building skill
 

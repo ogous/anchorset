@@ -17,7 +17,7 @@ Four words used on this page: a **grader** is whoever gives the label, a person 
 grader that is a model. An **item** is what the rating files call a case. A **packet** is what a grader was shown
 for one item.
 
-Version 0.1.0, by Ogous Chan Ali.
+Version 0.2.0, by Ogous Chan Ali.
 
 ## Try it
 
@@ -160,6 +160,12 @@ items are drawn again from your own 20 items. Here they are wide. The lines left
 pair of graders. [The ratings format](docs/RATINGS_FORMAT.md#reading-the-numbers) says why both numbers are shown
 and what the brackets leave out.
 
+The file has to say what its names are, in `raterIdentity`. If they are places in a list and not the same grader on
+every item, or if you don't know, say so: the report then has no row for a pair and uses Fleiss' kappa at any number
+of names ([what the names are](docs/RATINGS_FORMAT.md#what-the-names-are)). Every report closes its figures by saying
+they describe that file only: the tool can't see how the items or the raters were chosen, or why an item has the ratings
+it has.
+
 On your own files:
 
 ```sh
@@ -172,7 +178,8 @@ You keep a small fixed set of items the judge graded before. Later, you have the
 compares the old labels with the new ones and shows what moved.
 
 Use it as a regular check: same items, same judge, different day. The files do not say which judge graded them, so
-keeping the judge the same is up to you.
+keeping the judge the same is up to you. Every report says this too: the tool cannot show that both sets of ratings
+came from one judge.
 
 ```sh
 npm run --silent demo:drift
@@ -228,7 +235,7 @@ repeat draws of one run: a measurement. It has no verdict and never exits 1.
 20 cases · 3 draws per case · grader: judge example-judge-2026-01-15 · packets: recorded
 a case is flipped when its 3 draws did not all get the same label. Each share below is a share of cases with at least one disagreeing draw among 3: it rises with the number of draws, and it is not the rate at which one grade changes.
 
-one output: every draw of the case graded the same stored output, shown in the same packet, so its labels differ by the grader alone
+one output: every draw of the case states the same output hash and the same packet hash, under the one judge this run states, so the file names no other source for a label difference. It cannot show what a provider or a harness did unseen.
   flipped 2 of 18 cases (0.111), 3 draws per case
   Wilson 95% score interval, the 18 taken as fixed: [0.031, 0.328]
 …
@@ -247,6 +254,17 @@ On your own files:
 ```sh
 node src/cli.ts flips --run <run file>
 ```
+
+If the answers came from stored files and this run did not produce them, the file records the system stop as unknown,
+and `flips` refuses it. Say so in the command:
+
+```sh
+node src/cli.ts flips --run <run file> --stored-outputs system-side-not-compared
+```
+
+The report then says first that the numbers hold for the stored texts as they stand, a cut-off answer included. The
+file needs recorded packets, a known judge and rubric, one answer in each case, and at least one unknown system stop. The flag is not part of any hash, so it
+records your choice and does not show when you made it. `gate` never takes such a file.
 
 ### `judge-change`: I swapped the judge. What changed?
 
@@ -302,17 +320,22 @@ node src/cli.ts judge-change --plan <plan file> --bar <bar file> --inputs <folde
 `judge-change` needs both judges to grade the same stored answers. If your stored answers come from one of the tools
 below, an example importer makes the files `judge-change` reads:
 
-- **promptfoo**, version 0.123.1 only; any other is refused. You supply the stored answers in a file.
-- **Inspect**, `inspect_ai` 0.3.275 only; any other is refused. It reads your Inspect log.
+- **promptfoo**, versions 0.123.1 and 0.125.1; any other is refused. You supply the stored answers in a file.
+- **Inspect**, `inspect_ai` 0.3.275 and 0.3.286; any other is refused for the grading. It reads your Inspect log, which may
+  come from any version the tested tool can read (one it cannot read is refused): the run records its sha256 and the
+  version it states, and it must state how many answers it holds.
 - **The result folder of Claude's eval-building skill**, for evals with one question and one answer per case. It
   reads that folder.
 
 The importers do not read labels you already have: both judges grade again, through an example grading script, and
 you pay for those calls with your own key. The grading scripts work with Anthropic models only; for a judge from
-another provider, you write the run files yourself. The old judge is its model name as served today. The scripts as
-shipped were run against a real provider on 2026-10-13, on small examples. Six of seven imports succeeded; one was
-refused because five of its nine replies were not a single JSON object. A re-ask, a rate limit, a server error and a
-timeout were not tried there.
+another provider, you write the run files yourself. The old judge is its model name as served today. The scripts were
+run against a real provider on 2026-10-13, on small examples, with promptfoo 0.123.1 and `inspect_ai` 0.3.275. Six of
+seven imports succeeded; one was refused because five of its nine replies were not a single JSON object. A re-ask, a
+rate limit, a server error and a timeout were not tried there. Since then the JavaScript grader has changed only in
+where it reads the tested versions, and the two newer versions have run against a local stand-in only. The Inspect
+script `regrade.py` has since gained checks made before any call (the tested-versions list, the stated answer count)
+and a record of the system log, run against the stand-in only.
 
 The [importers guide](docs/IMPORTERS.md) has the steps, and a trial that costs nothing.
 
@@ -334,6 +357,13 @@ so, it withholds the reference.
   it.
 - **Graders that saw different things.** `agree` and `drift` refuse the whole comparison unless the files record
   the same packet for every item.
+- **A judge's reply that can't be read.** It is never asked again, and neither is a content filter or a rejected
+  request: each stays on the record as the slot's outcome. `judge-change` and `flips` refuse a file that holds one, and
+  so does `gate` in a baseline; in a candidate, `gate` fails the case or, for a rejected request, refuses. For a reply that can't be read or was
+  filtered, the refusal counts the slots by reason; for a rejected request, it names each slot. [The run format](docs/RUN_FORMAT.md) gives the ways on.
+- **A baseline with no answer.** If the system's request was rejected or it returned its own error on a baseline slot,
+  `gate` refuses: such a slot can't show which cases the candidate broke. An answer cut at its cap stays a failing
+  reference.
 
 It does not run your evals or write your files for you.
 
@@ -345,13 +375,15 @@ It does not run your evals or write your files for you.
 - [Judge change](docs/JUDGE_CHANGE.md): the plan, the report and what each number means.
 - [Importers](docs/IMPORTERS.md): promptfoo, Inspect and the eval-building skill, step by step.
 - [Comparison](docs/COMPARISON.md): anchorset next to promptfoo, DeepEval and Langfuse.
-- [Migrations](docs/MIGRATIONS.md): the format versions of 0.1.0; later changes will be listed there.
+- [Migrations](docs/MIGRATIONS.md): the format versions of 0.2.0, and how a file of 0.1.0 moves.
 
 ## Requirements, contributing, license and citing
 
 Node 22.21 or later. No runtime dependencies. It can also be used as a TypeScript library.
 
 Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). The code is under Apache-2.0 and the
-docs under CC-BY-4.0. To cite the tool, use [CITATION.cff](CITATION.cff). The code of this release is archived
-at [doi:10.5281/zenodo.23358090](https://doi.org/10.5281/zenodo.23358090), and the study's data and analysis at
-[doi:10.5281/zenodo.23358200](https://doi.org/10.5281/zenodo.23358200).
+docs under CC-BY-4.0. To cite the tool, use [CITATION.cff](CITATION.cff). This version, 0.2.0, is archived at
+[doi:10.5281/zenodo.23918819](https://doi.org/10.5281/zenodo.23918819), and
+[doi:10.5281/zenodo.23358089](https://doi.org/10.5281/zenodo.23358089) always resolves to the latest version. Version
+0.1.0, the one the paper used, is archived at [doi:10.5281/zenodo.23358090](https://doi.org/10.5281/zenodo.23358090),
+and the study's data and analysis at [doi:10.5281/zenodo.23358200](https://doi.org/10.5281/zenodo.23358200).

@@ -8,14 +8,20 @@ authors:
     given-names: "Ogous Chan"
     orcid: "https://orcid.org/0009-0005-7182-2137"
 license: Apache-2.0
-version: 0.1.0
-date-released: "2026-10-16"
+version: 0.2.0
+date-released: "2026-11-03"
 repository-code: "https://github.com/ogous/anchorset"
-doi: 10.5281/zenodo.23358090
+doi: 10.5281/zenodo.23918819
 identifiers:
   - type: doi
+    value: 10.5281/zenodo.23918819
+    description: "The archived code of anchorset 0.2.0."
+  - type: doi
+    value: 10.5281/zenodo.23358089
+    description: "Every version of the anchorset code; resolves to the latest."
+  - type: doi
     value: 10.5281/zenodo.23358090
-    description: "The archived code of anchorset 0.1.0."
+    description: "The archived code of anchorset 0.1.0, the version the paper used."
   - type: doi
     value: 10.5281/zenodo.23358200
     description: "The study package: the registration text, the judges' scores, the analysis code and its outputs."

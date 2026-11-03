@@ -1,6 +1,8 @@
 import { accessSync, appendFileSync, constants, mkdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { AGREE_SCOPE, agreeReportProblems, RATER_IDENTITIES } from './agreement.ts';
 import type { AgreementReport } from './agreement.ts';
+import { DRIFT_SCOPE } from './drift.ts';
 import type { DriftReport } from './drift.ts';
 import { InputError } from './errors.ts';
 import { barHash, parseBarFile } from './gate.ts';
@@ -303,6 +305,15 @@ function ratingsBindingProblems(kind: string, m: unknown, record: Record<string,
       // The result is the object --json prints: it names its contract and the tool, and the tool is the record's.
       const schema = drift ? REPORT_SCHEMAS.drift : REPORT_SCHEMAS.agree;
       if (result['schema'] !== schema) problems.push(`record.result.schema: must be "${schema}"`);
+      // The sentence on what the figures describe goes with the report wherever it is read; an agree report also keeps its statement about its names, and its contents must agree with that statement.
+      if (result['scope'] !== (drift ? DRIFT_SCOPE : AGREE_SCOPE)) problems.push('record.result.scope: must be the report\'s own sentence on what its figures describe');
+      if (!drift) {
+        if (!RATER_IDENTITIES.includes(result['raterIdentity'])) problems.push('record.result.raterIdentity: required: "persistent", "positional" or "UNKNOWN"');
+        else if (result['raterIdentity'] !== 'persistent' && (result['kappaKind'] !== 'fleiss' || !Array.isArray(result['pairwise']) || result['pairwise'].length > 0)) {
+          problems.push('record.result: a report whose names are not persistent raters holds no pair row and uses Fleiss\' kappa');
+        }
+        if (RATER_IDENTITIES.includes(result['raterIdentity'])) appendAll(problems, agreeReportProblems(result));
+      }
       if (hashOrUndefined(result['tool']) !== hashOrUndefined(record['tool'])) problems.push('record.tool: differs from result.tool');
       const stated = result['bootstrap'];
       if (bootOk && hashOrUndefined(stated) !== hashOrUndefined(boot)) problems.push(`${at}.seeds.bootstrap: differs from result.bootstrap`);

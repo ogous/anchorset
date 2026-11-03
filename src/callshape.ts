@@ -15,7 +15,7 @@ export type NotSent = typeof NOT_SENT;
 type Knob<T> = T | NotSent | Gap;
 
 export const THINKING_MODES = Object.freeze(['off', 'adaptive', 'budgeted', 'between-tools'] as const);
-export const EFFORTS = Object.freeze(['minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const);
+export const EFFORTS = Object.freeze(['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] as const);
 export const TOOL_CHOICES = Object.freeze(['none', 'auto', 'any', 'named'] as const);
 export const CONTEXT_POLICIES = Object.freeze(['none', 'truncate-head', 'truncate-tail', 'compact'] as const);
 

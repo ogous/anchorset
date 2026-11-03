@@ -65,13 +65,17 @@ export function main(argv: readonly string[], io: Io): number {
     const inputs = files.filter((f) => ["run", "reference", "tie-break", "resample-indices"].includes(f.role)).map((f) => ({ name: studyInputName(f.path), bytes: f.bytes }));
     const report = judgeChangeRuns(inputs, parseBarFile(json("bar")), parseJudgeChangePlan(json("plan")));
     const result = checkStudyCells(manifest, report);
-    const out = { study: manifest.study, tool: `${TOOL_NAME} ${TOOL_VERSION}`, cells: manifest.cells.length, ...result, excluded: manifest.excluded.length, resultSha256: hashOf(report), firstRunResultSha256: manifest.firstRun.resultSha256 };
+    // The report names the library version that made it. A later version that changes nothing else makes the first run's
+    // report but for that one field; the check says so, and never calls it "byte for byte".
+    const firstRunReport = hashOf(report) === manifest.firstRun.resultSha256 ? "byte for byte" : hashOf({ ...report, tool: { ...report.tool, version: manifest.library.version } }) === manifest.firstRun.resultSha256 ? "apart from the tool version" : "differs";
+    const out = { study: manifest.study, tool: `${TOOL_NAME} ${TOOL_VERSION}`, cells: manifest.cells.length, ...result, excluded: manifest.excluded.length, resultSha256: hashOf(report), firstRunResultSha256: manifest.firstRun.resultSha256, firstRunReport };
     if (jsonFlags.length === 1) io.out(JSON.stringify(out, null, 2));
     else {
       text.out(`${manifest.study}: ${result.matched} of ${manifest.cells.length} in-scope cells match (${manifest.excluded.length} excluded, each with its reason) · ${TOOL_NAME} ${TOOL_VERSION}`);
       for (const m of result.mismatches) text.out(`  DIFFERS  ${m.name}: published ${m.expected}, recomputed ${m.got}  (${m.path})`);
       if (result.mismatches.length > 0) text.out(`  the manifest was last verified by ${manifest.lastVerified.version} (${manifest.lastVerified.commit}); the expected values stay as published`);
-      text.out(`  cell list ${manifest.cellsSha256} · this report ${hashOf(report) === manifest.firstRun.resultSha256 ? 'is the first run\'s, byte for byte' : 'differs from the first run\'s in some field outside the cells, or in a cell'}`);
+      const said = firstRunReport === "byte for byte" ? "is the first run's, byte for byte" : firstRunReport === "apart from the tool version" ? `is the first run's apart from the tool version (${manifest.library.version} in the manifest, ${TOOL_VERSION} here)` : "differs from the first run's in some field outside the cells, or in a cell";
+      text.out(`  cell list ${manifest.cellsSha256} · this report ${said}`);
     }
     return result.mismatches.length === 0 ? 0 : 1;
   } catch (e) {

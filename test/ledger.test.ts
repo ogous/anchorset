@@ -8,7 +8,7 @@ import { driftReport } from '../src/drift.ts';
 import { InputError } from '../src/errors.ts';
 import { canonicalJson, hashOf, sha256Hex } from '../src/identity.ts';
 import { appendRecord, checkLedgerFile, makeGateRecord, makeRatingsRecord, readLedger, validateRecord } from '../src/ledger.ts';
-import { REPORT_SCHEMAS, TOOL_NAME, TOOL_VERSION } from '../src/version.ts';
+import { RATINGS_SCHEMA, REPORT_SCHEMAS, TOOL_NAME, TOOL_VERSION } from '../src/version.ts';
 import { gateInputs, makeIdentity, makeJudgedIdentity } from './helpers.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'anchorset-ledger-'));
@@ -219,10 +219,10 @@ const AT = new Date('2026-01-02T03:04:05.000Z');
 const bytes = (x: unknown): Uint8Array => new TextEncoder().encode(`${JSON.stringify(x, null, 2)}\n`);
 const items = ['i1', 'i2', 'i3', 'i4'];
 const packetOf = Object.fromEntries(items.map((i) => [i, hashOf({ packet: i })]));
-const ratingsJson = { schema: 'anchorset.ratings/v1', categories: ['x', 'y'], ratings: { a: { i1: 'x', i2: 'x', i3: 'y', i4: 'y' }, b: { i1: 'x', i2: 'y', i3: 'y', i4: 'y' } }, packetHashes: { a: packetOf, b: packetOf }, bootstrap: { iterations: 50, seed: 4 } };
+const ratingsJson = { schema: RATINGS_SCHEMA, raterIdentity: 'persistent' as const, categories: ['x', 'y'], ratings: { a: { i1: 'x', i2: 'x', i3: 'y', i4: 'y' }, b: { i1: 'x', i2: 'y', i3: 'y', i4: 'y' } }, packetHashes: { a: packetOf, b: packetOf }, bootstrap: { iterations: 50, seed: 4 } };
 // What the command prints and records: the report under its contract string and the tool.
 const contract = (schema: string) => ({ schema, tool: { name: TOOL_NAME, version: TOOL_VERSION } });
-const agreement = () => ({ ...contract(REPORT_SCHEMAS.agree), ...agreementReport(ratingsJson.ratings, { packetHashes: ratingsJson.packetHashes, categories: ratingsJson.categories, bootstrap: ratingsJson.bootstrap }) });
+const agreement = () => ({ ...contract(REPORT_SCHEMAS.agree), ...agreementReport(ratingsJson.ratings, { packetHashes: ratingsJson.packetHashes, categories: ratingsJson.categories, raterIdentity: ratingsJson.raterIdentity, bootstrap: ratingsJson.bootstrap }) });
 const oldJson = { schema: 'anchorset.anchor/v1', labels: ['x', 'y'], verdicts: ratingsJson.ratings.a, packetHashes: packetOf };
 const newJson = { schema: 'anchorset.anchor/v1', labels: ['x', 'y'], verdicts: ratingsJson.ratings.b, packetHashes: packetOf };
 const drift = () => ({ ...contract(REPORT_SCHEMAS.drift), ...driftReport(new Map(Object.entries(oldJson.verdicts)), new Map(Object.entries(newJson.verdicts)), { labels: oldJson.labels, flagLabels: ['y'], packetHashes: { old: new Map(Object.entries(packetOf)), new: new Map(Object.entries(packetOf)) }, bootstrap: { iterations: 50, seed: 6 } }) });

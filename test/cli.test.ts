@@ -11,6 +11,7 @@ import { barHash, parseBarFile } from '../src/gate.ts';
 import { hashOf, sha256Hex } from '../src/identity.ts';
 import { readLedger } from '../src/ledger.ts';
 import type { RunLedgerRecord } from '../src/ledger.ts';
+import { RATINGS_SCHEMA } from '../src/version.ts';
 import { gradedAttempt, makeCallShape, makeJudgeCallShape, makeJudgedIdentity, slot } from './helpers.ts';
 
 const root = join(import.meta.dirname, '..');
@@ -911,13 +912,54 @@ test('gate: a judge call the provider rejected (4xx) is refused with exit 2', ()
   const d = c.draws.find((x) => x.caseId === 'c2');
   const graded = d?.attempts[0];
   if (d !== undefined && graded !== undefined) {
-    d.attempts = [{ kind: 'unmeasured', role: 'judge', reason: 'client-error', detail: '400', outputHash: graded['outputHash'], systemStop: graded['systemStop'], packetHash: graded['packetHash'] }, graded];
+    d.attempts = [{ kind: 'unmeasured', role: 'judge', reason: 'client-error', detail: '400', outputHash: graded['outputHash'], systemStop: graded['systemStop'], packetHash: graded['packetHash'] }];
   }
   const path = join(dir, 'judge-400.json');
   writeFileSync(path, JSON.stringify(c));
   const r = run('gate', '--baseline', t.b, '--candidate', path, '--bar', t.bar, '--rejudge-of', t.a, '--allow-differ', 'systemModelServed');
   assert.equal(r.status, 2, r.stdout + r.stderr);
   assert.match(r.stderr, /REFUSED MEASUREMENT_NOT_RUNNABLE/);
+});
+
+test('gate: a slot with no answer in the baseline is refused with exit 2, naming the slot and its reason', () => {
+  const t = trio();
+  for (const reason of ['client-error', 'system-error']) {
+    const b = JSON.parse(readFileSync(t.b, 'utf8')) as { draws: { caseId: string; attempts: Record<string, unknown>[] }[] };
+    const d = b.draws.find((x) => x.caseId === 'c2');
+    if (d !== undefined) d.attempts = [{ kind: 'failed', reason, detail: 'no answer', outputHash: sha256Hex('no answer'), systemStop: 'NOT_SENT' }];
+    const path = join(dir, `no-answer-${reason}.json`);
+    writeFileSync(path, JSON.stringify(b));
+    const a = JSON.parse(readFileSync(t.a, 'utf8')) as typeof b;
+    const orig = a.draws.find((x) => x.caseId === 'c2');
+    if (orig !== undefined && d !== undefined) orig.attempts = d.attempts;
+    const original = join(dir, `no-answer-original-${reason}.json`);
+    writeFileSync(original, JSON.stringify(a));
+    const r = run('gate', '--baseline', path, '--candidate', t.c, '--bar', t.bar, '--rejudge-of', original, '--allow-differ', 'systemModelServed');
+    assert.equal(r.status, 2, r.stdout + r.stderr);
+    assert.match(r.stderr, /REFUSED INCOMPLETE_RUN\n {2}fields: c2#0/);
+    assert.ok(r.stderr.includes(`re-judged baseline: the system gave no answer on c2#0 (${reason})`), r.stderr);
+  }
+});
+
+test('flips: an attempt after a final judge reason exits 65, and each final reason as the last attempt exits 2 with the counts', () => {
+  const judgeFail = (reason: string) => (g: Record<string, unknown>) => ({ kind: 'unmeasured', role: 'judge', reason, detail: reason, outputHash: g['outputHash'], systemStop: g['systemStop'], packetHash: g['packetHash'] });
+  const edited = (name: string, edit: (attempts: Record<string, unknown>[]) => Record<string, unknown>[]): string => {
+    const f = JSON.parse(readFileSync(ex('judged.json'), 'utf8')) as { draws: { caseId: string; drawIndex: number; attempts: Record<string, unknown>[] }[] };
+    const d = f.draws.find((x) => x.caseId === 'r01' && x.drawIndex === 1) as { attempts: Record<string, unknown>[] };
+    d.attempts = edit(d.attempts);
+    const path = join(dir, name);
+    writeFileSync(path, JSON.stringify(f));
+    return path;
+  };
+  for (const reason of ['parse-failure', 'content-filter', 'client-error']) {
+    const retried = run('flips', '--run', edited(`flips-after-${reason}.json`, (a) => [judgeFail(reason)(a[0] as Record<string, unknown>), a[0] as Record<string, unknown>]));
+    assert.equal(retried.status, 65, retried.stdout + retried.stderr);
+    assert.ok(retried.stderr.includes('.attempts[0]') && retried.stderr.includes(`the reason ${reason} is final`), retried.stderr);
+    const last = run('flips', '--run', edited(`flips-last-${reason}.json`, (a) => [judgeFail(reason)(a[0] as Record<string, unknown>)]));
+    assert.equal(last.status, 2, last.stdout + last.stderr);
+    assert.match(last.stderr, /REFUSED INCOMPLETE_RUN\n {2}fields: r01#1/);
+    assert.match(last.stderr, new RegExp(`run: 1 of \\d+ slots in 1 of \\d+ cases, ${reason} 1;`));
+  }
 });
 
 test('gate --ledger checks the ledger file before running the gate, so a bad ledger never costs a verdict', () => {
@@ -989,7 +1031,8 @@ test('agree is untouched by reference v2: differing packets refuse, whatever a f
   const h = sha256Hex;
   const ratings = { 'rater-a': { t1: 'none', t2: 'review' }, 'rater-b': { t1: 'none', t2: 'none' } };
   const categories = ['none', 'review'];
-  const schema = 'anchorset.ratings/v1';
+  const schema = RATINGS_SCHEMA;
+  const raterIdentity = 'persistent';
   const same = { 'rater-a': { t1: h('t1'), t2: h('t2') }, 'rater-b': { t1: h('t1'), t2: h('t2') } };
   const differing = { ...same, 'rater-b': { t1: h('t1'), t2: h('t2, beside four other items') } };
   // A statement of the kind a reference file may carry never admits here: agree reads no such field, and a key it does
@@ -1000,7 +1043,7 @@ test('agree is untouched by reference v2: differing packets refuse, whatever a f
     writeFileSync(path, JSON.stringify(body));
     return path;
   };
-  for (const [name, body] of [['plain', { schema, categories, ratings, packetHashes: differing }], ['stated', { schema, categories, ratings, packetHashes: differing, packetDifference: statement }], ['unknown', { schema, categories, ratings, packetHashes: { ...same, 'rater-b': { t1: h('t1'), t2: 'UNKNOWN' } }, packetDifference: { ...statement, packets: 'UNKNOWN' } }]] as const) {
+  for (const [name, body] of [['plain', { schema, raterIdentity, categories, ratings, packetHashes: differing }], ['stated', { schema, raterIdentity, categories, ratings, packetHashes: differing, packetDifference: statement }], ['unknown', { schema, raterIdentity, categories, ratings, packetHashes: { ...same, 'rater-b': { t1: h('t1'), t2: 'UNKNOWN' } }, packetDifference: { ...statement, packets: 'UNKNOWN' } }]] as const) {
     const r = run('agree', '--ratings', at(`agree-${name}.json`, body));
     assert.equal(r.stdout, '', name);
     if (name === 'plain') {
@@ -1011,7 +1054,7 @@ test('agree is untouched by reference v2: differing packets refuse, whatever a f
       assert.match(r.stderr, /^ {2}- ratings\.packetDifference: unknown field$/m, name);
     }
   }
-  const ok = run('agree', '--ratings', at('agree-same.json', { schema, categories, ratings, packetHashes: same }));
+  const ok = run('agree', '--ratings', at('agree-same.json', { schema, raterIdentity, categories, ratings, packetHashes: same }));
   assert.equal(ok.status, 0, ok.stderr);
   assert.match(ok.stdout, /^raters .* · items \d+ · packet hashes equal for every item, as the file states$/m);
 });

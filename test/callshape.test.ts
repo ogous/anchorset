@@ -148,3 +148,15 @@ test('callShapeDiff names the keys that differ, and the keys that are unknown', 
   assert.deepEqual(callShapeDiff(makeCallShape(), makeCallShape({ temperature: 0.3 })), ['temperature 0 -> 0.3']);
   assert.deepEqual(callShapeDiff(makeCallShape({ effort: GAP }), makeCallShape({ effort: GAP })), ['effort unknown']);
 });
+
+test('effort "none" is a word that was sent: it validates, hashes apart from NOT_SENT, and reads as a move; near spellings and the same word in extras stay refused', () => {
+  assert.deepEqual(problems({ effort: 'none' }), []);
+  const sent: CallShape = { ...makeCallShape(), effort: 'none' };
+  const notSent: CallShape = { ...makeCallShape(), effort: NOT_SENT };
+  assert.notEqual(callShapeHash(sent), callShapeHash(notSent));
+  assert.notEqual(callShapeHash(sent), GAP);
+  assert.ok(callShapeDiff(notSent, sent).some((d) => d.includes('effort') && d.includes('"none"')));
+  refused({ effort: 'None' }, 'effort');
+  refused({ effort: 'unknown' }, 'effort');
+  refused({ extras: { 'openai.reasoning_effort': 'none' } }, 'shadows');
+});

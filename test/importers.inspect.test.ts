@@ -118,9 +118,9 @@ test('old and new judge fixtures import into a run the library parses; what is r
     assert.equal(id.judgeHarnessVersion, `inspect_ai 0.3.275; ${g.grader.name} python sha256:${g.grader.sha256}; ${g.grader.runtime}; max-reasks 0`);
     const o = l.eval.scorers[0].options;
     assert.equal(id.rubricHash, hashOf({ tool: 'inspect_ai', scorer: SC, instructions: o.instructions }));
-    assert.equal(id.judgeDefinitionHash, hashOf({ tool: 'inspect_ai', version: '0.3.275', scorer: SC, template: o.template, tools: [], reading: 'last-line-grade-letter/v1' }));
+    assert.equal(id.judgeDefinitionHash, hashOf({ tool: 'inspect_ai', version: '0.3.275', scorer: SC, template: o.template, tools: [], reading: 'last-line-grade-letter/v1', maxReasks: 0 }));
     assert.equal(parsed.packetBasis, 'declared');
-    assert.match(parsed.packetSource ?? '', /^computed at import from inspect_ai 0\.3\.275 log sha256:[0-9a-f]{64}: /);
+    assert.match(parsed.packetSource ?? '', /^computed at import from inspect_ai 0\.3\.275 log sha256:[0-9a-f]{64}: the question, answer and criterion slots of the grader's message; system log UNKNOWN$/);
     assert.equal(parsed.draws.length, 9);
     for (const d of parsed.draws) {
       const a = d.attempts[0] as J;
@@ -246,7 +246,7 @@ test('the packed log format is refused, and the message names the script', () =>
 test('IMPORT_TOOL_VERSION: another log version, another tool version, or none', () => {
   let l = log('old-judge');
   l.version = 3;
-  assert.match(refusal('IMPORT_TOOL_VERSION', () => imp(l)).message, /tested on inspect_ai 0\.3\.275 \(format 2\); the file says inspect_ai 0\.3\.275, format 3/);
+  assert.match(refusal('IMPORT_TOOL_VERSION', () => imp(l)).message, /tested on inspect_ai 0\.3\.275, 0\.3\.286 \(format 2\); the file says inspect_ai 0\.3\.275, format 3/);
   l = log('old-judge');
   l.eval.packages.inspect_ai = '0.3.276';
   assert.match(refusal('IMPORT_TOOL_VERSION', () => imp(l)).message, /0\.3\.276/);
@@ -1323,6 +1323,27 @@ test('an earlier ask edited to end_turn is IMPORT_REASK', () => {
   assert.equal(existsSync(res.outPath), false);
 });
 
+test('the bound enters the judge definition hash: two bounds give two definition hashes, each the value the harness string states', () => {
+  const at = (max: number) => {
+    const l = log('reask');
+    // The tool keeps the record in the score and in the score event: both change, or the importer refuses the mismatch.
+    const walk = (x: J): void => {
+      if (x === null || typeof x !== 'object') return;
+      if (x.reask !== undefined) x.reask.max = max;
+      for (const v of Object.values(x)) walk(v);
+    };
+    walk(l.samples);
+    l.eval.scorers[0].options.model.model_args.max_reasks = max;
+    return imp(l).summary;
+  };
+  const [two, three] = [at(2), at(3)];
+  assert.notEqual(two.judge.judgeDefinitionHash, three.judge.judgeDefinitionHash);
+  assert.match(two.judge.judgeHarnessVersion, /; max-reasks 2$/);
+  assert.match(three.judge.judgeHarnessVersion, /; max-reasks 3$/);
+  // Nothing else of the judge moved: the rubric, the models and the call shape are one.
+  for (const f of ['judgeModelRequested', 'judgeModelServed', 'judgeCallShapeHash', 'rubricHash'] as const) assert.equal(two.judge[f], three.judge[f], f);
+});
+
 test('a stated bound that differs from the record is IMPORT_EVIDENCE, and so is a log that states none', () => {
   const l = log('reask');
   l.eval.scorers[0].options.model.model_args.max_reasks = 3;
@@ -1387,7 +1408,7 @@ test('regrade.py: ANTHROPIC_BASE_URL set with a --base-url that differs from it 
   for (const [args, value] of [[[...run, '--base-url', gateway], gateway], [[...run, '--base-url', 'http://127.0.0.1:18765'], ''], [['--log', 'no-such-log.json', '--epochs', '1', '--check'], gateway]] as const) {
     const r = runWith([...args], value);
     assert.equal(r.status, 64, r.stderr);
-    assert.match(r.stderr, /pip install inspect_ai==0\.3\.275/);
+    assert.match(r.stderr, /pip install inspect_ai==0\.3\.286/);
   }
 });
 
@@ -1419,7 +1440,7 @@ test('regrade.py with inspect_ai missing: exit 64 and the install line, never a 
   ]) {
     const r = run(args);
     assert.equal(r.status, 64, r.stderr);
-    assert.match(r.stderr, /pip install inspect_ai==0\.3\.275/);
+    assert.match(r.stderr, /pip install inspect_ai==0\.3\.286/);
     assert.doesNotMatch(r.stderr, /Traceback/);
   }
 });

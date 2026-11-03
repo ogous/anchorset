@@ -136,7 +136,7 @@ test('the old-judge fixture imports to a v3 run that the library parses', () => 
     assert.equal(a.systemStop, 'UNKNOWN');
   }
   assert.equal(run.packetBasis, 'declared');
-  assert.match(run.packetSource ?? '', /^computed at import from promptfoo 0\.123\.1 result file sha256:[0-9a-f]{64}: the output slot of the rendered grading prompt$/);
+  assert.match(run.packetSource ?? '', /^computed at import from promptfoo 0\.123\.1 result file sha256:[0-9a-f]{64}: the output slot of the rendered grading prompt; no system log$/);
   assert.equal(run.packetSource?.includes(sha256Hex(bytes(fix('old-judge')))), true);
   const id = run.identity;
   assert.equal(id.judgeModelRequested, 'fake-judge-old');
@@ -392,7 +392,7 @@ test('IMPORT_EVIDENCE: a record on some rows only', () => {
 test('IMPORT_TOOL_VERSION: another promptfoo version, another format, a missing version', () => {
   const v = fix('old-judge');
   v.metadata.promptfooVersion = '0.124.0';
-  assert.match(refuse(v, 'IMPORT_TOOL_VERSION').message, /tested on promptfoo 0\.123\.1 \(format 3\); the file says version "0\.124\.0"/);
+  assert.match(refuse(v, 'IMPORT_TOOL_VERSION').message, /tested on promptfoo 0\.123\.1, 0\.125\.1 \(format 3\); the file says version "0\.124\.0"/);
   const f = fix('old-judge');
   f.results.version = 2;
   refuse(f, 'IMPORT_TOOL_VERSION');
@@ -1380,6 +1380,20 @@ test('the same bytes import to the same run bytes, on the reask fixture', () => 
   assert.equal(a.code, 0, a.err);
   assert.equal(readFileSync(a.outPath, 'utf8'), readFileSync(b.outPath, 'utf8'));
   assert.equal(a.out, b.out);
+});
+
+test('the bound enters the judge definition hash: two bounds give two definition hashes, each the value the harness string states', () => {
+  const at = (max: number) => {
+    const j = fix('reask');
+    for (const r of rowsOf(j)) ev(r).reask.max = max;
+    j.config.defaultTest.options.provider.config.maxReasks = max;
+    return conv(j);
+  };
+  const [two, three] = [at(2), at(3)];
+  assert.notEqual(two.judge.judgeDefinitionHash, three.judge.judgeDefinitionHash);
+  assert.match(two.judge.judgeHarnessVersion, /; max-reasks 2$/);
+  assert.match(three.judge.judgeHarnessVersion, /; max-reasks 3$/);
+  for (const f of ['judgeModelRequested', 'judgeModelServed', 'judgeCallShapeHash', 'rubricHash'] as const) assert.equal(two.judge[f], three.judge[f], f);
 });
 
 test('bad-fixtures/reask-exhausted.json is refused', () => {

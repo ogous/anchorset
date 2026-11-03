@@ -182,7 +182,7 @@ for (const [rater, f] of Object.entries(flips)) {
   ratings[rater] = Object.fromEntries(items.map((id, i) => [id, f[i] ?? (truth[i] as string)]));
   packetHashes[rater] = Object.fromEntries(items.map((id) => [id, hashOf({ packet: id, format: 'transcript-v2' })]));
 }
-write('ratings.json', { schema: RATINGS_SCHEMA, categories: labels, ratings, packetHashes, bootstrap: { iterations: 2000, seed: 7, alpha: 0.05 } });
+write('ratings.json', { schema: RATINGS_SCHEMA, raterIdentity: 'persistent', categories: labels, ratings, packetHashes, bootstrap: { iterations: 2000, seed: 7, alpha: 0.05 } });
 
 // The same 24 anchor items judged before and after a judge prompt edit. The new judge is stricter:
 // three review -> handoff and one none -> review. Rates move, the flagged items stay the same.

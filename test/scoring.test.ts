@@ -3,8 +3,9 @@ import { test } from 'node:test';
 import { NOT_SENT } from '../src/callshape.ts';
 import { GAP, NO_JUDGE } from '../src/identity.ts';
 import { InputError, RefusalError } from '../src/errors.ts';
-import { attemptsProblems, finalAttempt, foldDraws, foldRun, measuredSlots, rank, scoreAttempt, slotProblems, unknownStops, validateLabelSet } from '../src/scoring.ts';
+import { attemptsProblems, finalAttempt, foldDraws, foldRun, incompleteCounts, JUDGE_FINAL_REASONS, JUDGE_UNMEASURED_REASONS, measuredSlots, rank, scoreAttempt, slotProblems, TRANSPORT_REASONS, unknownStops, validateLabelSet } from '../src/scoring.ts';
 import type { Attempt, Case, ClassSpec, Draw } from '../src/scoring.ts';
+import { REASK_REASONS } from '../examples/importers/shared.ts';
 import { failedAttempt, gradedAttempt, slot, unmeasured } from './helpers.ts';
 
 const labels = ['none', 'review', 'handoff'];
@@ -252,10 +253,49 @@ test('fold: a retry after an unmeasured system attempt counts as the slot', () =
   assert.equal(f.pass, true);
 });
 
+test('the retry rule: an attempt after a final judge reason is invalid, with its path and reason; after any other judge reason or a system transport reason it stays valid', () => {
+  const x = gradedAttempt('none').outputHash;
+  const again = gradedAttempt('none', { outputHash: x, judgeStop: 'tool-use' });
+  for (const reason of JUDGE_FINAL_REASONS) {
+    assert.deepEqual(problemsFor([unmeasured('judge', reason, x), again]), [`draw[0]: the reason ${reason} is final; it stays on the record as the slot's outcome, and no attempt may follow it`]);
+    assert.deepEqual(problemsFor([unmeasured('judge', 'timeout', x), unmeasured('judge', reason, x), again]), [`draw[1]: the reason ${reason} is final; it stays on the record as the slot's outcome, and no attempt may follow it`]);
+    assert.deepEqual(problemsFor([unmeasured('judge', reason, x)]), [], `${reason} as the last attempt is a valid file`);
+    assert.throws(() => foldDraws(up, [slot('c1', 0, unmeasured('judge', reason, x), again)], labels, floor, 1), (e: unknown) => e instanceof InputError && e.code === 'INVALID_DRAWS');
+  }
+  for (const reason of ['timeout', 'transport', 'server-error', 'rate-limited', 'truncated']) assert.deepEqual(problemsFor([unmeasured('judge', reason, x), again]), [], reason);
+  for (const reason of TRANSPORT_REASONS) assert.deepEqual(problemsFor([unmeasured('system', reason), again]), [], reason);
+});
+
+test('the retry rule: the final reasons and the reasons the graders ask again for split all of the judge reasons, with no overlap', () => {
+  const asked: readonly string[] = REASK_REASONS;
+  const final: readonly string[] = JUDGE_FINAL_REASONS;
+  assert.deepEqual([...asked, ...final].sort(), [...JUDGE_UNMEASURED_REASONS].sort());
+  assert.deepEqual(asked.filter((r) => final.includes(r)), []);
+});
+
+test('the retry rule: a slot holding a final reason is counted as unmeasured, with its reason', () => {
+  for (const reason of JUDGE_FINAL_REASONS) {
+    const s = measuredSlots([slot('c1', 0, gradedAttempt('review')), slot('c1', 1, unmeasured('judge', reason))], 2);
+    assert.deepEqual([s.expected, s.measured.length, s.unmeasured, s.missing], [2, 1, [{ drawIndex: 1, role: 'judge', reason }], []]);
+  }
+});
+
+test('incompleteCounts: the counts of one run file, by reason (hand-worked fixtures)', () => {
+  // 500 cases of 2 draws = 1000 slots. 30 slots in 27 cases: 24 cases with one each, 3 cases with two each (24 + 6 = 30).
+  const worked = Array.from({ length: 27 }, (_, i) => ({ caseId: `c${i}`, missing: [], unmeasured: Array.from({ length: i < 24 ? 1 : 2 }, () => ({ role: 'judge' as const, reason: 'parse-failure' })) }));
+  assert.equal(incompleteCounts('new judge', 500, 2, worked), 'new judge: 30 of 1000 slots in 27 of 500 cases, parse-failure 30');
+  // 3 cases of 3 draws = 9 slots. a: one judge timeout and one no record. b: one system timeout. c: nothing, so it is not counted. 3 of 9 in 2 of 3.
+  assert.equal(incompleteCounts('run', 3, 3, [
+    { caseId: 'a', unmeasured: [{ role: 'judge', reason: 'timeout' }], missing: [2] },
+    { caseId: 'b', unmeasured: [{ role: 'system', reason: 'timeout' }], missing: [] },
+    { caseId: 'c', unmeasured: [], missing: [] },
+  ]), 'run: 3 of 9 slots in 2 of 3 cases, no record 1, system timeout 1, timeout 1');
+});
+
 test('attempts: a judge retry re-grades the same output; only a system retry may produce a new one', () => {
   const x = gradedAttempt('none').outputHash;
   assert.deepEqual(problemsFor([unmeasured('judge', 'timeout', x), gradedAttempt('none', { outputHash: x, judgeStop: 'tool-use' })]), []);
-  assert.ok(problemsFor([unmeasured('judge', 'content-filter', x), gradedAttempt('review')]).some((p) => p.includes('same output')));
+  assert.ok(problemsFor([unmeasured('judge', 'truncated', x), gradedAttempt('review')]).some((p) => p.includes('same output')));
   assert.ok(problemsFor([unmeasured('judge', 'timeout', x), unmeasured('system', 'timeout'), gradedAttempt('review')]).some((p) => p.includes('same output')));
   assert.deepEqual(problemsFor([unmeasured('system', 'timeout'), gradedAttempt('review')]), []);
 });

@@ -49,7 +49,7 @@ test('docs/RUN_FORMAT.md quotes the example run file and its bar file byte for b
 test('the example shows what the document annotates: a retry after a timeout, a judge retry on the same output, and a truncated reply', () => {
   const run = JSON.parse(runText) as RunArtifact;
   const kinds = run.draws.map((d) => d.attempts.map((a) => (a.kind === 'unmeasured' ? `${a.kind}:${a.role}:${a.reason}` : a.kind)).join(' > '));
-  assert.deepEqual(kinds, ['graded', 'unmeasured:system:timeout > graded', 'unmeasured:judge:parse-failure > graded', 'graded', 'failed', 'graded']);
+  assert.deepEqual(kinds, ['graded', 'unmeasured:system:timeout > graded', 'unmeasured:judge:server-error > graded', 'graded', 'failed', 'graded']);
   assert.deepEqual(run.draws.map((d) => `${d.caseId}#${d.drawIndex}`), ['q01#0', 'q01#1', 'q02#0', 'q02#1', 'q03#0', 'q03#1']);
   // The judge retry grades the same stored reply: one output, one stop, one packet.
   const [first, second] = (run.draws[2] as RunArtifact['draws'][number]).attempts as unknown as [Record<string, unknown>, Record<string, unknown>];

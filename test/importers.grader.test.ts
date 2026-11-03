@@ -992,7 +992,7 @@ describe('the importers\' copies of the grader\'s defaults and settings equal th
   it('the effort list is equal across shared.ts, the JavaScript grader and the Python grader', () => {
     const jsList = (name: string): string[] => [...jsConst(name).matchAll(/'([^']+)'/g)].map((m) => m[1] as string);
     const pyList = (name: string): string[] => [...pyConst(name).matchAll(/"([^"]+)"/g)].map((m) => m[1] as string);
-    assert.deepEqual(SENT_EFFORTS, EFFORTS.filter((e) => e !== 'minimal'));
+    assert.deepEqual(SENT_EFFORTS, EFFORTS.filter((e) => e !== 'none' && e !== 'minimal'));
     assert.deepEqual(jsList('EFFORTS'), [...SENT_EFFORTS]);
     assert.deepEqual(pyList('EFFORTS'), [...SENT_EFFORTS]);
     assert.equal(jsConst('READINGS'), 'MISSING', 'the grader holds no list of reading rules');
@@ -1020,6 +1020,8 @@ describe('the committed inputs and fixtures are pinned against a line-ending con
   for (const line of [
     'examples/importers/*/fixtures/*.json -text',
     'examples/importers/*/bad-fixtures/*.json -text',
+    'examples/importers/*/by-version/**/*.json -text',
+    'examples/importers/tested-versions.json text eol=lf',
     'examples/importers/*/fixture-inputs/* -text',
     'examples/importers/*/cases.json -text',
     'examples/importers/*/bar.json -text',

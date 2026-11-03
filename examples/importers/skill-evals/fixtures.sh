@@ -142,7 +142,7 @@ CRITERION=criterion.txt; MAX_REASKS=0
 
 # ---- no generated file may name this machine: the scratch folder, a home folder or a temp folder
 for f in "$S"/work/out/*.regrade.jsonl; do
-  if grep -q -e "$S" -e "$HOME" -e '/Users/' -e '/home/' -e '/tmp/' -e '/var/folders/' "$f"; then die "$(basename "$f") holds a path of this machine"; fi
+  if grep -q -e "$S" -e "$HOME" -e '/Use''rs/' -e '/home/' -e '/tmp/' -e '/var''/folders/' "$f"; then die "$(basename "$f") holds a path of this machine"; fi
   if grep -q 'dummy-key-for-local-fake-endpoint' "$f"; then die "$(basename "$f") holds the key's text"; fi
 done
 

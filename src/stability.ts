@@ -1,15 +1,15 @@
-import { systemFacts } from './artifact.ts';
+import { listed, systemFacts } from './artifact.ts';
 import { InputError, RefusalError } from './errors.ts';
 import { appendAll, GAP } from './identity.ts';
 import type { Gap } from './identity.ts';
-import { assertStopsKnown, finalAttempt, measuredSlots, slotProblems } from './scoring.ts';
+import { assertStopsKnown, finalAttempt, incompleteCounts, measuredSlots, slotProblems } from './scoring.ts';
 import type { Draw } from './scoring.ts';
 import { NA, percentileInterval, wilson } from './stats.ts';
 import type { BootstrapOptions, PercentileInterval, Stat } from './stats.ts';
 
 /**
  * One slot's outcome for stability: its label, the failed bucket (every failed draw counts as one
- * output), or absent (the slot measured nothing, or has no draw record).
+ * output), or absent (the slot holds no grade, or has no draw record).
  */
 export type Outcome = { kind: 'label'; label: string } | { kind: 'failed' } | { kind: 'absent' };
 /** A modal output: a label, or the failed bucket. */
@@ -19,7 +19,7 @@ export type CaseStability = {
   caseId: string;
   /** Measured slots. */
   draws: number;
-  /** Slots that measured nothing or have no record. Any one withholds flipped and disagreeShare. */
+  /** Slots that hold no grade or have no record. Any one withholds flipped and disagreeShare. */
   unmeasured: number;
   distinctOutputs: number;
   mode: ModalOutput | Gap;
@@ -32,7 +32,7 @@ export type StabilityReport = {
   cases: CaseStability[];
   caseCount: number;
   flippedCases: number;
-  /** Cases whose flip is withheld because a slot measured nothing. */
+  /** Cases whose flip is withheld because a slot holds no grade. */
   withheldCases: number;
   /** Share of cases with more than one distinct output; UNKNOWN when any case is withheld. */
   flipShare: number | Gap;
@@ -41,13 +41,19 @@ export type StabilityReport = {
 const FAILED_KEY = '\u0000failed';
 
 /**
+ * How a caller of the flip measurement reads unknown system stops. By default they are refused, and `hint` is added to
+ * the refusal. `admitUnknown` is set only by the stored-output declaration of `src/flips.ts`, which holds the conditions.
+ */
+export type StopReading = { admitUnknown?: boolean; hint?: string };
+
+/**
  * Every slot of every case, 0..drawsPerCase-1, read from its final attempt. A slot with no draw
  * record, and a case with no draws at all, are absent: never dropped. Invalid slots or attempt
  * lists throw InputError('INVALID_DRAWS'), through the same checks the fold uses, and an unknown
- * system stop is refused as the fold refuses it. Which slots measured the system is decided by
+ * system stop is refused as the fold refuses it, unless `stops` admits it. Which slots measured the system is decided by
  * `measuredSlots`, the step the fold uses: a slot it does not list as measured is absent.
  */
-export function groupDraws(draws: readonly Draw[], drawsPerCase: number, caseIds: readonly string[]): Map<string, Outcome[]> {
+export function groupDraws(draws: readonly Draw[], drawsPerCase: number, caseIds: readonly string[], stops: StopReading = {}): Map<string, Outcome[]> {
   const byCase = new Map<string, Draw[]>(caseIds.map((id) => [id, []]));
   const unknown: string[] = [];
   for (const d of draws) {
@@ -57,7 +63,7 @@ export function groupDraws(draws: readonly Draw[], drawsPerCase: number, caseIds
   }
   const problems = [...unknown, ...slotProblems(draws, drawsPerCase)];
   if (problems.length > 0) throw new InputError('INVALID_DRAWS', problems);
-  assertStopsKnown(draws);
+  if (stops.admitUnknown !== true) assertStopsKnown(draws, 'draws', undefined, stops.hint);
   return new Map(caseIds.map((id) => {
     const counted = measuredSlots(byCase.get(id) as Draw[], drawsPerCase);
     const slots = Array.from({ length: counted.expected }, (): Outcome => ({ kind: 'absent' }));
@@ -97,7 +103,7 @@ export function flipRate(drawsByCase: ReadonlyMap<string, readonly Outcome[]>): 
       unmeasured: absent,
       distinctOutputs: counts.size,
       mode,
-      // A slot that measured nothing could have been a flip: withhold rather than read it as agreement.
+      // A slot that holds no grade could have been a flip: withhold rather than read it as agreement.
       disagreeShare: absent > 0 ? GAP : (outputs.length - modeCount) / outputs.length,
       flipped: absent > 0 ? GAP : counts.size > 1,
     });
@@ -108,9 +114,9 @@ export function flipRate(drawsByCase: ReadonlyMap<string, readonly Outcome[]>): 
 }
 
 /**
- * What the repeat draws of one case held. 'one-output': every draw graded the same stored output
- * (one output hash, one system outcome, one stop), shown in the same packet, so its labels differ
- * only by the grader. 'different-outputs': the draws hold more than one output, so a label
+ * What the repeat draws of one case held. 'one-output': every draw states the same output (one output
+ * hash, one system outcome, one stop) and the same packet, under the one grader the run states, so the
+ * file names no other source for a label difference. 'different-outputs': the draws hold more than one output, so a label
  * difference mixes system and grader variation. 'ungraded': every draw is the system's own
  * failure, and nothing was graded.
  */
@@ -157,6 +163,8 @@ export type RepeatFlipReport = {
   ungradedCases: number;
   bootstrap: BootstrapOptions;
   cases: RepeatCase[];
+  /** What the stored-output declaration leaves out. Always present, and empty without the declaration. */
+  notCompared: { fields: string[]; unknownStopDraws: number; draws: number };
 };
 
 /** Slots ("case#draw") of a draw list, parsed or not, where any attempt records its output hash as UNKNOWN: the field is always known, on every kind of attempt that carries it, an earlier attempt included. */
@@ -175,11 +183,13 @@ export function unknownOutputHashes(draws: unknown): string[] {
  * and flipRate, so "the draws did not all get the same outcome" has one implementation.
  *
  * Refuses (RefusalError): one draw per case (UNSUPPORTED_DESIGN); an unknown output hash or system
- * stop, and an unknown packet on a one-output case (IDENTITY_GAP); a slot that measured nothing or
+ * stop, and an unknown packet on a one-output case (IDENTITY_GAP); a slot that holds no grade or
  * has no record (INCOMPLETE_RUN: the missing grade could have been the flip); one output shown in
  * different packets (PACKET_MISMATCH: the grades then differ by what the judge saw as well).
+ * When `stops` admits an unknown stop, a case with more than one output refuses too (HASH_MISMATCH): a flip on stored
+ * outputs is a label difference on one text, and a known stop beside an unknown one is not shown to be one text.
  */
-export function repeatFlips(draws: readonly Draw[], drawsPerCase: number, caseIds: readonly string[], bootstrap: BootstrapOptions): RepeatFlipReport {
+export function repeatFlips(draws: readonly Draw[], drawsPerCase: number, caseIds: readonly string[], bootstrap: BootstrapOptions, stops: StopReading = {}): RepeatFlipReport {
   if (!Number.isInteger(drawsPerCase) || drawsPerCase < 1) throw new InputError('INVALID_ARGUMENT', [`drawsPerCase must be a positive integer, got ${drawsPerCase}`]);
   if (drawsPerCase < 2) {
     throw new RefusalError('UNSUPPORTED_DESIGN', ['drawsPerCase'], 'the run has one draw per case; a flip needs at least two draws of a case');
@@ -188,15 +198,26 @@ export function repeatFlips(draws: readonly Draw[], drawsPerCase: number, caseId
   if (unhashed.length > 0) {
     throw new RefusalError('IDENTITY_GAP', unhashed.map((k) => `outputHash[${k}]`), `the output hash is unknown on ${unhashed.join(', ')}; draws cannot be shown to share an output nobody hashed`);
   }
-  const outcomes = groupDraws(draws, drawsPerCase, caseIds);
+  const outcomes = groupDraws(draws, drawsPerCase, caseIds, stops);
   const stability = flipRate(outcomes);
-  const absent = [...outcomes].flatMap(([id, slots]) => slots.flatMap((o, i) => (o.kind === 'absent' ? [`${id}#${i}`] : []))).sort();
-  if (absent.length > 0) {
-    throw new RefusalError('INCOMPLETE_RUN', absent, `${absent.length} slot(s) measured nothing or have no record: ${absent.join(', ')}; a missing grade could have been the flip, so no share is formed`);
-  }
-
   const byCase = new Map<string, Draw[]>(caseIds.map((id) => [id, []]));
   for (const d of draws) (byCase.get(d.caseId) as Draw[]).push(d);
+  if (stops.admitUnknown === true) {
+    // Before the slots are read for a grade: the declaration's one condition on a case comes before the locks every run meets.
+    const many = caseIds.filter((id) => new Set((byCase.get(id) as Draw[]).map((d) => {
+      const f = systemFacts(finalAttempt(d));
+      return `${f.outputHash}\u0000${f.outcome}`;
+    })).size > 1).sort();
+    if (many.length > 0) {
+      throw new RefusalError('HASH_MISMATCH', many, `stored outputs were declared, but the draws of ${listed(many)} hold more than one output (output hash, outcome or stop); a stored output is one text`);
+    }
+  }
+  const absent = [...outcomes].flatMap(([id, slots]) => slots.flatMap((o, i) => (o.kind === 'absent' ? [`${id}#${i}`] : []))).sort();
+  if (absent.length > 0) {
+    const counts = incompleteCounts('run', caseIds.length, drawsPerCase, caseIds.map((caseId) => ({ caseId, ...measuredSlots(byCase.get(caseId) as Draw[], drawsPerCase) })));
+    throw new RefusalError('INCOMPLETE_RUN', absent, `${counts}; slots that hold no grade or have no record: ${listed(absent)}; a missing grade could have been the flip, so no share is formed`);
+  }
+
   const unknownPackets: string[] = [];
   const mixedPackets: string[] = [];
   const cases: RepeatCase[] = stability.cases.map((c) => {
@@ -255,6 +276,7 @@ export function repeatFlips(draws: readonly Draw[], drawsPerCase: number, caseId
     ungradedCases: cases.filter((c) => c.basis === 'ungraded').length,
     bootstrap,
     cases,
+    notCompared: { fields: [], unknownStopDraws: 0, draws: 0 },
   };
 }
 

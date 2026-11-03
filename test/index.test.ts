@@ -103,13 +103,13 @@ test('the strict reader is public: parseJsonBytes names a key given twice, and i
 });
 
 test('the three contract constants of the ratings, anchor and report files are public', () => {
-  assert.equal(api.RATINGS_SCHEMA, 'anchorset.ratings/v1');
+  assert.equal(api.RATINGS_SCHEMA, 'anchorset.ratings/v2');
   assert.equal(api.ANCHOR_SCHEMA, 'anchorset.anchor/v1');
   assert.deepEqual(api.REPORT_SCHEMAS, {
     gate: 'anchorset.gate-report/v1',
-    agree: 'anchorset.agree-report/v1',
-    drift: 'anchorset.drift-report/v1',
-    flips: 'anchorset.flips-report/v1',
+    agree: 'anchorset.agree-report/v2',
+    drift: 'anchorset.drift-report/v2',
+    flips: 'anchorset.flips-report/v2',
     refusal: 'anchorset.refusal/v1',
   });
 });
@@ -191,7 +191,7 @@ test('a caller cannot change a default or an exit code: the write throws, and th
   assert.throws(() => { writable.IDENTITY_FIELDS.pop(); }, TypeError);
   const h = api.sha256Hex('one packet');
   const packetHashes = { a: { i1: h, i2: h, i3: h }, b: { i1: h, i2: h, i3: h } };
-  const report = api.agreementReport({ a: { i1: 'x', i2: 'y', i3: 'x' }, b: { i1: 'x', i2: 'y', i3: 'y' } }, { packetHashes, categories: ['x', 'y'] });
+  const report = api.agreementReport({ a: { i1: 'x', i2: 'y', i3: 'x' }, b: { i1: 'x', i2: 'y', i3: 'y' } }, { packetHashes, categories: ['x', 'y'], raterIdentity: 'persistent' });
   assert.deepEqual(report.bootstrap, { iterations: 2000, seed: 0, alpha: 0.05 });
   assert.equal(api.EXIT_CODES.REGRESSION, 1);
   assert.equal(api.IDENTITY_FIELDS.length, 16);

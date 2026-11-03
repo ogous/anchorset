@@ -342,6 +342,92 @@ export function parseSourceFile(bytes: Uint8Array, fileName: string, tool: Impor
   return { json: read.value, sha256 };
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// The tool versions the importers were tested on
+// ---------------------------------------------------------------------------------------------------------------
+
+/** The one list of tested tool versions. The two importers, `regrade.py` and `grader-provider.cjs` read it, and no other copy of a version stands in code. */
+export const TESTED_VERSIONS_SCHEMA = 'example.tested-versions/v1';
+const TESTED_VERSIONS_NAME = 'examples/importers/tested-versions.json';
+export type TestedTool = 'inspect_ai' | 'promptfoo';
+const TESTED_TOOLS: readonly TestedTool[] = ['inspect_ai', 'promptfoo'];
+const TESTED_ENTRY_KEYS = ['version', 'testedOn', 'fixtures', 'badFixtures', 'runtimes', 'gradingPathRead'];
+export type TestedEntry = { version: string; testedOn: string; fixtures: string; badFixtures: string; runtimes: string; gradingPathRead: string };
+export type TestedSet = { tool: TestedTool; format: number; entries: readonly TestedEntry[]; versions: readonly string[] };
+
+/** The list is a short file: all three readers refuse one over this many bytes. */
+const TESTED_VERSIONS_MAX_BYTES = 1024 * 1024;
+
+/** A real calendar date, written YYYY-MM-DD, in the years 0001 to 9999. The same arithmetic stands in the two other readers. */
+function isCalendarDate(s: string): boolean {
+  const m = /^([0-9]{4})-([0-9]{2})-([0-9]{2})$/.exec(s);
+  if (m === null) return false;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const leap = (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  return y >= 1 && mo >= 1 && mo <= 12 && d >= 1 && d <= ([31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][mo - 1] as number);
+}
+
+/** True when every value of a key `format` is written as a plain positive whole number: `2.0` and `2e0` parse to 2, and the parsed value cannot tell them from it. */
+function formatsWrittenPlainly(text: string): boolean {
+  let plain = true;
+  JSON.parse(text, (key: string, value: unknown, context?: { source?: string }) => {
+    if (key === 'format' && typeof value === 'number' && !/^[1-9][0-9]*$/.test(context?.source ?? '')) plain = false;
+    return value;
+  });
+  return plain;
+}
+
+/** One tool's tested set, from the file's bytes. Anything malformed, in any tool's part of the file, refuses: `IMPORT_SHAPE`. */
+export function parseTestedVersions(bytes: Uint8Array, tool: TestedTool): TestedSet {
+  const bad = (what: string): ImportRefusal => new ImportRefusal('IMPORT_SHAPE', [TESTED_VERSIONS_NAME], `${TESTED_VERSIONS_NAME}: ${what}`);
+  if (bytes.length > TESTED_VERSIONS_MAX_BYTES) throw bad(`must not be over ${TESTED_VERSIONS_MAX_BYTES} bytes`);
+  const decoded = utf8Text(bytes);
+  if ('problem' in decoded) throw bad(decoded.problem);
+  const text = decoded.text;
+  const read = parseJsonStrict(text);
+  if ('why' in read) throw bad(read.why);
+  const root = read.value;
+  const illFormed = illFormedProblems(root);
+  if (illFormed.length > 0) throw bad(illFormed.join('; '));
+  if (!formatsWrittenPlainly(text)) throw bad('a format must be written as a plain positive whole number');
+  if (!isObject(root) || Object.keys(root).sort().join() !== 'schema,tools') throw bad('must be an object with exactly the keys schema and tools');
+  if (root['schema'] !== TESTED_VERSIONS_SCHEMA) throw bad(`schema must be ${TESTED_VERSIONS_SCHEMA}`);
+  const tools = root['tools'];
+  if (!isObject(tools) || Object.keys(tools).sort().join() !== [...TESTED_TOOLS].sort().join()) throw bad(`tools must hold exactly ${TESTED_TOOLS.join(' and ')}`);
+  let chosen: TestedSet | undefined;
+  for (const name of TESTED_TOOLS) {
+    const t = tools[name];
+    if (!isObject(t) || Object.keys(t).sort().join() !== 'format,versions') throw bad(`${name} must hold exactly format and versions`);
+    const format = t['format'];
+    if (typeof format !== 'number' || !Number.isSafeInteger(format) || format < 1) throw bad(`${name}.format must be a positive integer`);
+    const list = t['versions'];
+    if (!Array.isArray(list) || list.length === 0) throw bad(`${name}.versions must be a non-empty list`);
+    const entries = list.map((e: unknown, i: number): TestedEntry => {
+      const at = `${name}.versions[${i}]`;
+      if (!isObject(e) || Object.keys(e).sort().join() !== [...TESTED_ENTRY_KEYS].sort().join()) throw bad(`${at} must hold exactly ${TESTED_ENTRY_KEYS.join(', ')}`);
+      for (const k of TESTED_ENTRY_KEYS) if (typeof e[k] !== 'string' || (e[k] as string).trim() === '') throw bad(`${at}.${k} must be a non-empty string`);
+      if (!/^[0-9A-Za-z][0-9A-Za-z.+-]*$/.test(e['version'] as string)) throw bad(`${at}.version is not a version`);
+      if (!isCalendarDate(e['testedOn'] as string)) throw bad(`${at}.testedOn must be a real date, YYYY-MM-DD`);
+      return e as TestedEntry;
+    });
+    const versions = entries.map((e) => e.version);
+    if (new Set(versions).size !== versions.length) throw bad(`${name}.versions lists a version twice`);
+    if (name === tool) chosen = { tool: name, format, entries, versions };
+  }
+  return chosen as TestedSet;
+}
+
+/** One tool's tested set, read from the file beside this one. */
+export function loadTestedVersions(tool: TestedTool): TestedSet {
+  let bytes: Uint8Array;
+  try {
+    bytes = readFileSync(new URL('./tested-versions.json', import.meta.url));
+  } catch (e) {
+    throw new ImportRefusal('IMPORT_SHAPE', [TESTED_VERSIONS_NAME], `${TESTED_VERSIONS_NAME}: cannot be read (${(e as Error).name})`);
+  }
+  return parseTestedVersions(bytes, tool);
+}
+
 /**
  * The refusal of a JSON-lines file in which a line holds a string or an object key with an unpaired surrogate, anywhere
  * in the line: `IMPORT_SHAPE`, every such line in `fields` as `file:line`, every place in the message by its JSON path.
@@ -446,8 +532,8 @@ export type Reading = (typeof READINGS)[number];
 export type ThinkingSent = typeof NOT_SENT | { type: 'adaptive' } | { type: 'between_tools' } | { type: 'disabled' } | { type: 'enabled'; budget_tokens: number };
 /** The request's `output_config`, as the graders send it: `{ effort }` or NOT_SENT. */
 export type OutputConfigSent = typeof NOT_SENT | { effort: string };
-/** The efforts the graders send; the library's list holds one more word, `minimal`, which is not sent. */
-export const SENT_EFFORTS = EFFORTS.filter((e) => e !== 'minimal');
+/** The efforts the graders send; the library's list holds two more words, `none` and `minimal`, which are not sent. */
+export const SENT_EFFORTS = EFFORTS.filter((e) => e !== 'none' && e !== 'minimal');
 
 /** The token usage of one response as it stated it, or ABSENT when it stated neither counter. */
 export type RecordedUsage = 'ABSENT' | { input_tokens: number; output_tokens: number };

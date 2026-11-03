@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { MIN_LEVEL_RESAMPLES, placeAmong } from '../src/stats.ts';
+import { RATINGS_SCHEMA } from '../src/version.ts';
 
 const root = join(import.meta.dirname, '..');
 const ex = (...f: string[]): string => join(root, 'examples', ...f);
@@ -62,12 +63,13 @@ test('agree: at 1,000 resamples a bracket carries its nominal level only if its 
   assert.deepEqual([j.kappaCI.nominalLevel, j.ac1CI.nominalLevel], [0.95, 0.95]);
 });
 
-// The two runs, as the command prints them (hand-worked in test/agreement.test.ts and test/stats.test.ts).
+// Two runs, as the command prints them (hand-worked in test/agreement.test.ts and test/stats.test.ts).
 test('agree at high prevalence: kappa undefined on 367 of 1,000 resamples is printed with "no level", never under "nominal 95%" alone; and alpha 0.0001 at 1,000 resamples names no level at all', () => {
   const items = Array.from({ length: 20 }, (_, i) => `i${i}`);
   const hash = 'a'.repeat(64);
   const body = (bootstrap: unknown): unknown => ({
-    schema: 'anchorset.ratings/v1',
+    schema: RATINGS_SCHEMA,
+    raterIdentity: 'persistent',
     categories: ['ok', 'bad'],
     ratings: { A: Object.fromEntries(items.map((id) => [id, 'ok'])), B: Object.fromEntries(items.map((id, i) => [id, i === 0 ? 'bad' : 'ok'])) },
     packetHashes: { A: Object.fromEntries(items.map((id) => [id, hash])), B: Object.fromEntries(items.map((id) => [id, hash])) },

@@ -3,7 +3,7 @@
  *
  *   node examples/importers/inspect/import.ts --in <log.json> --cases <cases.json> --bar <bar.json> --out <run.json>
  *
- * It reads one JSON-format Inspect log of inspect_ai 0.3.275 (log version 2) that `regrade.py` wrote through the
+ * It reads one JSON-format Inspect log, of an inspect_ai version in `tested-versions.json`, that `regrade.py` wrote through the
  * recording grader, and writes an `anchorset.run/v3` file. It refuses, and writes nothing, when any slot is not a
  * clean, finished, strictly readable grade, or when the fields it reads do not agree with one another and with the grader's record.
  *
@@ -15,7 +15,7 @@
  * This file imports only from `../shared.ts`, the library's public entry and Node built-ins.
  */
 import { join } from 'node:path';
-import { barHash, callShapeHash, caseSetHash, GAP, hashOf, NOT_SENT, outputHashOf, packetHashOf, RUN_SCHEMA, sha256Hex } from '../../../src/index.ts';
+import { barHash, callShapeHash, caseSetHash, GAP, hashOf, isSha256Hex, NOT_SENT, outputHashOf, packetHashOf, readsAsGap, RUN_SCHEMA, sha256Hex } from '../../../src/index.ts';
 import type { BarFile } from '../../../src/index.ts';
 import {
   shown,
@@ -34,6 +34,7 @@ import {
   isObject,
   ImportRefusal,
   judgeHarnessVersion,
+  loadTestedVersions,
   noRecordRefusal,
   parseRecord,
   parseSourceFile,
@@ -47,10 +48,8 @@ import {
   ungradedReason,
   ungradedRefusal,
 } from '../shared.ts';
-import type { CasesFile, GraderRecord, Io, RecordedSlot, SkeletonRow } from '../shared.ts';
+import type { CasesFile, GraderRecord, Io, RecordedSlot, SkeletonRow, TestedSet } from '../shared.ts';
 
-export const TESTED_VERSION = '0.3.275';
-export const TESTED_LOG_VERSION = 2;
 const SCORER = 'model_graded_qa';
 const SLOTS = ['question', 'answer', 'criterion', 'instructions'] as const;
 const DATA_MARKER = /\[(?:begin|end) data\]/i;
@@ -61,6 +60,59 @@ const PROMPT_MESSAGE_KEYS = ['id', 'content', 'role', 'source'];
 const REPLY_MESSAGE_KEYS = ['id', 'content', 'source', 'metadata', 'role', 'model'];
 
 type J = Record<string, unknown>;
+
+/** The key under `/eval/metadata` where `regrade.py` says which system log it read. Nothing compares what it holds. */
+export const SYSTEM_LOG_MARKER = 'anchorset_system_log';
+
+/** Every place below `v` where an object has the marker's key, as its list of keys: a key may hold a slash, so a joined text would not tell two places apart. */
+function markerPaths(v: unknown, path: readonly string[], out: string[][]): void {
+  if (Array.isArray(v)) v.forEach((x, i) => markerPaths(x, [...path, String(i)], out));
+  else if (isObject(v)) {
+    for (const [k, x] of Object.entries(v)) {
+      if (k === SYSTEM_LOG_MARKER) out.push([...path, k]);
+      markerPaths(x, [...path, k], out);
+    }
+  }
+}
+const samePath = (a: readonly string[], b: readonly string[]): boolean => a.length === b.length && a.every((k, i) => k === b[i]);
+/** A place as a JSON pointer, in which a slash inside a key is written `~1`. */
+const pointer = (path: readonly string[]): string => path.map((k) => `/${k.replaceAll('~', '~0').replaceAll('/', '~1')}`).join('');
+
+/**
+ * The end of `packetSource`: what the graded file says of the system log it was re-graded from. A file with no marker says
+ * `UNKNOWN`. A marker that is malformed, or a second one in the file, refuses, since a malformed record is not an absent one
+ * (a key given twice in one object is refused when the file is parsed). The tool writes its task metadata twice, at
+ * `/eval/metadata` and at `/metadata`, so a copy at `/metadata` that holds the same is not a second marker. A marker does not
+ * show who wrote it.
+ */
+function systemLogSuffix(root: J, evalBlock: J): string {
+  const wherePath = ['eval', 'metadata', SYSTEM_LOG_MARKER];
+  const toolCopyPath = ['metadata', SYSTEM_LOG_MARKER];
+  const where = pointer(wherePath);
+  const toolCopy = pointer(toolCopyPath);
+  const found: string[][] = [];
+  markerPaths(root, [], found);
+  const elsewhere = found.filter((p) => !samePath(p, wherePath) && !samePath(p, toolCopyPath)).map(pointer);
+  if (elsewhere.length > 0) throw new ImportRefusal('IMPORT_SHAPE', elsewhere, `the file holds a system log marker at ${elsewhere.join(', ')}; the one marker stands at ${where}`);
+  const metadata = evalBlock['metadata'] ?? {};
+  if (!isObject(metadata)) throw shape('/eval/metadata', 'an object', metadata);
+  if (found.length === 0) return '; system log UNKNOWN';
+  const marker = metadata[SYSTEM_LOG_MARKER];
+  if (found.some((p) => samePath(p, toolCopyPath)) && hashOf((root['metadata'] as J)[SYSTEM_LOG_MARKER] ?? null) !== hashOf(marker ?? null)) {
+    throw new ImportRefusal('IMPORT_SHAPE', [where, toolCopy], `${toolCopy} differs from ${where}; the file holds two markers`);
+  }
+  const version = isObject(marker) ? marker['version'] : undefined;
+  const wellFormed =
+    isObject(marker) &&
+    Object.keys(marker).sort().join() === 'sha256,tool,version' &&
+    isSha256Hex(marker['sha256']) &&
+    marker['tool'] === 'inspect_ai' &&
+    typeof version === 'string' &&
+    (version === GAP || (/^[\x21-\x7e]+$/.test(version) && !/[;,]/.test(version) && !readsAsGap(version)));
+  if (!wellFormed) throw new ImportRefusal('IMPORT_SHAPE', [where], `${where}: must hold exactly sha256 (a full sha256), tool ("inspect_ai") and version (visible ASCII with no ";" or ",", not spelling a gap, or ${GAP})`);
+  const sha = marker['sha256'] as string;
+  return version === GAP ? `; system log sha256:${sha}, stated version ${GAP}` : `; system log sha256:${sha}, stated version inspect_ai ${version as string}`;
+}
 
 /** Every string under `v` that begins with `attachment://`, as paths. */
 function attachmentPaths(v: unknown, path: string, out: string[]): void {
@@ -119,9 +171,10 @@ export type InspectSummary = {
 };
 
 /**
- * The whole import, from the log's bytes. Throws `ImportRefusal` and writes nothing. Pure: no file is read or written.
+ * The whole import, from the log's bytes. Throws `ImportRefusal` and writes nothing. No file is written, and the one file read is the
+ * list of tested versions, when `tested` is left out.
  */
-export function buildInspectRun(bytes: Uint8Array, fileName: string, stated: CasesFile, bar: BarFile): { run: Record<string, unknown>; summary: InspectSummary } {
+export function buildInspectRun(bytes: Uint8Array, fileName: string, stated: CasesFile, bar: BarFile, tested: TestedSet = loadTestedVersions('inspect_ai')): { run: Record<string, unknown>; summary: InspectSummary } {
   if (fileName.toLowerCase().endsWith('.eval')) {
     throw new ImportRefusal('IMPORT_SHAPE', [fileName], `${fileName}: this is the packed log format; write the log with examples/importers/inspect/regrade.py, or convert it with the tool's own command (inspect log convert)`);
   }
@@ -132,11 +185,11 @@ export function buildInspectRun(bytes: Uint8Array, fileName: string, stated: Cas
   const evalBlock = asObj(root['eval'], '/eval');
   const packages = isObject(evalBlock['packages']) ? evalBlock['packages'] : {};
   const toolVersion = packages['inspect_ai'];
-  if (root['version'] !== TESTED_LOG_VERSION || toolVersion !== TESTED_VERSION) {
+  if (root['version'] !== tested.format || typeof toolVersion !== 'string' || !tested.versions.includes(toolVersion)) {
     throw new ImportRefusal(
       'IMPORT_TOOL_VERSION',
       ['/version', '/eval/packages/inspect_ai'],
-      `this importer was tested on inspect_ai ${TESTED_VERSION} (format ${TESTED_LOG_VERSION}); the file says inspect_ai ${typeof toolVersion === 'string' ? toolVersion : 'nothing'}, format ${typeof root['version'] === 'number' ? root['version'] : 'nothing'}`,
+      `this importer was tested on inspect_ai ${tested.versions.join(', ')} (format ${tested.format}); the file says inspect_ai ${typeof toolVersion === 'string' ? toolVersion : 'nothing'}, format ${typeof root['version'] === 'number' ? root['version'] : 'nothing'}`,
     );
   }
   if (root['status'] !== 'success') {
@@ -155,6 +208,7 @@ export function buildInspectRun(bytes: Uint8Array, fileName: string, stated: Cas
   const options = asObj(scorer['options'], '/eval/scorers/0/options');
   const samples = asArr(root['samples'], '/samples');
   if (samples.length === 0) throw shape('/samples', 'a non-empty array', samples);
+  const systemLog = systemLogSuffix(root, evalBlock);
 
   // ---- pass 1: ids, plain strings, errors, the score key ---------------------------------------------------------
   const ungraded: { caseId: string; draw: number; reason: string }[] = [];
@@ -371,8 +425,8 @@ export function buildInspectRun(bytes: Uint8Array, fileName: string, stated: Cas
   unknownShape['schema'] = cs['schema'];
   const judgeShapeHash = callShapeHash(cs as never);
   const rubricHash = hashOf({ tool: 'inspect_ai', scorer: SCORER, instructions });
-  const judgeDefinitionHash = hashOf({ tool: 'inspect_ai', version: TESTED_VERSION, scorer: SCORER, template, tools: [], reading: 'last-line-grade-letter/v1' });
-  const harness = judgeHarnessVersion('inspect_ai', TESTED_VERSION, first);
+  const judgeDefinitionHash = hashOf({ tool: 'inspect_ai', version: toolVersion, scorer: SCORER, template, tools: [], reading: 'last-line-grade-letter/v1', maxReasks: first.reask.max });
+  const harness = judgeHarnessVersion('inspect_ai', toolVersion, first);
   const barH = barHash(bar);
   const caseSetH = caseSetHash(cases);
   const sortKey = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
@@ -415,7 +469,7 @@ export function buildInspectRun(bytes: Uint8Array, fileName: string, stated: Cas
     cases,
     draws,
     packetBasis: 'declared',
-    packetSource: `computed at import from inspect_ai ${TESTED_VERSION} log sha256:${sourceSha}: the question, answer and criterion slots of the grader's message`,
+    packetSource: `computed at import from inspect_ai ${toolVersion} log sha256:${sourceSha}: the question, answer and criterion slots of the grader's message${systemLog}`,
   };
   return {
     run,

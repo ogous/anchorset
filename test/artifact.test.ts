@@ -83,6 +83,23 @@ test('parseRunArtifact names the role of a bad call shape', () => {
   assert.equal(callShapeHash(makeCallShape()), makeIdentity().systemCallShapeHash);
 });
 
+test('the retry rule: parseRunArtifact refuses an attempt after a final judge reason, with its path and reason; each one as the last attempt is a valid file', () => {
+  const identity = makeJudgedIdentity({ caseSetHash: caseSetHash(cases) });
+  const graded = gradedAttempt('none', { judgeStop: 'tool-use' });
+  const draw = (...attempts: Attempt[]) => [slot('a', 0, ...attempts)];
+  for (const reason of ['parse-failure', 'content-filter', 'client-error']) {
+    const judge = unmeasured('judge', reason, graded.outputHash);
+    const after = problemsOf(valid(identity, draw({ ...judge, packetHash: graded.packetHash } as Attempt, graded)));
+    assert.ok(after.some((p) => p.startsWith('artifact.draws[0].attempts[0]: ') && p.includes(`the reason ${reason} is final`)), JSON.stringify(after));
+    assert.deepEqual(problemsOf(valid(identity, draw({ ...judge, packetHash: graded.packetHash } as Attempt))), [], reason);
+  }
+  for (const reason of ['timeout', 'transport', 'server-error', 'rate-limited', 'truncated']) {
+    const judge = unmeasured('judge', reason, graded.outputHash);
+    assert.deepEqual(problemsOf(valid(identity, draw({ ...judge, systemStop: graded.systemStop, packetHash: graded.packetHash } as Attempt, graded))), [], reason);
+  }
+  for (const reason of ['timeout', 'transport', 'server-error', 'rate-limited']) assert.deepEqual(problemsOf(valid(identity, draw(unmeasured('system', reason), graded))), [], reason);
+});
+
 test('the run schema is v3; a file with any other schema string gets the one plain message', () => {
   assert.equal(RUN_SCHEMA, 'anchorset.run/v3');
   for (const other of ['anchorset.run/v0', 'anchorset.run/v1', 'anchorset.run/v2', 'anchorset.run/v4', 'run']) {
