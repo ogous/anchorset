@@ -19,7 +19,7 @@ import type { JudgeChangeBinding, JudgeChangeLedgerRecord } from '../src/ledger.
 import { foldOfCase, tieBreakU } from '../src/cutmap.ts';
 import { mulberry32 } from '../src/rng.ts';
 import { nominalLevelCheck, nonInferiority, resampleIndices, spreadOf } from '../src/stats.ts';
-import { gateRuns } from '../src/regression.ts';
+import { gateRunsWithAdmission as gateRuns } from './helpers.ts';
 import type { Attempt, Case, Draw } from '../src/scoring.ts';
 import { extraKeys } from '../src/scoring.ts';
 import { callShapesFor, failedAttempt, gateInputs, makeIdentity, makeJudgeCallShape, makeJudgedIdentity, unmeasured } from './helpers.ts';

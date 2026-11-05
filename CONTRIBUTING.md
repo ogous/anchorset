@@ -31,7 +31,7 @@ For your own checks: `npm test` needs only the source tree; `npm run typecheck` 
 | `test/` | `node:test` suites. Each statistic is pinned in a test, to a published worked example where the test names one, and otherwise to a hand-worked fixture written out in the test or to an independent recomputation written in the test (which shares the author's reading of the definition) |
 | `examples/refund-bot/` | Synthetic demo data for the gate, agreement, drift and flips |
 | `examples/judge-change/` | Synthetic demo data for the judge-change measurement: five systems, two judges, a reference, the plan and a study manifest |
-| `examples/run-format/` | An example script that writes a run file from what your own harness recorded (`write-run.ts`), with an example input for it (`input/recorded.json`) and the bar; and a finished example run file (`run.json`, the one the run-format page quotes) with its generator |
+| `examples/run-format/` | An example input for `write-run` (`input/`: a manifest, one line per answer, the cases, the prompts and the rubric) and the bar; and a finished example run file (`run.json`, the one the run-format page quotes) with its generator |
 | `examples/importers/` | Example importers for promptfoo, Inspect and skill-evals, with their recording graders, a fake endpoint for zero-spend rehearsals, `make-plan.ts` (writes a judge-change plan) and synthetic fixtures |
 | `tools/` | Scripts for the repository's own checks: the build banner, the sign-off check, the pack-install test, the release gate and the study re-check (`study-check.ts`) |
 | `docs/` | The command line, the run format, the rating-file format, the judge-change contracts, the importers guide, how the tool relates to others, and the migration notes |

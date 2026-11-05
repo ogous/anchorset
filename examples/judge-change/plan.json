@@ -1,7 +1,7 @@
 {
   "schema": "anchorset.judge-change-plan/v1",
-  "barHash": "350b69d36d8131b950035f8ebe8f26052e634c48b5b8f81a767a56e27fa049b0",
-  "caseSetHash": "dbb9df32e72a966d064a39885da85132f2fb79b9c4d26ebc23f31f6a00b8c5f9",
+  "barHash": "44b447330f62a07aab29b0c2d1fe2cb66391167b4b939b5d999dca1637f1f9e7",
+  "caseSetHash": "43a9b79aef9aa07e75b7dd8b07f8669c2f9f07f088e529791aa7606d0f8f1449",
   "drawsPerCase": 6,
   "judges": {
     "old": {
@@ -26,28 +26,28 @@
   ],
   "systems": {
     "bot-v1": {
-      "old": "34c984138fa9e42a62206259ee475ca6bb1030fa3600ed5cd25ac81fafcfaeee",
-      "new": "897a75cc313da9faefac518b13329cd8ef5b00dae959eb95d183ffd021b3575c",
+      "old": "a2180fa5f2eeef355d07fb9433b2586bc80592111cc74d09598d986861b98603",
+      "new": "2bcda9de9e4638b7f3f48cff2bc730fd61780924fa0b4e4d624cee52cddadbf8",
       "reference": "7b2a5b113bf1d21d673e567f0b97505afd788c2431c326fd24e6603d9524b91f"
     },
     "bot-v2": {
-      "old": "0cccb9dfd0be04ac4da532ccd83f691c2d078a32698274c70a7120b514cd72b4",
-      "new": "98b96e6580c55e53622293b6186ba064f2c49a0b5f961afed4d9c40795b33ca5",
+      "old": "99b6edea97c40619a10acdab15032d68d30d1ba390d8a70f19b586b582077532",
+      "new": "9bcedee6a2db0ef2e0bc144abc8ef1de787cb6e9da1b1f318a23b50a0ca667bc",
       "reference": "c77415d8dc126d92bb42161cf6abab6df48fea98e183477dead8147056d44bdb"
     },
     "bot-v3": {
-      "old": "b09ee7e4eb6ef4e1bbfeafb74bdab2602e4304c31ab933408b1a64f354c90c17",
-      "new": "ae052893aeb7a5761e198b6774eaf67680c2762a513cb3a8f2f6edc49b46ce91",
+      "old": "b720689ce41c0b9fd59b2dc84e5c2a82b4058b950317344e00501b62239260ee",
+      "new": "ce00cb673b4d212345508e628fc3a6a787a53292ec787d29d5329b9b15b3e339",
       "reference": "b2f3f0db38d09e1d6f2ac28c4145f4d9179109d762aeedb4abc8dc77f503f6ee"
     },
     "bot-v4": {
-      "old": "9c38269dda9a33ba150a0b6523ceca77d0cb9e827fafb70e30c554ddb651de18",
-      "new": "319429b6dca127f4f6108c758d8e6d52096b658ab8c1bfa0d838104ccb0de061",
+      "old": "9b532404b2554b4ea0d06cc8a1c6bf1d91cbaad8062e6d89cf2f3cb3e0f33ce0",
+      "new": "79a2b3b4e49602f38d7ffc2d2c525cac1a2198c0a97de3020432422f55e9396c",
       "reference": "d9d10d1c21b30a066b6db1085503e27d9937652dd7bcfe626475cf60c32a64f9"
     },
     "bot-v5": {
-      "old": "af9b4c9df5e9ed83ebc49a49f9b9b78f6b96f1ed32b8863f809e9cb0524e0ade",
-      "new": "4653eb3cd35549ef4b23ff7176a1f1fc7946c4b667125a7cd91a9f9da7fd3ac3",
+      "old": "c41e146a3d489ddf601e585049a321308922d1bca74ade6ab4143a8d29884437",
+      "new": "f9af0ef29c243ee933bdfca09787ec8a9642c094653fe15c363fe2a00093adba",
       "reference": "ba14109ca4aad5b417cea113bb7e32884e3930ea9353a624b64c3c794279fc93"
     }
   },

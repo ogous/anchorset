@@ -10,7 +10,7 @@ const root = join(import.meta.dirname, '..');
 const run = (...args: string[]) => spawnSync(process.execPath, [join(root, 'src', 'cli.ts'), ...args], { encoding: 'utf8' });
 const ex = (f: string): string => join(root, 'examples', 'refund-bot', f);
 const gateArgs = ['gate', '--baseline', ex('baseline.json'), '--candidate', ex('candidate.json'), '--bar', ex('bar.json')];
-const COMMANDS = ['gate', 'agree', 'drift', 'flips', 'judge-change'];
+const COMMANDS = ['write-run', 'validate', 'gate', 'agree', 'drift', 'flips', 'judge-change'];
 
 test('--version prints the tool name and version and exits 0', () => {
   const r = run('--version');

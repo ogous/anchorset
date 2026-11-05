@@ -45,11 +45,13 @@ test('every --json report names its contract and the tool as its first two keys'
     assert.deepEqual(o['tool'], TOOL, command);
   }
   assert.deepEqual(REPORT_SCHEMAS, {
-    gate: 'anchorset.gate-report/v1',
+    gate: 'anchorset.gate-report/v2',
     agree: 'anchorset.agree-report/v2',
     drift: 'anchorset.drift-report/v2',
     flips: 'anchorset.flips-report/v2',
-    refusal: 'anchorset.refusal/v1',
+    'write-run': 'anchorset.write-run-report/v1',
+    validate: 'anchorset.validate-report/v1',
+    refusal: 'anchorset.refusal/v2',
   });
   // The gate's object keeps `kind` and `exitCode`, which the plugin and the verdict lines are read by.
   const gate = JSON.parse(run(...gateArgs, ...allow, '--json').stdout) as { kind: string; exitCode: number };

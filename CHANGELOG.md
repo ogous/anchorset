@@ -3,6 +3,82 @@
 All notable changes to this project are recorded here. Each file format carries its own schema string;
 `docs/MIGRATIONS.md` lists them, and from 0.1.0 on it says how a file moves when one changes.
 
+## 0.3.0 (2026-11-05)
+
+What changed since 0.2.0. `anchorset.run/v3` and the other formats you write keep their version strings, and every
+file that 0.2.0 read still reads but one: an original baseline under `--rejudge-of` holding a label the bar does not
+have now exits 65 whatever its packets (below). Two report formats move up because they gain keys;
+`docs/MIGRATIONS.md` lists them.
+
+### Commands
+
+- **`anchorset write-run`** is new: `write-run --manifest <manifest.json> --grades <rows.jsonl> --out <run.json>`
+  writes one `anchorset.run/v3` file from a manifest you write (`anchorset.run-input/v1`) and one JSON line per
+  attempt. It never overwrites `--out`, lists every input problem with its place, and writes nothing on invalid input
+  (exit 65). The manifest can state which call settings were sent (`settings.sent`, with every other key `NOT_SENT`)
+  and how the judge's reply stopped (`judge.gradedReplyStop`); `write-run` and `validate` print each statement used.
+- **`anchorset validate`** is new. Given `--run` and `--bar`, or `--manifest` and `--grades`, it says whether `gate`
+  would admit the run, listing every reason it would refuse it (exit 0 or 2), and whether `flips`, the re-judge split
+  and `judge-change` would read it. It counts the slots with no grade in every run it reads, by reason, beside the
+  judge's retries.
+- **`gate`**, when it refuses on a judge field, or on the rubric of judged runs, prints the judge diff: the six judge
+  fields, each the same, different or unknown; a separate line when the served model changed under the same requested
+  name; the judge settings that moved; how much a re-grade takes, as counts; and the next three commands, with your
+  own paths.
+- **`gate --rejudge-of`** prints the judge-flip list: per class, with non-compensable classes first, the baseline cases
+  whose result moved from pass to fail and from fail to pass between the two judges, each direction counted apart and
+  never netted, the cases the old judge left without a grade in their own column, and each judge's own variation
+  between draws beside them. It is computed only where both baselines state the same packets; where either declares
+  its packets rather than recording them, the list says "by declaration, not observed".
+- With one draw per case, `gate` says under its table that each effect includes the judge's own variation, which one
+  draw cannot measure, and its BROKE and FIXED rows name the draw. `flips` says how to measure the change (draw each
+  case at least twice). Codes and fields are unchanged.
+- **`judge-change`**: the text report adds the counts in each direction, the counts behind the share of one judge
+  graded twice, the judge's own variation, and two closing notes, and puts the non-compensable classes before the list
+  of items. It reads `not measured (…)` where 0.2.0 read `not declared`. The `--json` report is unchanged.
+
+### Reports
+
+- `anchorset.gate-report/v2`, in place of `v1`: with `--rejudge-of` it adds `judgeFlips`. The ledger record of such a
+  gate holds it too; `anchorset.ledger/v3` is unchanged.
+- `anchorset.refusal/v2`, in place of `v1`: a `gate` refusal on a judge field, or on the rubric of judged runs,
+  between the baseline and the candidate adds `judgeDiff`, and a refusal on slots with no grade (`INCOMPLETE_RUN` from
+  `gate`, `flips` or `judge-change`) adds `noGrade`, the counts per run file and reason. Both add `statements`, the two
+  sentences the text prints. Every key that `v1` had keeps its meaning, and its value too except `message`, which
+  gains a hint on two refusals (the rubric-only refusal of `gate` and the one-draw refusal of `flips`, below).
+- New: `anchorset.write-run-report/v1` (`write-run --json`) and `anchorset.validate-report/v1` (`validate --json`, on
+  exit 0 and on exit 2).
+- Two sentences, that agreement between judges is not evidence of correctness and that identities are as declared in
+  the run files (anchorset calls no model and cannot verify what was sent), close the `judge flips` block of
+  `gate --rejudge-of`, the `judge-change` and `validate` text reports, and every refusal that carries a judge diff or
+  no-grade counts. Under `--json` they are the `statements` key of `judgeFlips`, of the `validate` report and of those
+  refusals. `agree`, `drift`, `flips` and the `judge-change --json` report do not carry them.
+
+### Refusals
+
+- A refusal on the rubric alone, between two judged runs, now ends with the hint to re-judge, as a refusal on any
+  other judge field does.
+- The split of `gate --rejudge-of` refuses an original baseline, or a candidate, holding a draw with no grade as
+  `INCOMPLETE_RUN`, naming the draws (`case#draw`), where it was `ITEM_SET_MISMATCH`, naming the cases. A candidate's
+  cases with no grade are listed on a line of their own, apart from `missing cases:`.
+- An original baseline that is invalid input (a label the bar does not have) stops `gate --rejudge-of` with exit 65
+  whatever its packets, and also where its judge's call was rejected. 0.2.0 read only an original with recorded packets
+  that far.
+- Exit codes, refusal codes and field lists are otherwise unchanged.
+
+### Library
+
+- `gateRuns` with `rejudgeOf` adds `judgeFlips` to its result, present exactly when `judgeControl` is.
+- New export: `RUN_INPUT_SCHEMA`.
+
+### Examples and docs
+
+- `examples/run-format/write-run.ts` and its input `examples/run-format/input/recorded.json` are removed; `write-run`
+  replaces them, and `examples/run-format/input/` now holds a manifest and rows. Run files the script wrote still read.
+- The judge-change example names its non-compensable class `refund_policy`; no number in it moved.
+- `docs/CLI.md` has a recipe for putting a report into a pull request comment or a GitHub step summary.
+- `llms.txt` indexes the shipped docs and names the seven commands.
+
 ## 0.2.0 (2026-11-03)
 
 What changed since 0.1.0. A file that 0.1.0 read may need a change before 0.2.0 reads it: `docs/MIGRATIONS.md` says
@@ -70,10 +146,6 @@ which, and how to move it.
   does not hold, and tries it at zero spend with `examples/importers/watch-candidate.sh`. It reports and never adds to
   the list.
 - `tools/study-check.ts` says when a report equals the first run's but for the tool version.
-- **A Claude Code plugin**: one skill file that tells an agent how to run `npx anchorset@0.2.0` and how to report
-  what it printed, with its two manifests. It holds no code and decides nothing: every verdict and every number
-  comes from the CLI. It runs the published package, so it is committed to the repository after the `v0.2.0` tag
-  and the npm release: the tagged tree and the package do not hold it.
 
 ## 0.1.0 (2026-10-16)
 

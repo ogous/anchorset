@@ -9,7 +9,8 @@ import type { RunArtifact } from '../src/artifact.ts';
 import { CONTEXT_POLICIES, EFFORTS, NOT_SENT, THINKING_MODES, TOOL_CHOICES } from '../src/callshape.ts';
 import { barHash, parseBarFile } from '../src/gate.ts';
 import { GAP, IDENTITY_FIELDS, NO_JUDGE, NO_SEED } from '../src/identity.ts';
-import { gateExitCode, gateRuns } from '../src/regression.ts';
+import { gateExitCode } from '../src/regression.ts';
+import { gateRunsWithAdmission as gateRuns } from './helpers.ts';
 import { FAIL_REASONS, finalAttempt, JUDGE_UNMEASURED_REASONS, STOPS, TRANSPORT_REASONS } from '../src/scoring.ts';
 
 // docs/RUN_FORMAT.md is the run file's contract for someone writing one from their own harness. Its example is a

@@ -304,14 +304,15 @@ export function listed(keys: readonly string[]): string {
  * The same-packets check of a re-judged baseline (two raters are compared only where
  * they saw the same packet). Refuses with PACKET_MISMATCH unless both runs recorded, for every draw,
  * the packet their judge was shown, and the two are equal. It is the admission of the judge-and-
- * system split of `gate --rejudge-of`, and of nothing else: the gate itself reads no packet.
+ * system split of `gate --rejudge-of`, and, with `admitted` holding "declared" too, of its judge-flip list: the gate
+ * itself reads no packet. It returns the basis the two runs stand on: "recorded" when both recorded their packets,
+ * "declared" when either declares them.
  *
  * The comparison itself is comparePackets, shared with the judge-change measurement; this function
  * is its refusal for the gate. The rule, with the stricter reading taken wherever two existed:
- * - Basis. Both runs must have `packetBasis: "recorded"`. A declared packet is admitted by the
- *   judge-change measurement only: equal declared hashes show that two declarations agree, not
- *   what either judge was shown. "declared" on either side, or on both, refuses, as "UNKNOWN" does.
- *   The fields are `packetBasis (<run>)`.
+ * - Basis. Both runs must have a basis of `admitted`: "recorded" for the split. A declared packet is admitted by the
+ *   judge-change measurement and the judge-flip list only: equal declared hashes show that two declarations agree, not
+ *   what either judge was shown. "UNKNOWN" always refuses. The fields are `packetBasis (<run>)`.
  * - Which hash. The one on each draw's final attempt (see shownPacket). A slot the judge could not
  *   grade is compared like a graded one: its judge was shown a packet too.
  * - Unknown is never equal. A hash that is not a sha256 on either side refuses, both sides unknown
@@ -326,9 +327,17 @@ export function listed(keys: readonly string[]): string {
  * system effect is not an agreement between raters of one item. That the two runs were graded the
  * same way is the identity check's business (the judge fields must match).
  */
-export function assertSamePackets(original: RunArtifact, rejudged: RunArtifact, names: { original: string; rejudged: string } = { original: 'original', rejudged: 're-judged baseline' }): void {
-  const todo = `re-judge the baseline's stored outputs showing the current judge the packet the first judge was shown, and record each packet hash as it is shown (packetHashOf, packetBasis "recorded")`;
-  const found = comparePackets(original, rejudged, ['recorded']);
+export function assertSamePackets(
+  original: RunArtifact,
+  rejudged: RunArtifact,
+  names: { original: string; rejudged: string } = { original: 'original', rejudged: 're-judged baseline' },
+  admitted: readonly ('recorded' | 'declared')[] = ['recorded'],
+): 'recorded' | 'declared' {
+  const declaredToo = admitted.includes('declared');
+  const todo = declaredToo
+    ? `grade the baseline's stored outputs again showing the current judge the packet the first judge was shown, and record each packet hash as it is shown (packetBasis "recorded"), or declare it from a documented view (packetBasis "declared")`
+    : `re-judge the baseline's stored outputs showing the current judge the packet the first judge was shown, and record each packet hash as it is shown (packetHashOf, packetBasis "recorded")`;
+  const found = comparePackets(original, rejudged, admitted);
   const runs = { first: [names.original, original], second: [names.rejudged, rejudged] } as const;
   const offBasis = found.offBasis.map((side) => runs[side]);
   if (offBasis.length > 0) {
@@ -336,7 +345,9 @@ export function assertSamePackets(original: RunArtifact, rejudged: RunArtifact, 
     throw new RefusalError(
       'PACKET_MISMATCH',
       offBasis.map(([name]) => `packetBasis (${name})`),
-      `the two judges are compared only on packets both runs recorded, and ${detail} (a declared packet is admitted by judge-change only); ${todo}`,
+      declaredToo
+        ? `the two judges are compared only on packets both runs recorded or declared, and ${detail}; ${todo}`
+        : `the two judges are compared only on packets both runs recorded, and ${detail} (a declared packet is admitted by judge-change and the judge-flip list only); ${todo}`,
     );
   }
   const bad = found.draws.map((k) => `packetHash[${k}]`);
@@ -344,7 +355,9 @@ export function assertSamePackets(original: RunArtifact, rejudged: RunArtifact, 
     throw new RefusalError(
       'PACKET_MISMATCH',
       bad,
-      `the two judges were not shown the same packet, or what one or both were shown is unknown, on ${listed(bad)}; the ${names.original} and the ${names.rejudged} are compared only where both recorded the same packet; ${todo}`,
+      `the two judges were not shown the same packet, or what one or both were shown is unknown, on ${listed(bad)}; the ${names.original} and the ${names.rejudged} are compared only where both ${declaredToo ? 'state' : 'recorded'} the same packet; ${todo}`,
     );
   }
+  // Both admitted; the two stand on "recorded" only when neither basis is anything else.
+  return new Set([original.packetBasis, rejudged.packetBasis, 'recorded']).size > 1 ? 'declared' : 'recorded';
 }

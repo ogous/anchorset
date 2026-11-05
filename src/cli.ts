@@ -1,32 +1,37 @@
 #!/usr/bin/env node
-import { readdirSync, readFileSync, realpathSync } from 'node:fs';
-import { join } from 'node:path';
+import { closeSync, existsSync, linkSync, openSync, readdirSync, readFileSync, realpathSync, unlinkSync, writeFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { agreementReport, DEFAULT_BOOTSTRAP, RATER_IDENTITIES } from './agreement.ts';
 import type { AgreementReport, RaterIdentity } from './agreement.ts';
-import { parseRunArtifact } from './artifact.ts';
+import { listed, parseRunArtifact, RUN_SCHEMA } from './artifact.ts';
+import type { RunArtifact } from './artifact.ts';
+import { parseRunInputManifest, runFacts, runFromInput, runInputPaths } from './runinput.ts';
+import type { Declaration, InputFile, RunFacts } from './runinput.ts';
+import type { BarFile } from './gate.ts';
 import { noLevelNote, resampleBracketWording, resamplesText, suppliedPercentilesWording } from './stats.ts';
 import type { BootstrapOptions, PercentileInterval } from './stats.ts';
 import { driftReport } from './drift.ts';
 import type { DriftReport } from './drift.ts';
 import { InputError, RefusalError } from './errors.ts';
 import { barHash, parseBarFile } from './gate.ts';
-import { appendAll, findIllFormed, IDENTITY_FIELDS, isSha256Hex, MAX_JSON_DEPTH, NO_JUDGE, oneLine, parseJsonBytes, sha256Hex } from './identity.ts';
-import { judgeChangeRuns, NOT_DECLARED, parseJudgeChangePlan, SPREAD_ALPHA, spreadPercentilesWording } from './judgechange.ts';
-import type { JudgeChangeInput, JudgeChangeReport, PairGate, Placebo, Withheld } from './judgechange.ts';
+import { appendAll, canonicalJson, findIllFormed, GAP, gateNeverWaives, IDENTITY_FIELDS, isSha256Hex, MAX_JSON_DEPTH, NO_JUDGE, oneLine, parseJsonBytes, sha256Hex } from './identity.ts';
+import { AGREEMENT_SENTENCE_WITH_REFERENCE, AS_DECLARED_SENTENCE, FIXED_SENTENCES, judgeChangeWithReading, NOT_DECLARED, ONE_ESTIMATE_DRAW, parseJudgeChangePlan, SPREAD_ALPHA, spreadPercentilesWording } from './judgechange.ts';
+import type { JudgeChangeInput, JudgeChangePlan, JudgeChangeReading, JudgeChangeReport, PairGate, Placebo, Withheld } from './judgechange.ts';
 import type { FoldCut } from './cutmap.ts';
-import type { FoldedCase, JudgeRetries } from './scoring.ts';
+import type { Case, FoldedCase, JudgeRetries } from './scoring.ts';
 import type { IdentityField } from './identity.ts';
 import { appendRecord, checkLedgerFile, makeGateRecord, makeJudgeChangeRecord, makeRatingsRecord } from './ledger.ts';
-import { EXIT_CODES, gateExitCode, gateRuns, REJUDGE_BOOTSTRAP_DEFAULTS } from './regression.ts';
-import { extraKeys, finalAttempt, incompleteDetail } from './scoring.ts';
+import { EXIT_CODES, gateAdmission, gateExitCode, gateRuns, judgeDiff, judgeFlipsAdmission, ONE_DRAW_OWN_VARIATION, REJUDGE_BOOTSTRAP_DEFAULTS, splitRefusal } from './regression.ts';
+import type { AdmissionItem, FlipLabel, JudgeDiff, JudgeFlips, OwnVariation } from './regression.ts';
+import { extraKeys, finalAttempt, incompleteCounts, incompleteDetail, judgeRetries } from './scoring.ts';
 import { repeatFlips, STORED_OUTPUTS_DECLARED } from './flips.ts';
 import { unknownOutputHashes } from './stability.ts';
 import type { FlipShare, RepeatFlipReport } from './stability.ts';
 import type { GateRunResult, JudgeControl } from './regression.ts';
 import type { BootstrapResult } from './stats.ts';
 import type { JudgeControlledDelta } from './drift.ts';
-import { ANCHOR_SCHEMA, RATINGS_SCHEMA, REPORT_SCHEMAS, TOOL_NAME, TOOL_VERSION } from './version.ts';
+import { ANCHOR_SCHEMA, RATINGS_SCHEMA, REPORT_SCHEMAS, RUN_INPUT_SCHEMA, TOOL_NAME, TOOL_VERSION } from './version.ts';
 
 const USAGE_GATE = `  anchorset gate --baseline <run.json> --candidate <run.json> --bar <bar.json>
                  [--allow-differ field,field] [--ledger <path>] [--json]
@@ -66,6 +71,20 @@ const USAGE_JUDGE_CHANGE = `  anchorset judge-change --plan <plan.json> --bar <b
       every seed, and the report itself. The record is not signed: it says what was read, and
       verifying it means recomputing the report from the files.`;
 
+const USAGE_WRITE_RUN = `  anchorset write-run --manifest <manifest.json> --grades <rows.jsonl> --out <run.json> [--json]
+      Writes one run file (${RUN_SCHEMA}) from what your own eval code recorded: a manifest (${RUN_INPUT_SCHEMA}) and
+      one JSON line per grade. The manifest's paths are read from its own folder. Whatever the manifest does not state
+      is written as "UNKNOWN", never guessed, and the report lists it. It never overwrites --out, and writes nothing when
+      an input is not in its format. It compares nothing: it never exits 1 or 2.`;
+const USAGE_VALIDATE = `  anchorset validate --run <run.json> --bar <bar.json>
+                     [--baseline <run.json> [--allow-differ field,field] [--rejudge-of <run.json>]] [--json]
+  anchorset validate --manifest <manifest.json> --grades <rows.jsonl>
+                     [--baseline <run.json> [--allow-differ field,field] [--rejudge-of <run.json>]] [--json]
+      Whether gate would take this run, and every reason it would refuse it, where gate names the first. Without
+      --baseline the run is checked against itself. With --manifest it builds the run as write-run does and writes
+      nothing. Exit 0: gate would admit it; 2: gate would refuse it. It never exits 1. Under --json it prints its
+      own report on exit 2 as well.`;
+
 const USAGE_FOOTER = `anchorset --version prints the version; anchorset <command> --help prints one command's usage.
 
 every file read, by every command: UTF-8 text with no byte-order mark; no object gives a key twice;
@@ -74,8 +93,8 @@ The exit code is the command's own whether or not anything still reads its outpu
 
 --json prints one JSON object that names its contract in "schema" and the tool in "tool", except judge-change, whose report names its
 contracts in "contracts". A refusal under --json is the object {"schema": "${REPORT_SCHEMAS.refusal}", "tool", "kind": "refused", "command",
-"code", "fields", "message", "exitCode": 2}, on stdout, for every command;
-usage errors and invalid input stay text on stderr.
+"code", "fields", "message", "exitCode": 2}, on stdout, for every command but validate, which predicts refusals and refuses
+no comparison itself: on exit 2 it prints its own report. Usage errors and invalid input stay text on stderr.
 
 exit codes: 0 ok · 1 regression · 2 refused comparison · 64 usage · 65 invalid input · 70 internal error`;
 
@@ -85,10 +104,12 @@ const COMMAND_USAGE: Readonly<Record<string, string>> = {
   drift: `${USAGE_DRIFT}\n${USAGE_LEDGER_NOTE}`,
   flips: USAGE_FLIPS,
   'judge-change': USAGE_JUDGE_CHANGE,
+  'write-run': USAGE_WRITE_RUN,
+  validate: USAGE_VALIDATE,
 };
 
 const USAGE = `usage:
-${[USAGE_GATE, USAGE_AGREE, USAGE_DRIFT, USAGE_LEDGER_NOTE, USAGE_FLIPS, USAGE_JUDGE_CHANGE].join('\n')}
+${[USAGE_WRITE_RUN, USAGE_VALIDATE, USAGE_GATE, USAGE_AGREE, USAGE_DRIFT, USAGE_LEDGER_NOTE, USAGE_FLIPS, USAGE_JUDGE_CHANGE].join('\n')}
 
 ${USAGE_FOOTER}`;
 
@@ -165,11 +186,25 @@ const short = (v: string | number): string => (typeof v === 'string' && isSha256
 const pad = (s: string, n: number): string => (s.length >= n ? `${s} ` : s.padEnd(n));
 const fmt = (x: number | string): string => (typeof x === 'number' ? x.toFixed(3) : x);
 
-/** A refusal as three lines: its code, the fields it names, its reason. Also study-check's. */
+/**
+ * What a command adds to a refusal it raised, beside the code, fields and message, which stay as they are: the judge diff
+ * of a refusal on a judge field, or the no-grade counts of a refusal on slots that hold no grade, as text lines and as
+ * JSON keys. Kept by refusal, so the one printer and the one JSON object read it wherever the refusal surfaces.
+ */
+type RefusalExtras = { text: string[]; json: Record<string, unknown> };
+// The text lines hold no fixed sentence: printRefusal prints the two after them, and validate once for its whole report.
+const refusalExtras = new WeakMap<RefusalError, RefusalExtras>();
+
+/** A refusal as three lines: its code, the fields it names, its reason; then what the command added to it (RefusalExtras). Also study-check's. */
 export function printRefusal(io: Io, r: RefusalError): void {
   io.err(`REFUSED ${r.code}`);
   io.err(`  fields: ${r.fields.join(', ')}`);
   io.err(`  ${r.message.slice(r.code.length + 2)}`);
+  const extra = refusalExtras.get(r);
+  if (extra === undefined) return;
+  for (const line of extra.text) io.err(line);
+  io.err('');
+  for (const line of FIXED_SENTENCES) io.err(line);
 }
 
 /** The first two keys of every `--json` object but the judge-change report's (which carries its own `contracts`): its contract string and the tool. */
@@ -177,9 +212,190 @@ function contract(schema: string): { schema: string; tool: { name: string; versi
   return { schema, tool: { name: TOOL_NAME, version: TOOL_VERSION } };
 }
 
-/** The one object a command prints under `--json` when it refuses: the same keys for every command, exit code included. */
+/**
+ * The one object a command prints under `--json` when it refuses: the same eight keys for every command, exit code
+ * included, and the keys the command added to the refusal (`judgeDiff` or `noGrade`, with `statements`).
+ */
 function refusalJson(command: string, r: RefusalError): Record<string, unknown> {
-  return { ...contract(REPORT_SCHEMAS.refusal), kind: 'refused', command, code: r.code, fields: [...r.fields], message: r.message, exitCode: EXIT_CODES.REFUSED };
+  return { ...contract(REPORT_SCHEMAS.refusal), kind: 'refused', command, code: r.code, fields: [...r.fields], message: r.message, exitCode: EXIT_CODES.REFUSED, ...(refusalExtras.get(r)?.json ?? {}) };
+}
+
+/** A path as one shell word: as it is when it holds nothing a shell reads, otherwise in single quotes. A placeholder in angle brackets stays as it is. */
+const shellWord = (s: string): string => (/^[A-Za-z0-9_@%+=:,./-]+$/.test(s) || /^<[^<>]*>$/.test(s) ? s : `'${s.replaceAll("'", "'\\''")}'`);
+
+/** The path write-run is suggested to write the re-graded baseline to: the baseline's, with `.json` replaced by `.rejudged.json`. */
+const rejudgedPath = (p: string): string => (p.endsWith('.json') ? `${p.slice(0, -'.json'.length)}.rejudged.json` : `${p}.rejudged.json`);
+
+/** Where write-run's manifest states each identity field. */
+const MANIFEST_KEY: Readonly<Record<IdentityField, string>> = {
+  caseSetHash: 'cases',
+  rubricHash: 'rubric',
+  barHash: 'bar',
+  systemModelRequested: 'system.modelRequested',
+  systemModelServed: 'system.modelServed',
+  systemCallShapeHash: 'system.settings',
+  systemPromptHash: 'system.prompt',
+  systemToolsHash: 'system.tools',
+  systemHarnessVersion: 'system.harnessVersion',
+  judgeDefinitionHash: 'judge.definition',
+  judgeModelRequested: 'judge.modelRequested',
+  judgeModelServed: 'judge.modelServed',
+  judgeCallShapeHash: 'judge.settings',
+  judgeHarnessVersion: 'judge.harnessVersion',
+  seed: 'seed',
+  drawsPerCase: 'drawsPerCase',
+};
+
+/** The paths a judge diff's next commands are written with: the user's own, or a placeholder where the command was not given one. */
+type DiffPaths = { baseline: string; candidate: string; bar: string; original?: string; allowDiffer: readonly string[] };
+
+const DIFF_ROW = { judgeModelRequested: 'model requested', judgeModelServed: 'model served', judgeDefinitionHash: 'judge definition', rubricHash: 'rubric', judgeCallShapeHash: 'judge call shape', judgeHarnessVersion: 'judge harness' } as const;
+
+/** The next steps of a judge diff, each one line: the statement of unknown fields first, then the re-judge, each command with the user's paths. */
+function judgeDiffNext(d: JudgeDiff, names: { from: string; to: string }, paths: DiffPaths): string[] {
+  const steps: string[] = [];
+  const runName = (w: 'from' | 'to'): string => (w === 'from' ? names.from : names.to);
+  if (d.unknown.length > 0) {
+    const parts = d.unknown.map((u) => `${u.field} for the ${u.in.map(runName).join(' and the ')}`);
+    steps.push(`State ${parts.join(', ')} (for write-run: ${d.unknown.map((u) => MANIFEST_KEY[u.field]).join(', ')} in the manifest); unknown never counts as unchanged. anchorset validate lists every unknown field.`);
+  }
+  if (d.fields.some((x) => x.state === 'no-judge')) {
+    const codeCandidate = d.fields.some((x) => x.field === 'judgeDefinitionHash' && x.to === NO_JUDGE);
+    steps.push(`One run was graded by code and the other by a judge; --rejudge-of needs a judge on both. Grade the baseline's stored answers ${codeCandidate ? "with the candidate's code" : "with the candidate's judge"} and gate against that run as --baseline.`);
+    return steps;
+  }
+  if (d.rejudge === undefined) return steps;
+  const allow = paths.allowDiffer.length === 0 ? '' : ` --allow-differ ${shellWord(paths.allowDiffer.join(','))}`;
+  const source = paths.original ?? paths.baseline;
+  const out = rejudgedPath(source);
+  steps.push(paths.original === undefined
+    ? `Re-grade the baseline's stored answers with the candidate's judge, in your own grading code. Keep every answer, outcome and stop as stored. Write the result as a run file; from rows: anchorset write-run --manifest <manifest naming the candidate's judge> --grades <rows.jsonl> --out ${shellWord(out)}`
+    : `The re-judged baseline was not graded by the candidate's judge (the rows above). Re-grade the original baseline's stored answers again, with exactly the candidate's judge, prompt, rubric and settings. Write the result as a run file; from rows: anchorset write-run --manifest <manifest naming the candidate's judge> --grades <rows.jsonl> --out ${shellWord(out)}`);
+  steps.push(`anchorset validate --run ${shellWord(paths.candidate)} --bar ${shellWord(paths.bar)} --baseline ${shellWord(out)} --rejudge-of ${shellWord(source)}${allow}`);
+  steps.push(`anchorset gate --baseline ${shellWord(out)} --rejudge-of ${shellWord(source)} --candidate ${shellWord(paths.candidate)} --bar ${shellWord(paths.bar)}${allow}`);
+  return steps;
+}
+
+/**
+ * The judge diff of a refusal, as text lines and as the `judgeDiff` key, or undefined where none is printed (judgeDiff
+ * says when). `names` names the two runs as the refusal does: the baseline, or the re-judged baseline, and the candidate.
+ */
+function judgeDiffBlock(from: RunArtifact, to: RunArtifact, r: RefusalError, names: { from: string; to: string }, paths: DiffPaths): RefusalExtras | undefined {
+  const d = judgeDiff(from, to, r);
+  if (d === undefined) return undefined;
+  const next = judgeDiffNext(d, names, paths);
+  const text: string[] = ['', `the judge, ${names.from} -> ${names.to}:`];
+  const STATE = { same: 'same', differs: 'DIFFERS', unknown: 'UNKNOWN', 'no-judge': NO_JUDGE } as const;
+  const width = d.fields.reduce((w, x) => Math.max(w, `${short(x.from)} -> ${short(x.to)}`.length), 0) + 4;
+  for (const x of d.fields) {
+    text.push(`  ${pad(DIFF_ROW[x.field], 19)}${pad(`${short(x.from)} -> ${short(x.to)}`, width)}${STATE[x.state]}`);
+    if (x.field === 'judgeCallShapeHash' && d.callShapeKeys.length > 0) text.push(`    call-shape keys: ${d.callShapeKeys.join(', ')}`);
+  }
+  const at = (f: string): string => d.fields.find((x) => x.field === f)?.from ?? '';
+  const atTo = (f: string): string => d.fields.find((x) => x.field === f)?.to ?? '';
+  if (d.servedChangedUnderSameRequest) {
+    text.push(`  SERVED MODEL CHANGED UNDER THE SAME REQUESTED NAME: both runs asked for "${at('judgeModelRequested')}"; the model served was ${at('judgeModelServed')} for the ${names.from} and ${atTo('judgeModelServed')} for the ${names.to}.`);
+  }
+  if (d.fields.every((x) => x.field === 'rubricHash' ? x.state === 'differs' : x.state === 'same')) {
+    text.push('  Only the rubric differs. A case that moves under the new rubric may move because of the edit or because of the judge\'s own variation; anchorset cannot tell the two apart.');
+  }
+  text.push('  An edit of the judge\'s prompt or rubric is a judge change too, also when the model is the same.');
+  const size = d.rejudge;
+  if (size !== undefined) {
+    text.push('');
+    text.push(size === GAP
+      ? `re-judge size: not counted (the ${names.from}'s drawsPerCase is unknown); retries are extra. anchorset knows no prices.`
+      : `re-judge size: the ${names.from} holds ${size.cases} cases x ${size.drawsPerCase} draws per case = ${size.slots} slots, ${size.slotsWithAnswer} of them with an answer to grade: at least ${size.judgeCallsAtLeast} judge calls; retries are extra (the ${names.from}'s own grading asked again on ${size.baselineSlotsWithJudgeRetry} slots). anchorset knows no prices.`);
+  }
+  if (d.alsoDiffer.length > 0) {
+    text.push('');
+    // A field the gate never waives is not offered as one to name: its only remedy is runs that agree on it.
+    const never = gateNeverWaives(d.alsoDiffer, from.identity.judgeDefinitionHash !== NO_JUDGE || to.identity.judgeDefinitionHash !== NO_JUDGE);
+    const waivable = d.alsoDiffer.filter((f) => !never.includes(f));
+    if (waivable.length > 0) text.push(`also differ, and gate refuses them after re-judging too: ${waivable.join(', ')}. Name a field in --allow-differ only for a change you made on purpose.`);
+    if (never.length > 0) text.push(`also differ, and can never be named in --allow-differ: ${never.join(', ')}; the two runs must agree on them.`);
+  }
+  text.push('');
+  text.push('next:');
+  next.forEach((step, i) => text.push(`  ${i + 1}. ${step}`));
+  if (next.length > 0 && next[next.length - 1]?.startsWith('anchorset gate ')) {
+    text.push(`  Step ${next.length} gates against the re-graded baseline and lists the cases whose result moved between the two judges, in each direction, where both baselines record or declare the packets their judges were shown.`);
+  }
+  return {
+    text,
+    json: {
+      judgeDiff: {
+        from: names.from,
+        to: names.to,
+        fields: d.fields,
+        servedChangedUnderSameRequest: d.servedChangedUnderSameRequest,
+        callShapeKeys: d.callShapeKeys,
+        ...(d.rejudge === undefined ? {} : { rejudge: d.rejudge }),
+        alsoDiffer: d.alsoDiffer,
+        unknown: d.unknown.map((u) => ({ field: u.field, in: u.in.map((w) => (w === 'from' ? names.from : names.to)) })),
+        next,
+      },
+      statements: [...FIXED_SENTENCES],
+    },
+  };
+}
+
+/** The no-grade facts of one run file: its slots that hold no grade or have no record, by reason, and their keys as a refusal names them (`case#draw`). */
+type NoGradeCount = { slots: number; of: number | typeof GAP; byReason: { role: 'judge' | 'system' | 'none'; reason: string; slots: number }[]; keys: { slot: string; role: 'judge' | 'system' | 'none'; reason: string }[] };
+
+function noGradeOf(run: RunArtifact): NoGradeCount {
+  const f = runFacts(run);
+  const keys = [...f.noGrade.map((x) => ({ slot: x.slot, role: x.role, reason: x.reason })), ...f.slots.missing.map((slot) => ({ slot, role: 'none' as const, reason: 'no record' }))];
+  const tally = new Map<string, { role: 'judge' | 'system' | 'none'; reason: string; slots: number }>();
+  for (const k of keys) {
+    const at = `${k.role}\u0000${k.reason}`;
+    const t = tally.get(at);
+    if (t === undefined) tally.set(at, { role: k.role, reason: k.reason, slots: 1 });
+    else t.slots++;
+  }
+  const label = (x: { role: string; reason: string }): string => (x.role === 'none' ? x.reason : `${x.role} ${x.reason}`);
+  const byReason = [...tally.values()].sort((x, y) => (label(x) < label(y) ? -1 : label(x) > label(y) ? 1 : 0));
+  return { slots: keys.length, of: f.slots.declared, byReason, keys };
+}
+
+const reasonsText = (c: NoGradeCount): string => (c.byReason.length === 0 ? '-' : c.byReason.map((x) => `${x.role === 'none' ? x.reason : `${x.role} ${x.reason}`} ${x.slots}`).join(', '));
+const judgeOf = (run: RunArtifact): { requested: string; served: string } => ({ requested: String(run.identity.judgeModelRequested), served: String(run.identity.judgeModelServed) });
+
+/** Under every table of slots that hold no grade: which of a judge's reasons may be asked again, and the usual cause of a reply that cannot be read. */
+const NO_GRADE_REMEDY = "a judge's timeout, transport, server-error, rate-limited or truncated reply may be asked again; its parse-failure, content-filter or client-error is final. A reply that cannot be read often means its output budget or response format does not fit the model: change the judge's call and re-grade.";
+
+/**
+ * The no-grade counts of a refusal on slots, as text lines and as the `noGrade` key, built from the run files the command
+ * read. `rows` are those runs, each with how its slots are named in the refusal's fields. Attached only when the slots
+ * the rows count are exactly the slots the refusal names: the counts never describe other slots than those that refused.
+ */
+function noGradeBlock(r: RefusalError, command: string, rows: readonly { run: string; system?: string; role: string; artifact: RunArtifact; key: (k: NoGradeCount['keys'][number]) => string }[]): RefusalExtras | undefined {
+  if (r.code !== 'INCOMPLETE_RUN') return undefined;
+  const counted = rows.map((x) => ({ ...x, count: noGradeOf(x.artifact) }));
+  const keys = counted.flatMap((x) => x.count.keys.map(x.key));
+  const fields = [...r.fields];
+  if (keys.length !== fields.length || new Set(keys).size !== keys.length || !keys.every((k) => fields.includes(k))) return undefined;
+  const of = (c: NoGradeCount): string => `${c.slots} of ${c.of}`;
+  const systems = counted.some((x) => x.system !== undefined);
+  const text: string[] = ['', `slots that hold no grade, by run file (${command} reads none of them, and none is a pass, a fail or a flip):`];
+  const sysW = counted.reduce((w, x) => Math.max(w, (x.system ?? '').length), 6) + 2;
+  const roleW = counted.reduce((w, x) => Math.max(w, x.role.length), 4) + 2;
+  const servedW = counted.reduce((w, x) => Math.max(w, String(x.artifact.identity.judgeModelServed).length), 12) + 2;
+  text.push(`  ${systems ? pad('system', sysW) : ''}${pad('run', roleW)}${pad('judge served', servedW)}${pad('no grade', 14)}by reason`);
+  for (const x of counted) text.push(`  ${systems ? pad(x.system ?? '', sysW) : ''}${pad(x.role, roleW)}${pad(String(x.artifact.identity.judgeModelServed), servedW)}${pad(of(x.count), 14)}${reasonsText(x.count)}`);
+  if (counted.some((x) => x.count.byReason.some((b) => b.role === 'judge'))) text.push(`  ${NO_GRADE_REMEDY}`);
+  return {
+    text,
+    json: {
+      noGrade: counted.map((x) => ({ run: x.run, ...(x.system === undefined ? {} : { system: x.system }), role: x.role, judge: judgeOf(x.artifact), slots: x.count.slots, of: x.count.of, byReason: x.count.byReason })),
+      statements: [...FIXED_SENTENCES],
+    },
+  };
+}
+
+/** Attaches what a command adds to a refusal, if anything. */
+function explain(r: RefusalError, extra: RefusalExtras | undefined): void {
+  if (extra !== undefined) refusalExtras.set(r, extra);
 }
 
 /** How many of a class's candidate cases are new: a whole number from the result, or nothing is printed as a count. */
@@ -202,7 +418,14 @@ function gateSummary(result: GateRunResult): Record<string, unknown> {
     missing: result.gate.missingCaseIds,
     incomplete: result.incomplete.candidate.map((x) => ({ caseId: x.caseId, missing: x.missing, unmeasured: x.unmeasured, measuredFailure: x.measuredFailure })),
     ...(result.judgeControl === undefined ? {} : { judgeControl: judgeControlSummary(result.judgeControl) }),
+    ...(result.judgeFlips === undefined ? {} : { judgeFlips: judgeFlipsSummary(result.judgeFlips) }),
   };
+}
+
+/** The judge-flip list as the ledger records it: the packet basis it stands on, the ids per class and direction, and the own-variation counts. */
+function judgeFlipsSummary(jf: JudgeFlips): Record<string, unknown> {
+  if ('refused' in jf) return { refused: jf.refused.code, fields: [...jf.refused.fields] };
+  return { fold: jf.fold, drawsPerCase: jf.drawsPerCase, packets: jf.packets, classes: jf.classes, ownVariation: jf.ownVariation };
 }
 
 function judgeControlSummary(jc: JudgeControl): Record<string, unknown> {
@@ -230,7 +453,12 @@ function judgeControlSummary(jc: JudgeControl): Record<string, unknown> {
   };
 }
 
-function printJudgeControl(io: Io, jc: JudgeControl): void {
+/** The line under the class table of a gate over runs of one draw per case. Wording only: the draw count is in the identities. */
+export const ONE_DRAW_GATE_LINE = "draws per case: 1 — each case's result is one draw; whether it repeats is not measured (flips needs at least two draws per case)";
+/** The line in the judge-controlled block of such a gate. */
+export const ONE_DRAW_SPLIT_LINE = "one draw per case: both effects include the judge's own repeat variation, which one draw cannot measure";
+
+function printJudgeControl(io: Io, jc: JudgeControl, oneDraw: boolean): void {
   if ('refused' in jc) {
     const fields = jc.refused.fields.length > 0 ? jc.refused.fields.join(', ') : jc.refused.message.slice(jc.refused.code.length + 2);
     io.out(`judge-controlled: not computed (${jc.refused.code}: ${fields}); this does not change the exit code`);
@@ -264,6 +492,7 @@ function printJudgeControl(io: Io, jc: JudgeControl): void {
     }
   }
   if (jc.emptyClasses.length > 0) io.out(`  no case complete in all three runs: ${jc.emptyClasses.join(', ')}`);
+  if (oneDraw) io.out(`  ${ONE_DRAW_SPLIT_LINE}`);
   io.out('');
 }
 
@@ -275,7 +504,93 @@ function failingDrawsText(f: FoldedCase): string {
   return `${k} of ${n} draws fail`;
 }
 
-function printGate(io: Io, result: Extract<GateRunResult, { kind: 'evaluated' }>): void {
+/** Above this many rows each direction of the judge-flip list stops, and says how many more are in --json. */
+const JUDGE_FLIPS_LISTED = 30;
+/** How long a case input is printed in the judge-flip list, as one line of canonical JSON; the run file holds it whole. */
+const FLIP_INPUT_CHARS = 100;
+
+const flipLabelText = (l: FlipLabel): string => (typeof l === 'string' ? l : `failed(${l.failed})`);
+
+/** The judge-flip list of `gate --rejudge-of`: per class, each direction counted apart, never netted, with the judges' own split draws beside it. */
+function printJudgeFlips(io: Io, jf: JudgeFlips, cases: readonly Case[], directions: Readonly<Record<string, string>>): void {
+  if ('refused' in jf) {
+    const fields = jf.refused.fields.length > 0 ? jf.refused.fields.join(', ') : jf.refused.message.slice(jf.refused.code.length + 2);
+    io.out(`judge flips: not computed (${jf.refused.code}: ${fields}); the verdict and exit code are not affected`);
+    if (jf.refused.code === 'PACKET_MISMATCH') io.out(`  ${jf.refused.message.slice(jf.refused.code.length + 2)}`);
+    io.out('');
+    return;
+  }
+  const n = jf.drawsPerCase;
+  const oneDraw = n === 1;
+  io.out(`judge flips: the baseline's stored answers, original baseline (old judge) -> re-judged baseline (new judge), ${oneDraw ? 'each folded from its one draw' : `each folded worst of ${n} draws as the gate folds`}; each direction counted, never netted`);
+  io.out(`  old judge: ${jf.judges.old.requested}, served ${jf.judges.old.served} · new judge: ${jf.judges.new.requested}, served ${jf.judges.new.served} · packets equal ${jf.packets === 'recorded' ? 'as recorded' : 'by declaration, not observed'}`);
+  const name = (c: { klass: string; nonCompensable: boolean }): string => (c.nonCompensable ? `${c.klass} (strict)` : c.klass);
+  const w = jf.classes.reduce((m, c) => Math.max(m, name(c).length), 5) + 3;
+  io.out(`  ${pad('class', w)}${pad('n', 6)}${pad('pass -> fail', 15)}${pad('fail -> pass', 15)}no grade (old judge)`);
+  for (const c of jf.classes) io.out(`  ${pad(name(c), w)}${pad(String(c.n), 6)}${pad(String(c.passToFail.length), 15)}${pad(String(c.failToPass.length), 15)}${c.noGradeOld.length}`);
+  const byId = new Map(jf.cases.map((c) => [c.caseId, c]));
+  const inputs = new Map(cases.map((c) => [c.id, c.input]));
+  const inputLine = (id: string): string => {
+    const text = canonicalJson(inputs.get(id) ?? null);
+    return text.length > FLIP_INPUT_CHARS ? `${text.slice(0, FLIP_INPUT_CHARS)}…` : text;
+  };
+  const expectText = (c: { klass: string; expect: string }): string => `expect ${directions[c.klass] === 'ceiling' ? '<=' : '>='} ${c.expect}`;
+  const side = (x: { pass?: boolean; failingDraws?: number; labels: FlipLabel[] }): string => `${x.labels.map(flipLabelText).join(' ')}${oneDraw || x.failingDraws === undefined ? '' : ` (${x.failingDraws} of ${n} fail)`}`;
+  for (const [title, pick] of [['pass -> fail', (c: (typeof jf.classes)[number]) => c.passToFail], ['fail -> pass', (c: (typeof jf.classes)[number]) => c.failToPass]] as const) {
+    const ids = jf.classes.flatMap((c) => pick(c));
+    if (ids.length === 0) continue;
+    io.out(`  ${title} (${ids.length}):`);
+    for (const id of ids.slice(0, JUDGE_FLIPS_LISTED)) {
+      const c = byId.get(id);
+      if (c === undefined || !('pass' in c.old)) continue;
+      const answers = c.answers === 1 && c.answerHashes.length === 1 ? `answer ${short(c.answerHashes[0] as string)}` : `${c.answers} different answers across the draws`;
+      io.out(`    ${c.klass}/${c.caseId}  ${expectText(c)} · old ${side(c.old)} -> new ${side(c.new)} · ${answers}`);
+      io.out(`        input ${inputLine(c.caseId)}`);
+    }
+    if (ids.length > JUDGE_FLIPS_LISTED) io.out(`    and ${ids.length - JUDGE_FLIPS_LISTED} more (all in --json)`);
+  }
+  const noGrade = jf.cases.filter((c) => 'noGrade' in c.old);
+  if (noGrade.length > 0) {
+    const slots = noGrade.reduce((k, c) => k + ('noGrade' in c.old ? c.old.noGrade.length : 0), 0);
+    const tally = new Map<string, number>();
+    for (const c of noGrade) if ('noGrade' in c.old) for (const g of c.old.noGrade) tally.set(g.reason, (tally.get(g.reason) ?? 0) + 1);
+    const reasons = [...tally].sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)).map(([r, k]) => `${r} ${k}`).join(', ');
+    const total = jf.classes.reduce((k, c) => k + c.n, 0);
+    io.out(`  no grade under the old judge (${plural(noGrade.length, 'case')}; ${slots} of ${total * n} slots: ${reasons}); never a pass, a fail or a flip, and in no direction above:`);
+    for (const c of noGrade.slice(0, JUDGE_FLIPS_LISTED)) {
+      if (!('noGrade' in c.old)) continue;
+      io.out(`    ${c.klass}/${c.caseId}  ${c.old.noGrade.map((g) => `#${g.drawIndex} ${g.reason}`).join(', ')} · new judge ${c.new.pass ? 'pass' : 'fail'}${oneDraw ? '' : ` (${c.new.failingDraws} of ${n} fail)`}`);
+    }
+    if (noGrade.length > JUDGE_FLIPS_LISTED) io.out(`    and ${noGrade.length - JUDGE_FLIPS_LISTED} more (all in --json)`);
+  }
+  if (jf.ownVariation === ONE_DRAW_OWN_VARIATION) io.out(`  the judge's own variation: ${ONE_DRAW_OWN_VARIATION}`);
+  else {
+    io.out('  the judge\'s own variation on the same answers, beside the flips: cases whose draws split between pass and fail');
+    const v = jf.ownVariation;
+    const mixed = v.new.differentAnswers.of > 0;
+    // With different answers in the baseline, every count is printed in its two parts and none is pooled.
+    const two = (x: { oneAnswer: { split: number; of: number }; differentAnswers: { split: number; of: number } }): string => `one answer ${x.oneAnswer.split} of ${x.oneAnswer.of}, different answers ${x.differentAnswers.split} of ${x.differentAnswers.of}`;
+    const line = (judge: string, x: OwnVariation): string => {
+      const classes = x.byClass.map((c) => (mixed ? `${c.klass}: ${two(c)}` : `${c.klass} ${c.split} of ${c.of}`)).join(mixed ? '; ' : ', ');
+      const parts = mixed ? two(x) : `${x.splitCases} of ${x.of} cases`;
+      const left = x.noGradeCases === 0 ? '' : `; ${plural(x.noGradeCases, 'case')} with a slot that holds no grade ${x.noGradeCases === 1 ? 'is' : 'are'} not counted`;
+      return `    ${pad(judge, 11)}${parts} (${classes}${left})`;
+    };
+    io.out(line('old judge', v.old));
+    io.out(line('new judge', v.new));
+    const total = v.new.oneAnswer.of + v.new.differentAnswers.of;
+    io.out(mixed
+      ? `    ${v.new.differentAnswers.of} of the ${total} cases hold different answers across their draws; their splits mix the system's variation with the judge's, and are never pooled with the one-answer cases`
+      : `    each of the ${total} cases holds one stored answer on all its draws, so these splits are the judge's alone`);
+  }
+  for (const line of jf.statements) io.out(`  ${line}`);
+  io.out('');
+}
+
+/** `oneDraw`: both runs hold one draw per case (the gate admits no pair whose counts differ). */
+type GateText = { cases: readonly Case[]; directions: Readonly<Record<string, string>>; candidateCases: number; drawsPerCase: number };
+
+function printGate(io: Io, result: Extract<GateRunResult, { kind: 'evaluated' }>, oneDraw: boolean, ctx: GateText): void {
   if (result.allowedDifferences.length > 0) {
     io.out('allowed to differ:');
     for (const d of result.allowedDifferences) io.out(`  ${pad(d.field, 20)} ${short(d.baseline)} -> ${short(d.candidate)}`);
@@ -295,6 +610,7 @@ function printGate(io: Io, result: Extract<GateRunResult, { kind: 'evaluated' }>
     if (c.knownFailureIds.length > 0) io.out(`  known failures (still counted): ${c.knownFailureIds.join(', ')}`);
     if (c.knownFailuresNowPassing.length > 0) io.out(`  known failures (now passing): ${c.knownFailuresNowPassing.join(', ')}`);
   }
+  if (oneDraw) io.out(ONE_DRAW_GATE_LINE);
   io.out('');
   const cand = new Map(result.folded.candidate.map((f) => [f.caseId, f]));
   for (const status of ['BROKE', 'FIXED'] as const) {
@@ -305,18 +621,32 @@ function printGate(io: Io, result: Extract<GateRunResult, { kind: 'evaluated' }>
       const a = f === undefined ? undefined : finalAttempt(f.attributedDraw);
       const out = a === undefined ? '' : a.kind === 'graded' ? a.label : a.kind === 'failed' ? `failed (${a.reason}): ${a.detail}` : `unmeasured (${a.role} ${a.reason})`;
       // A BROKE row ends with the count of failing draws, as two integers: never a share, a percentage or a bracket (the class table and the case diff print no interval).
-      const count = status === 'BROKE' && f !== undefined ? `; ${failingDrawsText(f)}` : '';
-      io.out(`  ${d.klass}/${d.caseId}  attributed draw #${f?.attributedDraw.drawIndex ?? '-'}: ${out}${count}`);
+      // With one draw per case the case's result is its one draw: there is nothing to attribute, and nothing to count.
+      const count = status === 'BROKE' && f !== undefined && !oneDraw ? `; ${failingDrawsText(f)}` : '';
+      io.out(`  ${d.klass}/${d.caseId}  ${oneDraw ? '' : 'attributed '}draw #${f?.attributedDraw.drawIndex ?? '-'}: ${out}${count}`);
     }
   }
   for (const [name, list] of Object.entries(result.incomplete)) {
     for (const x of list) io.out(`incomplete ${name} case ${x.caseId}: ${incompleteDetail(x)}`);
   }
-  if (result.gate.missingCaseIds.length > 0) io.out(`missing cases: ${result.gate.missingCaseIds.join(', ')}`);
+  // A candidate case with a slot that holds no grade is present, and fails the gate as incomplete: it is listed apart
+  // from the cases the candidate holds no record of. Text only: the report's own lists keep their meaning.
+  const noGrade = result.incomplete.candidate.filter((x) => x.unmeasured.length > 0);
+  const noGradeIds = new Set(noGrade.map((x) => x.caseId));
+  if (noGrade.length > 0) {
+    io.out(`cases with a slot that holds no grade (${incompleteCounts('candidate', ctx.candidateCases, ctx.drawsPerCase, noGrade)}): ${noGrade.map((x) => x.caseId).join(', ')}`);
+  }
+  const missing = result.gate.missingCaseIds.filter((id) => !noGradeIds.has(id));
+  if (missing.length > 0) io.out(`missing cases: ${missing.join(', ')}`);
   if (result.gate.extraCaseIds.length > 0) io.out(`extra cases: ${result.gate.extraCaseIds.join(', ')}`);
-  if (result.judgeControl !== undefined) {
+  if (result.judgeFlips !== undefined) {
     io.out('');
-    printJudgeControl(io, result.judgeControl);
+    printJudgeFlips(io, result.judgeFlips, ctx.cases, ctx.directions);
+  }
+  if (result.judgeControl !== undefined) {
+    if (result.judgeFlips === undefined) io.out('');
+    // Each block prints its own remedy: the list's names declared packets too, the split's recorded ones only.
+    printJudgeControl(io, result.judgeControl, oneDraw);
   }
   const code = gateExitCode(result);
   if (result.judgeControl === undefined) io.out('');
@@ -375,6 +705,13 @@ function cmdGate(argv: readonly string[], io: Io): number {
     throw e;
   }
   const code = gateExitCode(result);
+  if (result.kind === 'refused') {
+    const r = result.refusal;
+    const baselinePath = str(flags, 'baseline') as string;
+    const names = { from: rejudgeOf === undefined ? 'baseline' : 're-judged baseline', to: 'candidate' };
+    explain(r, judgeDiffBlock(baseline, candidate, r, names, { baseline: baselinePath, candidate: str(flags, 'candidate') as string, bar: str(flags, 'bar') as string, ...(rejudgePath === undefined ? {} : { original: rejudgePath }), allowDiffer })
+      ?? noGradeBlock(r, 'gate', [{ run: baselinePath, role: names.from, artifact: baseline, key: (k) => k.slot }]));
+  }
 
   // Append before printing, as the other commands do: a verdict asked to be recorded is never printed unrecorded.
   let trace: string | undefined;
@@ -402,6 +739,9 @@ function cmdGate(argv: readonly string[], io: Io): number {
           ...(result.judgeControl !== undefined && 'refused' in result.judgeControl
             ? { judgeControl: { refused: { code: result.judgeControl.refused.code, fields: result.judgeControl.refused.fields, message: result.judgeControl.refused.message } } }
             : {}),
+          ...(result.judgeFlips !== undefined && 'refused' in result.judgeFlips
+            ? { judgeFlips: { refused: { code: result.judgeFlips.refused.code, fields: result.judgeFlips.refused.fields, message: result.judgeFlips.refused.message } } }
+            : {}),
           exitCode: code,
         };
     io.out(JSON.stringify(json, null, 2));
@@ -409,7 +749,11 @@ function cmdGate(argv: readonly string[], io: Io): number {
     if (trace !== undefined) io.err(trace);
   } else {
     if (result.kind === 'refused') printRefusal(textIo(io), result.refusal);
-    else printGate(textIo(io), result);
+    else {
+      const directions = Object.fromEntries(Object.entries(bar.classes).map(([k, c]) => [k, c.direction]));
+      const n = candidate.identity.drawsPerCase;
+      printGate(textIo(io), result, baseline.identity.drawsPerCase === 1 && n === 1, { cases: baseline.cases, directions, candidateCases: candidate.cases.length, drawsPerCase: typeof n === 'number' ? n : 0 });
+    }
     if (trace !== undefined) io.out(trace);
   }
   return code;
@@ -713,7 +1057,13 @@ function cmdFlips(argv: readonly string[], io: Io): number {
     if (e instanceof InputError) throw new InputError(e.code, e.problems.map((p) => `--run ${path}: ${p}`));
     throw e;
   }
-  const report = repeatFlips(run, { ...DEFAULT_BOOTSTRAP, seed }, stored === undefined ? {} : { storedOutputs: stored });
+  let report: RepeatFlipReport;
+  try {
+    report = repeatFlips(run, { ...DEFAULT_BOOTSTRAP, seed }, stored === undefined ? {} : { storedOutputs: stored });
+  } catch (e) {
+    if (e instanceof RefusalError) explain(e, noGradeBlock(e, 'flips', [{ run: path, role: 'run', artifact: run, key: (k) => k.slot }]));
+    throw e;
+  }
   const judged = run.identity.judgeDefinitionHash !== NO_JUDGE;
   if (flags.has('json')) {
     const about = { sha256: sha256Hex(read.bytes), grader: judged ? 'judge' : 'code', packetBasis: run.packetBasis, ...(run.packetSource === undefined ? {} : { packetSource: run.packetSource }) };
@@ -724,7 +1074,12 @@ function cmdFlips(argv: readonly string[], io: Io): number {
   return EXIT_CODES.OK;
 }
 
-function printJudgeChange(io: Io, r: JudgeChangeReport): void {
+/** What the judge-change text prints for the within-judge share, and the difference read off it, on a plan of one draw per case. */
+export const ONE_DRAW_WITHIN_JUDGE = 'not measured (one draw per case)';
+/** The same, on a plan of several draws per case that declares no re-ask set. */
+export const NO_REASK_WITHIN_JUDGE = 'not measured (the plan declares no re-ask set)';
+
+function printJudgeChange(io: Io, r: JudgeChangeReport, reading: JudgeChangeReading): void {
   const num = (x: number | string): string => (typeof x === 'number' ? x.toFixed(3) : x);
   const signed = (x: number): string => `${x >= 0 ? '+' : ''}${x.toFixed(3)}`;
   // A line that holds a number computed against a reference that saw another packet ends with the label.
@@ -764,27 +1119,42 @@ function printJudgeChange(io: Io, r: JudgeChangeReport): void {
   io.out(`${pad(`label pass rate (${r.labelPassRate.rule})`, 40)}${pad(num(r.labelPassRate.old), 9)}${pad(num(r.labelPassRate.new), 9)}${signed(r.labelPassRate.change)}`);
   io.out('');
   io.out(`${pad(`labels that differ between the judges (${r.flips.rule})`, 62)}${num(r.flips.acrossJudges)}`);
-  io.out(`${pad(`labels that differ between two sets of one judge (${r.flips.rule})`, 62)}${num(r.flips.withinJudge)}`);
-  io.out(`${pad('the first share minus the second (from the counts)', 62)}${num(r.flips.beyondReask)}`);
+  const dir = reading.directions;
+  io.out(`  in each direction, never netted: pass -> fail ${dir.passToFail} · fail -> pass ${dir.failToPass} (of ${dir.items} items)`);
+  // No re-ask set: one draw per case leaves no second set, and a plan of several draws may declare none.
+  // Text only: the JSON keeps "not declared", which is what the plan says.
+  const oneDraw = r.drawSets.estimate.length === 1 && r.drawSets.reask === NOT_DECLARED;
+  const within = (x: number | typeof NOT_DECLARED): string => (x !== NOT_DECLARED ? num(x) : oneDraw ? ONE_DRAW_WITHIN_JUDGE : NO_REASK_WITHIN_JUDGE);
+  io.out(`${pad(`labels that differ between two sets of one judge (${r.flips.rule})`, 62)}${within(r.flips.withinJudge)}`);
+  const wc = reading.withinJudgeCounts;
+  if (wc !== NOT_DECLARED) io.out(`  as counts: old judge ${wc.old} of ${wc.items} items, new judge ${wc.new} of ${wc.items} items differ between their two sets`);
+  io.out(`${pad('the first share minus the second (from the counts)', 62)}${within(r.flips.beyondReask)}`);
+  const ov = reading.ownVariation;
+  io.out(ov === ONE_ESTIMATE_DRAW
+    ? `the judge's own variation: ${ONE_ESTIMATE_DRAW}`
+    : `the judge's own variation: items whose estimate draws split between pass and fail: old judge ${ov.old.split} of ${ov.old.items} · new judge ${ov.new.split} of ${ov.new.items}`);
   if (r.perSystem.length > 1) {
     io.out('');
     io.out(`per-draw rates, and labels and flips by the ${r.labelRule} rule:`);
-    io.out(`${pad('system', 16)}${pad('items', 7)}${pad('per-draw old', 14)}${pad('new', 8)}${pad('label old', 11)}${pad('new', 8)}flips`);
+    io.out(`${pad('system', 16)}${pad('items', 7)}${pad('per-draw old', 14)}${pad('new', 8)}${pad('label old', 11)}${pad('new', 8)}${pad('flips', 8)}pass -> fail · fail -> pass`);
     for (const s of r.perSystem) {
-      io.out(`${pad(s.system, 16)}${pad(String(s.items), 7)}${pad(num(s.perDrawPassRate.old), 14)}${pad(num(s.perDrawPassRate.new), 8)}${pad(num(s.labelPassRate.old), 11)}${pad(num(s.labelPassRate.new), 8)}${num(s.flipsAcrossJudges)}`);
+      const w = reading.perSystem.find((x) => x.system === s.system);
+      io.out(`${pad(s.system, 16)}${pad(String(s.items), 7)}${pad(num(s.perDrawPassRate.old), 14)}${pad(num(s.perDrawPassRate.new), 8)}${pad(num(s.labelPassRate.old), 11)}${pad(num(s.labelPassRate.new), 8)}${pad(num(s.flipsAcrossJudges), 8)}${w === undefined ? '' : `${w.passToFail} · ${w.failToPass}`}`);
     }
   }
-  io.out('');
-  const word = (b: boolean): string => (b ? 'pass' : 'fail');
-  io.out(`items whose label differs between the judges (${r.flips.items.length}):`);
-  for (const x of r.flips.items) io.out(`  ${x.system}/${x.caseId}  ${word(x.old)} -> ${word(x.new)}`);
+  // Non-compensable classes first: a case that newly fails there fails the run, whatever the class beside it does.
   if (r.nonCompensableClasses.length > 0) {
     io.out('');
     io.out(`non-compensable classes (${r.nonCompensableClasses.join(', ')}): cases with a failing draw, listed, never pooled (${r.nonCompensable.length}):`);
+    for (const c of reading.byClass.filter((x) => x.nonCompensable)) io.out(`  ${c.klass}: pass -> fail ${c.passToFail.length} · fail -> pass ${c.failToPass.length}, ${c.labelledBy}`);
     for (const x of r.nonCompensable) {
       io.out(`  ${x.klass}/${x.system}/${x.caseId}  old judge fails draws [${x.oldFailingDraws.join(', ')}] · new judge fails draws [${x.newFailingDraws.join(', ')}]${x.worstOfNDiffers ? ' · worst-of-N differs between the judges' : ''}`);
     }
   }
+  io.out('');
+  const word = (b: boolean): string => (b ? 'pass' : 'fail');
+  io.out(`items whose label differs between the judges (${r.flips.items.length}: pass -> fail ${dir.passToFail}, fail -> pass ${dir.failToPass}):`);
+  for (const x of r.flips.items) io.out(`  ${x.system}/${x.caseId}  ${word(x.old)} -> ${word(x.new)}`);
   if (r.notMeasuredClasses.length > 0) {
     io.out('');
     io.out(`not measured (one class per plan): ${r.notMeasuredClasses.join(', ')}`);
@@ -934,6 +1304,9 @@ function printJudgeChange(io: Io, r: JudgeChangeReport): void {
   for (const [name, state] of Object.entries(r.blocks)) io.out(`  ${pad(name, 12)}${state}`);
   io.out('');
   for (const n of r.notes) io.out(`note: ${n}`);
+  // Text only: the report is kept as a recorded run made it, so the two sentences are printed beside its notes.
+  io.out(`note: ${r.reference === NOT_DECLARED ? FIXED_SENTENCES[0] : AGREEMENT_SENTENCE_WITH_REFERENCE}`);
+  io.out(`note: ${AS_DECLARED_SENTENCE}`);
 }
 
 function cmdJudgeChange(argv: readonly string[], io: Io): number {
@@ -981,7 +1354,14 @@ function cmdJudgeChange(argv: readonly string[], io: Io): number {
       throw new InputError('INVALID_ARGUMENT', [`cannot read ${path}: ${(e as Error).message}`]);
     }
   }
-  const report = judgeChangeRuns(files, bar, plan);
+  let measured: { report: JudgeChangeReport; reading: JudgeChangeReading };
+  try {
+    measured = judgeChangeWithReading(files, bar, plan);
+  } catch (e) {
+    if (e instanceof RefusalError) explain(e, noGradeBlock(e, 'judge-change', judgeChangeRows(files, plan)));
+    throw e;
+  }
+  const { report, reading } = measured;
   // Append before printing, as the gate does: a report asked to be recorded is never printed unrecorded.
   let trace: string | undefined;
   if (ledgerPath !== undefined) {
@@ -993,10 +1373,372 @@ function cmdJudgeChange(argv: readonly string[], io: Io): number {
     io.out(JSON.stringify(report, null, 2));
     if (trace !== undefined) io.err(trace);
   } else {
-    printJudgeChange(textIo(io), report);
+    printJudgeChange(textIo(io), report, reading);
     if (trace !== undefined) io.out(trace);
   }
   return EXIT_CODES.OK;
+}
+
+/**
+ * The run files of a judge-change roster, each with its system and judge, as the refusal on slots names them
+ * ("bot-v1/q03#2 (new judge: judge parse-failure)", "... (new judge: missing)"). A file that does not parse as a run is
+ * left out, and then the counts are not attached (noGradeBlock), because they would not cover every slot.
+ */
+function judgeChangeRows(files: readonly JudgeChangeInput[], plan: JudgeChangePlan): Parameters<typeof noGradeBlock>[2] {
+  const bySha = new Map(files.map((f) => [sha256Hex(f.bytes), f]));
+  const rows: Parameters<typeof noGradeBlock>[2][number][] = [];
+  for (const [system, entry] of Object.entries(plan.systems)) {
+    for (const [judge, sha] of [['old', entry.old], ['new', entry.new]] as const) {
+      const f = bySha.get(sha);
+      if (f === undefined) continue;
+      const parsed = parseJsonBytes(f.bytes);
+      if ('problem' in parsed) continue;
+      let artifact: RunArtifact;
+      try {
+        artifact = parseRunArtifact(parsed.json);
+      } catch {
+        continue;
+      }
+      rows.push({ run: f.name, system, role: `${judge}-judge`, artifact, key: (k) => `${system}/${k.slot} (${judge} judge: ${k.role === 'none' ? 'missing' : `${k.role} ${k.reason}`})` });
+    }
+  }
+  return rows;
+}
+
+/** A manifest, every file it names (read from the manifest's folder, keyed by the path as the manifest gives it) and the rows, built into a run. */
+function buildFromInput(manifestPath: string, gradesPath: string): ReturnType<typeof runFromInput> & { reads: InputFile[] } {
+  const read = readJsonFile(manifestPath);
+  let manifest;
+  try {
+    manifest = parseRunInputManifest(read.json);
+  } catch (e) {
+    if (e instanceof InputError) throw new InputError(e.code, e.problems.map((p) => `--manifest ${manifestPath}: ${p}`));
+    throw e;
+  }
+  const dir = dirname(manifestPath);
+  const files = new Map<string, Uint8Array>();
+  const unreadable: string[] = [];
+  for (const p of runInputPaths(manifest)) {
+    try {
+      files.set(p, readFileSync(resolve(dir, p)));
+    } catch (e) {
+      unreadable.push(`cannot read ${p}, named in ${manifestPath} (read as ${resolve(dir, p)}): ${(e as Error).message}`);
+    }
+  }
+  let grades: Uint8Array = new Uint8Array();
+  try {
+    grades = readFileSync(gradesPath);
+  } catch (e) {
+    unreadable.push(`cannot read --grades ${gradesPath}: ${(e as Error).message}`);
+  }
+  if (unreadable.length > 0) throw new InputError('INVALID_ARGUMENT', unreadable);
+  const built = runFromInput(manifest, grades, files, { grades: gradesPath });
+  const reads: InputFile[] = [
+    { role: 'manifest', path: manifestPath, sha256: sha256Hex(read.bytes) },
+    { role: 'grades', path: gradesPath, sha256: sha256Hex(grades) },
+    ...built.facts.inputs,
+  ];
+  return { ...built, reads };
+}
+
+/** Writes `text` to `out` as a new file, or not at all: a temporary file, then a link, which fails if `out` exists. */
+function writeNewFile(out: string, text: string): void {
+  const tmp = `${out}.tmp-${process.pid}`;
+  let fd: number;
+  try {
+    fd = openSync(tmp, 'wx');
+  } catch (e) {
+    throw new UsageError(`--out ${out}: cannot write beside it (${(e as NodeJS.ErrnoException).code ?? (e as Error).message})`);
+  }
+  try {
+    try {
+      writeFileSync(fd, text);
+    } finally {
+      closeSync(fd);
+    }
+    try {
+      linkSync(tmp, out);
+    } catch (e) {
+      if ((e as NodeJS.ErrnoException).code === 'EEXIST') throw new UsageError(`${out} exists; write-run never overwrites --out`);
+      throw new UsageError(`--out ${out}: cannot write (${(e as NodeJS.ErrnoException).code ?? (e as Error).message})`);
+    }
+  } finally {
+    unlinkSync(tmp);
+  }
+}
+
+/** The gate's admission as the reports print it under --json, each refusal with what validate added to it (`judgeDiff`, `noGrade`). */
+function admissionJson(items: readonly AdmissionItem[]): Record<string, unknown> {
+  const added = (r: RefusalError): Record<string, unknown> => {
+    const json = refusalExtras.get(r)?.json ?? {};
+    return Object.fromEntries(Object.entries(json).filter(([k]) => k !== 'statements'));
+  };
+  return {
+    admitted: items.length === 0,
+    refusals: items.flatMap((x) => (x.kind === 'refused' ? [{ code: x.refusal.code, fields: [...x.refusal.fields], message: x.refusal.message, ...added(x.refusal) }] : [])),
+    notChecked: items.flatMap((x) => (x.kind === 'not-checked' ? [{ step: x.step, why: x.why }] : [])),
+  };
+}
+
+const plural = (n: number, one: string, many = `${one}s`): string => `${n} ${n === 1 ? one : many}`;
+
+/** The facts of a run, as write-run and validate print them. Nothing here decides anything. */
+function printFacts(io: Io, f: RunFacts, declarations: readonly Declaration[]): void {
+  for (const d of declarations) io.out(`  stated by you about your harness: ${d.key}: ${d.statement}`);
+  const n = f.drawsPerCase === GAP ? `"${GAP}"` : f.drawsPerCase === 1 ? '1 (one grade per answer)' : String(f.drawsPerCase);
+  const missing = f.slots.missing.length === 0 ? '0' : `${f.slots.missing.length} (${listed(f.slots.missing)})`;
+  io.out(`  cases ${f.cases} · draws per case ${n} · slots ${f.slots.declared} · recorded ${f.slots.recorded} · missing ${f.drawsPerCase === GAP ? 'not counted (the draw count is unknown)' : missing}`);
+  io.out(`  graded ${f.graded === 'by-judge' ? 'by a judge' : 'by code'} · packets ${f.packetBasis}`);
+  io.out(f.unknownIdentityFields.length === 0 ? '  identity fields "UNKNOWN": none' : `  identity fields "UNKNOWN" (${f.unknownIdentityFields.length}): ${f.unknownIdentityFields.join(', ')}`);
+  io.out(f.unknownStopSlots.length === 0 ? '  system stop "UNKNOWN": none' : `  system stop "UNKNOWN": ${plural(f.unknownStopSlots.length, 'slot')} (${listed(f.unknownStopSlots)})`);
+  if (f.noGrade.length > 0) io.out(`  slots with no grade: ${f.noGrade.length} (${listed(f.noGrade.map((x) => `${x.slot} ${x.role} ${x.reason}`))})`);
+}
+
+function factsJson(f: RunFacts): Record<string, unknown> {
+  return { cases: f.cases, drawsPerCase: f.drawsPerCase, slots: f.slots, graded: f.graded, packetBasis: f.packetBasis, unknownIdentityFields: f.unknownIdentityFields, unknownStopSlots: f.unknownStopSlots, noGrade: f.noGrade };
+}
+
+function printAdmission(io: Io, items: readonly AdmissionItem[]): void {
+  if (items.length === 0) {
+    io.out('gate would admit it.');
+    return;
+  }
+  io.out('gate would refuse it, for every reason below (in the order gate checks them):');
+  for (const x of items) {
+    if (x.kind === 'refused') {
+      io.out(`  ${x.refusal.code}  fields: ${listed(x.refusal.fields)}`);
+      io.out(`      ${x.refusal.message.slice(x.refusal.code.length + 2)}`);
+      for (const line of refusalExtras.get(x.refusal)?.text ?? []) io.out(line === '' ? '' : `    ${line}`);
+    } else {
+      io.out(`  not checked: ${x.step} (${x.why})`);
+    }
+  }
+}
+
+function cmdWriteRun(argv: readonly string[], io: Io): number {
+  const flags = parseFlags(argv, { manifest: 'string', grades: 'string', out: 'string', json: 'boolean' }, ['manifest', 'grades', 'out']);
+  const out = str(flags, 'out') as string;
+  // Before anything is read: a file that is there is never overwritten, and the check costs nothing.
+  if (existsSync(out)) throw new UsageError(`${out} exists; write-run never overwrites --out`);
+  const { run, bar, facts, reads } = buildFromInput(str(flags, 'manifest') as string, str(flags, 'grades') as string);
+  const text = `${JSON.stringify(run, null, 2)}\n`;
+  const items = gateAdmission(run, run, bar);
+  writeNewFile(out, text);
+  const fileSha256 = sha256Hex(text);
+  if (flags.has('json')) {
+    io.out(JSON.stringify({
+      ...contract(REPORT_SCHEMAS['write-run']),
+      kind: 'written',
+      out,
+      fileSha256,
+      input: RUN_INPUT_SCHEMA,
+      inputs: reads,
+      origin: facts.origin,
+      declarations: facts.declarations,
+      rows: facts.rows,
+      ...factsJson(facts),
+      gate: admissionJson(items),
+      exitCode: EXIT_CODES.OK,
+    }, null, 2));
+    return EXIT_CODES.OK;
+  }
+  const t = textIo(io);
+  t.out(`run written to ${out}`);
+  t.out(`  sha256 ${fileSha256}`);
+  t.out(`  from ${RUN_INPUT_SCHEMA} · origin "${facts.origin}", as the manifest states · ${plural(facts.rows, 'row')}`);
+  for (const f of reads) t.out(`  read ${pad(f.role, 18)}${f.sha256}  ${f.path}`);
+  printFacts(t, facts, facts.declarations);
+  t.out('');
+  t.out(items.length === 0 ? 'gate, this run against itself: would admit it' : `gate, this run against itself: would refuse it (${[...new Set(items.flatMap((x) => (x.kind === 'refused' ? [x.refusal.code] : [])))].join(', ')}); validate lists every reason`);
+  return EXIT_CODES.OK;
+}
+
+/** How `flips` would read the run: it reads it, it is not applicable (one draw per case), or it refuses. Its own admission, run on the file. */
+function flipsReadiness(run: RunArtifact): { status: 'reads it' } | { status: 'n/a'; why: string } | { status: 'refused'; code: string; fields: string[]; message: string } {
+  // One draw per case: flips refuses such a run whatever else it holds, so its other refusals are not the user's next step.
+  const oneDraw = { status: 'n/a', why: 'one draw per case: a flip needs at least two draws of a case' } as const;
+  if (run.identity.drawsPerCase === 1) return oneDraw;
+  try {
+    repeatFlips(run, DEFAULT_BOOTSTRAP);
+    return { status: 'reads it' };
+  } catch (e) {
+    if (!(e instanceof RefusalError)) throw e;
+    return { status: 'refused', code: e.code, fields: [...e.fields], message: e.message };
+  }
+}
+
+function cmdValidate(argv: readonly string[], io: Io): number {
+  const flags = parseFlags(argv, { run: 'string', bar: 'string', manifest: 'string', grades: 'string', baseline: 'string', 'allow-differ': 'string', 'rejudge-of': 'string', json: 'boolean' }, []);
+  const runPath = str(flags, 'run');
+  const manifestPath = str(flags, 'manifest');
+  const gradesPath = str(flags, 'grades');
+  if (runPath !== undefined && (manifestPath !== undefined || gradesPath !== undefined)) throw new UsageError('give --run and --bar, or --manifest and --grades, not both');
+  if (runPath === undefined && manifestPath === undefined && gradesPath === undefined) throw new UsageError('give --run and --bar, or --manifest and --grades');
+  if (runPath !== undefined && !flags.has('bar')) throw new UsageError('--bar is required with --run');
+  if (runPath === undefined && flags.has('bar')) throw new UsageError('--bar is not taken with --manifest: the manifest names its bar');
+  if (runPath === undefined && (manifestPath === undefined || gradesPath === undefined)) throw new UsageError(manifestPath === undefined ? '--manifest is required with --grades' : '--grades is required with --manifest');
+  const baselinePath = str(flags, 'baseline');
+  const rejudgePath = str(flags, 'rejudge-of');
+  if (rejudgePath !== undefined && baselinePath === undefined) throw new UsageError('--rejudge-of only applies with --baseline');
+  if (flags.has('allow-differ') && baselinePath === undefined) throw new UsageError('--allow-differ only applies with --baseline');
+  const allowDiffer = list(str(flags, 'allow-differ') ?? '');
+  const badFields = allowDiffer.filter((f) => !(IDENTITY_FIELDS as readonly string[]).includes(f));
+  if (badFields.length > 0) throw new UsageError(`--allow-differ: unknown identity field(s) ${badFields.join(', ')}; the fields are ${IDENTITY_FIELDS.join(', ')}`);
+  const parseRun = (flag: string, path: string): { run: RunArtifact; sha256: string } => {
+    const read = readJsonFile(path);
+    try {
+      return { run: parseRunArtifact(read.json), sha256: sha256Hex(read.bytes) };
+    } catch (e) {
+      if (e instanceof InputError) throw new InputError(e.code, e.problems.map((p) => `--${flag} ${path}: ${p}`));
+      throw e;
+    }
+  };
+
+  let run: RunArtifact;
+  let bar: BarFile;
+  let reads: InputFile[];
+  let declarations: Declaration[] = [];
+  let origin: string | undefined;
+  if (runPath !== undefined) {
+    const r = parseRun('run', runPath);
+    const barPath = str(flags, 'bar') as string;
+    const barRead = readJsonFile(barPath);
+    run = r.run;
+    bar = parseBarFile(barRead.json);
+    reads = [{ role: 'run', path: runPath, sha256: r.sha256 }, { role: 'bar', path: barPath, sha256: sha256Hex(barRead.bytes) }];
+  } else {
+    const built = buildFromInput(manifestPath as string, gradesPath as string);
+    ({ run, bar, reads } = built);
+    declarations = built.facts.declarations;
+    origin = built.facts.origin;
+  }
+  const baseline = baselinePath === undefined ? undefined : parseRun('baseline', baselinePath);
+  const original = rejudgePath === undefined ? undefined : parseRun('rejudge-of', rejudgePath);
+  if (baseline !== undefined) reads.push({ role: 'baseline', path: baselinePath as string, sha256: baseline.sha256 });
+  if (original !== undefined) reads.push({ role: 'rejudge-of', path: rejudgePath as string, sha256: original.sha256 });
+  const facts = runFacts(run);
+  const against = baseline?.run ?? run;
+  const opts = { allowDiffer: allowDiffer as IdentityField[], ...(original === undefined ? {} : { rejudgeOf: original.run }) };
+
+  // The gate's own admission, whole. Where it is empty, the gate itself is run (its verdict is not printed): what it
+  // still finds after the admission (a label the bar does not have) is the gate's answer too, and the split it computes is the one reported.
+  let items: AdmissionItem[];
+  let control: JudgeControl | undefined;
+  let flipList: JudgeFlips | undefined;
+  try {
+    items = gateAdmission(against, run, bar, opts);
+    if (items.length === 0) {
+      const g = gateRuns(against, run, bar, opts);
+      if (g.kind === 'refused') throw new Error('validate: the gate refused a pair its admission admitted');
+      control = g.judgeControl;
+      flipList = g.judgeFlips;
+    }
+  } catch (e) {
+    // The arguments of the call were refused (a judge field or the draw count in --allow-differ): a usage error, as for gate.
+    if (e instanceof InputError && e.code === 'INVALID_ARGUMENT') throw new UsageError(e.problems.join('; '));
+    throw e;
+  }
+  const flips = flipsReadiness(run);
+  let split: Record<string, unknown> | undefined;
+  let judgeFlipsStatus: Record<string, unknown> | undefined;
+  if (original !== undefined) {
+    const status = (x: JudgeControl | JudgeFlips | undefined, what: string): Record<string, unknown> => (x === undefined ? { status: 'not checked', why: `gate refuses before it computes the ${what}` } : 'refused' in x ? { status: 'not computed', code: x.refused.code, fields: [...x.refused.fields], message: x.refused.message } : { status: 'computed', ...('packets' in x ? { packets: x.packets } : {}) });
+    if (control !== undefined) {
+      split = status(control, 'split');
+      judgeFlipsStatus = status(flipList, 'judge-flip list');
+    } else {
+      // Where gate refuses first, each admission's answer is read as it would be.
+      const r = splitRefusal(original.run, against);
+      const f = judgeFlipsAdmission(original.run, against);
+      split = status(r === undefined ? undefined : { refused: r }, 'split');
+      judgeFlipsStatus = status('refused' in f ? f : undefined, 'judge-flip list');
+    }
+  }
+  // Every refusal on a judge field gets its judge diff, and every refusal on slots that hold no grade its counts, as gate prints them.
+  const names = { from: original === undefined ? 'baseline' : 're-judged baseline', to: 'candidate' };
+  for (const x of items) {
+    if (x.kind !== 'refused' || baseline === undefined) continue;
+    explain(x.refusal, judgeDiffBlock(against, run, x.refusal, names, { baseline: baselinePath as string, candidate: runPath ?? '<candidate run file>', bar: str(flags, 'bar') ?? '<bar file named in the manifest>', ...(rejudgePath === undefined ? {} : { original: rejudgePath }), allowDiffer })
+      ?? noGradeBlock(x.refusal, 'gate', [{ run: baselinePath as string, role: names.from, artifact: against, key: (k) => k.slot }]));
+  }
+  if (baseline === undefined) for (const x of items) if (x.kind === 'refused') explain(x.refusal, noGradeBlock(x.refusal, 'gate', [{ run: runPath ?? 'the run', role: 'baseline', artifact: run, key: (k) => k.slot }]));
+  // The slots that hold no grade, per run read: counted beside the judge's retries, never a rate, and never compared.
+  const perRun: { run: 'run' | 'baseline' | 'rejudge-of'; artifact: RunArtifact }[] = [{ run: 'run', artifact: run }, ...(baseline === undefined ? [] : [{ run: 'baseline' as const, artifact: baseline.run }]), ...(original === undefined ? [] : [{ run: 'rejudge-of' as const, artifact: original.run }])];
+  const noGradeByRun = perRun.map((x) => {
+    const c = noGradeOf(x.artifact);
+    return { run: x.run, judge: judgeOf(x.artifact), slots: c.slots, of: c.of, byReason: c.byReason, judgeRetries: judgeRetries(x.artifact.draws) };
+  });
+  const judgeChange = facts.graded === 'by-code'
+    ? { status: 'n/a', why: 'graded by code: judge-change compares two judges' }
+    : { status: facts.packetBasis === 'recorded' || facts.packetBasis === 'declared' ? 'packets admitted' : 'packets not admitted', packetBasis: facts.packetBasis, needs: 'a plan (examples/importers/make-plan.ts)' };
+  const caseSets = baseline === undefined ? undefined : {
+    baselineOnly: baseline.run.cases.map((c) => c.id).filter((id) => !run.cases.some((c) => c.id === id)).sort(),
+    runOnly: run.cases.map((c) => c.id).filter((id) => !baseline.run.cases.some((c) => c.id === id)).sort(),
+  };
+  const code = items.length === 0 ? EXIT_CODES.OK : EXIT_CODES.REFUSED;
+
+  if (flags.has('json')) {
+    io.out(JSON.stringify({
+      ...contract(REPORT_SCHEMAS.validate),
+      kind: 'preflight',
+      mode: runPath === undefined ? 'manifest' : 'run',
+      against: baseline === undefined ? 'itself' : 'baseline',
+      inputs: reads,
+      ...(origin === undefined ? {} : { origin, declarations }),
+      barHash: barHash(bar),
+      format: RUN_SCHEMA,
+      ...factsJson(facts),
+      ...(caseSets === undefined ? {} : { caseSets }),
+      noGradeByRun,
+      gate: admissionJson(items),
+      ...(split === undefined ? {} : { split }),
+      ...(judgeFlipsStatus === undefined ? {} : { judgeFlips: judgeFlipsStatus }),
+      flips,
+      judgeChange,
+      statements: [...FIXED_SENTENCES],
+      exitCode: code,
+    }, null, 2));
+    return code;
+  }
+  const t = textIo(io);
+  const subject = runPath ?? `${manifestPath as string} with ${gradesPath as string}`;
+  const vs = baseline === undefined ? 'against itself' : `against the baseline ${baselinePath as string}${original === undefined ? '' : `, re-judged from ${rejudgePath as string}`}`;
+  t.out(`validate: ${subject}, ${vs}, bar ${short(barHash(bar))}`);
+  t.out(`  format: valid (${RUN_SCHEMA})${runPath === undefined ? `, built in memory from ${RUN_INPUT_SCHEMA}; nothing written` : ''}`);
+  for (const f of reads) t.out(`  read ${pad(f.role, 18)}${f.sha256}  ${f.path}`);
+  printFacts(t, facts, declarations);
+  if (caseSets !== undefined && (caseSets.baselineOnly.length > 0 || caseSets.runOnly.length > 0)) {
+    t.out(`  cases in the baseline only: ${caseSets.baselineOnly.length === 0 ? 'none' : listed(caseSets.baselineOnly)} · in this run only: ${caseSets.runOnly.length === 0 ? 'none' : listed(caseSets.runOnly)}`);
+  }
+  t.out('');
+  t.out('slots that hold no grade, per run (counted; never a pass, a fail or a flip):');
+  const servedW = noGradeByRun.reduce((w, x) => Math.max(w, x.judge.served.length), 12) + 2;
+  const reasonW = perRun.reduce((w, x) => Math.max(w, reasonsText(noGradeOf(x.artifact)).length), 9) + 2;
+  t.out(`  ${pad('run', 13)}${pad('judge served', servedW)}${pad('no grade', 14)}${pad('by reason', reasonW)}judge asked again`);
+  for (const [i, x] of noGradeByRun.entries()) {
+    const jr = x.judgeRetries;
+    const again = `${jr.slotsWithRetry} of ${jr.slots} slots${jr.earlierAttemptsByReason.length === 0 ? '' : ` (earlier attempts: ${jr.earlierAttemptsByReason.map((e) => `${e.reason} ${e.attempts}`).join(', ')})`}`;
+    t.out(`  ${pad(x.run, 13)}${pad(x.judge.served, servedW)}${pad(`${x.slots} of ${x.of}`, 14)}${pad(reasonsText(noGradeOf((perRun[i] as { artifact: RunArtifact }).artifact)), reasonW)}${again}`);
+  }
+  if (noGradeByRun.some((x) => x.byReason.some((b) => b.role === 'judge'))) t.out(`  ${NO_GRADE_REMEDY}`);
+  t.out('');
+  printAdmission(t, items);
+  t.out('');
+  t.out('other commands (they do not change the exit code):');
+  t.out(`  ${pad('flips', 15)}${flips.status === 'reads it' ? 'reads it' : flips.status === 'n/a' ? `n/a (${flips.why})` : `refuses it: ${flips.code} ${listed(flips.fields)}`}`);
+  if (split !== undefined) {
+    const s = split as { status: string; code?: string; fields?: string[]; why?: string };
+    t.out(`  ${pad('split', 15)}${s.status === 'computed' ? 'computed' : s.status === 'not computed' ? `not computed: ${s.code as string} ${listed(s.fields ?? [])}; the verdict is not affected` : `not checked (${s.why as string})`}`);
+  }
+  if (judgeFlipsStatus !== undefined) {
+    const s = judgeFlipsStatus as { status: string; code?: string; fields?: string[]; why?: string; packets?: string };
+    t.out(`  ${pad('judge flips', 15)}${s.status === 'computed' ? (s.packets === 'recorded' ? 'computed' : `computed (packets equal ${s.packets ?? 'UNKNOWN'})`) : s.status === 'not computed' ? `not computed: ${s.code as string} ${listed(s.fields ?? [])}; the verdict is not affected` : `not checked (${s.why as string})`}`);
+  }
+  t.out(`  ${pad('judge-change', 15)}${judgeChange.status === 'n/a' ? `n/a (${judgeChange.why as string})` : `packets ${facts.packetBasis}; judge-change admits recorded or declared, and needs a plan (examples/importers/make-plan.ts)`}`);
+  t.out('');
+  for (const line of FIXED_SENTENCES) t.out(line);
+  t.out(code === EXIT_CODES.OK ? `result: READY for gate (exit ${code})` : `result: NOT READY for gate (exit ${code})`);
+  return code;
 }
 
 export function main(argv: readonly string[], io: Io): number {
@@ -1022,6 +1764,10 @@ export function main(argv: readonly string[], io: Io): number {
         return cmdFlips(rest, io);
       case 'judge-change':
         return cmdJudgeChange(rest, io);
+      case 'write-run':
+        return cmdWriteRun(rest, io);
+      case 'validate':
+        return cmdValidate(rest, io);
       case '--help':
       case '-h':
         io.out(USAGE);

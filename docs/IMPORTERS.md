@@ -9,6 +9,9 @@ skill) the question, to the judge and records the call. A **draw** is one more g
 A **run file** holds one judge's labels ([RUN_FORMAT.md](RUN_FORMAT.md)). A **plan** names the two run files and
 says what to measure.
 
+An importer is for another tool's result file. If your own eval code wrote the grades, `write-run` turns its rows into
+a run file instead ([RUN_FORMAT.md](RUN_FORMAT.md), "From your eval's rows").
+
 ## Before you start
 
 You need:

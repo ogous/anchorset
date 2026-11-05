@@ -6,7 +6,12 @@ import type { CallShape } from '../src/callshape.ts';
 import { hashOf, NO_JUDGE, outputHashOf, sha256Hex } from '../src/identity.ts';
 import type { RunIdentity } from '../src/identity.ts';
 import type { PacketBasis, RunArtifact } from '../src/artifact.ts';
+import { caseSetHash as caseSetHashOf } from '../src/artifact.ts';
+import { barHash as barHashOf } from '../src/gate.ts';
+import type { BarFile } from '../src/gate.ts';
 import type { GateInputs } from '../src/ledger.ts';
+import { gateAdmission, gateRuns as gateRunsDirect } from '../src/regression.ts';
+import type { GateRunResult } from '../src/regression.ts';
 import type { Attempt, Draw, FailedAttempt, FailReason, GradedAttempt } from '../src/scoring.ts';
 
 /** The packet every judged test attempt was shown, unless a test says otherwise. */
@@ -177,4 +182,107 @@ export function studyManifestPaths(value: string | undefined, base: string): str
     paths.push(path);
   }
   return paths;
+}
+
+/**
+ * `gateRuns`, with the admission held to it on every call: where the gate refuses, the first entry of `gateAdmission`
+ * is that refusal (code, fields and message); where it evaluates, the admission is empty; where it throws, the
+ * admission throws the same error, or is empty because the error came after it (the fold of the candidate or of the
+ * original baseline). So every gate fixture of a test that calls this is a parity fixture of the one admission check.
+ */
+export function gateRunsWithAdmission(...args: Parameters<typeof gateRunsDirect>): GateRunResult {
+  let result: GateRunResult;
+  try {
+    result = gateRunsDirect(...args);
+  } catch (e) {
+    let admitted: unknown;
+    try {
+      admitted = gateAdmission(...args);
+    } catch (x) {
+      assert.ok(x instanceof Error && e instanceof Error && x.constructor === e.constructor && x.message === e.message, 'gateAdmission throws what gateRuns throws');
+      throw e;
+    }
+    assert.deepEqual(admitted, [], 'where gateRuns throws after its admission, the admission is empty');
+    throw e;
+  }
+  const items = gateAdmission(...args);
+  if (result.kind === 'refused') {
+    const first = items[0];
+    assert.ok(first !== undefined && first.kind === 'refused', 'gateAdmission lists a refusal first where gateRuns refuses');
+    const { code, fields, message } = first.refusal;
+    assert.deepEqual({ code, fields: [...fields], message }, { code: result.refusal.code, fields: [...result.refusal.fields], message: result.refusal.message });
+  } else {
+    assert.deepEqual(items, [], 'gateAdmission is empty where gateRuns evaluates');
+  }
+  return result;
+}
+
+// --- The refund-bot fixtures of the judge-change report: one generator for the judge diff, the judge-flip list and the
+// no-grade counts. Synthetic data only. ---------------------------------------------------------------------------
+
+/** A bar of the refund bot: grades 1 to 5, an answer passes at 4 or above; refund_policy is non-compensable. */
+export const REFUND_BAR = Object.freeze({
+  labels: ['1', '2', '3', '4', '5'],
+  classes: { reply_quality: { direction: 'floor', minPassRate: 0.5 }, refund_policy: { direction: 'floor', nonCompensable: true, minPassRate: 1 } },
+  knownFailures: [],
+}) as unknown as BarFile;
+
+/** The three judges of the fixtures: one requested name served by two dated snapshots, and a cheaper one. */
+export const OLD_JUDGE: Partial<RunIdentity> = { judgeModelRequested: 'example-judge', judgeModelServed: 'example-judge-2026-01-15' };
+export const NEW_JUDGE: Partial<RunIdentity> = { judgeModelRequested: 'example-judge', judgeModelServed: 'example-judge-2026-06-01' };
+export const MINI_JUDGE: Partial<RunIdentity> = { judgeModelRequested: 'example-judge-mini', judgeModelServed: 'example-judge-mini-2026-09-01' };
+
+/**
+ * One draw of a fixture: a label, graded on the case's stored answer; "!<reason>" for a judge that gave no grade on it
+ * (parse-failure, content-filter, truncated, timeout, client-error ...); "~<reason>" for a system with no response
+ * (timeout ...); "T" for an answer cut at its cap, "E" for the system's own error; "-" for a slot with no record.
+ */
+export type DrawSpec = string;
+
+export type RefundRunOptions = {
+  /** Case id -> one spec per draw. A case id starting with "p" is of class refund_policy, any other of reply_quality. */
+  grades: Record<string, readonly DrawSpec[]>;
+  identity?: Partial<RunIdentity>;
+  /** The stored answer of a draw; one answer per case by default. */
+  answer?: (caseId: string, drawIndex: number) => string;
+  packetBasis?: PacketBasis;
+  /** Earlier attempts of a slot ("case#draw"), before its outcome: judge retries. */
+  retries?: Record<string, readonly Attempt[]>;
+  judgeShape?: CallShape;
+};
+
+export const refundCases = (ids: readonly string[]): { id: string; klass: string; input: unknown; expect: string }[] =>
+  ids.map((id) => ({ id, klass: id.startsWith('p') ? 'refund_policy' : 'reply_quality', input: { message: `Where is my refund for order ${id}?` }, expect: '4' }));
+
+/** A run of the refund bot graded by a judge, with recorded packets unless told otherwise. */
+export function refundRun(o: RefundRunOptions): RunArtifact {
+  const ids = Object.keys(o.grades).sort();
+  const cases = refundCases(ids);
+  const n = Math.max(...ids.map((id) => (o.grades[id] as readonly DrawSpec[]).length));
+  const answer = o.answer ?? ((id: string) => `Your refund for order ${id} is on its way.`);
+  const judgeShape = o.judgeShape ?? makeJudgeCallShape();
+  const identity = makeJudgedIdentity({ caseSetHash: caseSetHashOf(cases), barHash: barHashOf(REFUND_BAR), drawsPerCase: n, judgeCallShapeHash: callShapeHash(judgeShape), ...OLD_JUDGE, ...o.identity });
+  const draws: Draw[] = [];
+  for (const id of ids) {
+    (o.grades[id] as readonly DrawSpec[]).forEach((spec, d) => {
+      if (spec === '-') return;
+      const text = answer(id, d);
+      const outputHash = outputHashOf(text);
+      const packetHash = o.packetBasis === 'UNKNOWN' ? 'UNKNOWN' : sha256Hex(`packet ${id} ${text}`);
+      let last: Attempt;
+      if (spec === 'T') last = failedAttempt('truncated', { outputHash });
+      else if (spec === 'E') last = failedAttempt('system-error');
+      else if (spec.startsWith('~')) last = { kind: 'unmeasured', role: 'system', reason: spec.slice(1), detail: '' } as Attempt;
+      else if (spec.startsWith('!')) last = { kind: 'unmeasured', role: 'judge', reason: spec.slice(1), detail: '', outputHash, systemStop: 'end', packetHash } as Attempt;
+      else last = { kind: 'graded', label: spec, outputHash, systemStop: 'end', judgeStop: 'tool-use', packetHash };
+      draws.push({ caseId: id, drawIndex: d, attempts: [...(o.retries?.[`${id}#${d}`] ?? []), last] });
+    });
+  }
+  const basis = o.packetBasis ?? 'recorded';
+  return { schema: 'anchorset.run/v3', identity, callShapes: { system: makeCallShape(), judge: judgeShape }, cases, draws, packetBasis: basis, ...(basis === 'declared' ? { packetSource: 'the rendered grading prompt of the refund-bot eval' } : {}) };
+}
+
+/** A judge retry on a stored answer: an earlier attempt of the slot that got no reply. */
+export function judgeRetry(caseId: string, reason: 'timeout' | 'rate-limited' | 'server-error' | 'transport' | 'truncated', answer = `Your refund for order ${caseId} is on its way.`): Attempt {
+  return { kind: 'unmeasured', role: 'judge', reason, detail: '', outputHash: outputHashOf(answer), systemStop: 'end', packetHash: sha256Hex(`packet ${caseId} ${answer}`) } as Attempt;
 }

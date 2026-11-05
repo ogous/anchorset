@@ -9,7 +9,8 @@ import type { RunArtifact } from '../src/artifact.ts';
 import { barHash, parseBarFile } from '../src/gate.ts';
 import { GAP, hashOf, JUDGE_FIELDS, NO_JUDGE, NO_SEED, outputHashOf, sha256Hex } from '../src/identity.ts';
 import type { RunIdentity } from '../src/identity.ts';
-import { diffRuns, EXIT_CODES, gateExitCode, gateRuns } from '../src/regression.ts';
+import { diffRuns, EXIT_CODES, gateExitCode } from '../src/regression.ts';
+import { gateRunsWithAdmission as gateRuns } from './helpers.ts';
 import type { CaseDiff, GateRunResult } from '../src/regression.ts';
 import type { Attempt, Case, Draw } from '../src/scoring.ts';
 import { callShapesFor, failedAttempt, gradedAttempt, makeCallShape, makeIdentity, makeJudgedIdentity, PACKET, packetBasisFor, slot, unmeasured } from './helpers.ts';
@@ -413,7 +414,10 @@ test('rejudge: a candidate with missing cases fails the gate and the decompositi
   assert.equal(r.kind, 'evaluated');
   if (r.kind !== 'evaluated') return;
   assert.equal(gateExitCode(r), 1);
-  assert.ok(r.judgeControl !== undefined && 'refused' in r.judgeControl && r.judgeControl.refused.code === 'ITEM_SET_MISMATCH');
+  // The candidate holds c2 with no record of either draw: an incomplete run naming the slots, not a changed case set.
+  assert.ok(r.judgeControl !== undefined && 'refused' in r.judgeControl);
+  assert.deepEqual([r.judgeControl.refused.code, [...r.judgeControl.refused.fields]], ['INCOMPLETE_RUN', ['c2#0', 'c2#1']]);
+  assert.ok(r.judgeControl.refused.message.startsWith('INCOMPLETE_RUN: candidate: 2 of 4 slots in 1 of 2 cases, no record 2; '), r.judgeControl.refused.message);
 });
 
 test('a plain gate refused on a judge field points at --rejudge-of', () => {
@@ -701,11 +705,19 @@ test('rejudge: a 4xx from the old judge in the original refuses only the split; 
   assert.equal(gateExitCode(r), 0);
 });
 
-test('rejudge: an original whose judge could not grade one slot refuses only the split, naming the case', () => {
+test('rejudge: an original whose judge could not grade one slot refuses only the split, as an incomplete run naming the slot, not a changed case set', () => {
   const a = withSlot(A, 'c2#1', (h) => [judgeFail('timeout', h)]);
   const r = gateRuns(B, C, barFile, { rejudgeOf: a, allowDiffer: ['systemModelServed'], bootstrap: boot });
   assert.equal(r.kind, 'evaluated');
-  assert.ok(r.kind === 'evaluated' && r.judgeControl !== undefined && 'refused' in r.judgeControl && r.judgeControl.refused.fields.includes('c2'));
+  const plain = gateRuns(B, C, barFile, { rejudgeOf: A, allowDiffer: ['systemModelServed'], bootstrap: boot });
+  // The verdict and the exit code are those of the gate with a complete original.
+  assert.ok(r.kind === 'evaluated' && plain.kind === 'evaluated');
+  assert.deepEqual([r.gate, r.diff, gateExitCode(r)], [plain.gate, plain.diff, gateExitCode(plain)]);
+  const jc = r.judgeControl;
+  assert.ok(jc !== undefined && 'refused' in jc);
+  assert.deepEqual([jc.refused.code, jc.refused.fields], ['INCOMPLETE_RUN', ['c2#1']]);
+  // 2 cases x 2 draws = 4 slots; c2#1 alone holds no grade: 1 of 4 slots in 1 of 2 cases.
+  assert.ok(jc.refused.message.startsWith('INCOMPLETE_RUN: original baseline (--rejudge-of): 1 of 4 slots in 1 of 2 cases, timeout 1; c2: 1 of 2 draws measured (#1 judge timeout'), jc.refused.message);
 });
 
 test('rejudge: a slot the system never answered, on both sides, is an incomplete baseline, not a hash gap', () => {

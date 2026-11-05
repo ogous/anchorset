@@ -524,7 +524,9 @@ describe('a pair across two listed versions', () => {
       const r = judgeChange(tool, d, out);
       assert.equal(r.status, 0, r.stderr);
       assert.match(r.stdout, /labels that differ between the judges \(majority\) +0\.000/);
-      assert.ok(!r.stdout.includes('pass -> fail'));
+      // No item row: the direction counts are printed, and both are 0.
+      assert.doesNotMatch(r.stdout, /^ {2}\S+\/\S+ {2}(pass|fail) -> (pass|fail)$/m);
+      assert.match(r.stdout, /in each direction, never netted: pass -> fail 0 · fail -> pass 0/);
     });
     it(`${tool.name}: with the model moved as well, all four fields are named and printed`, () => {
       const d = pair('old-judge.json', 'new-judge.json');

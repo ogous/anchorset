@@ -1,0 +1,34 @@
+{
+  "schema": "anchorset.run-input/v1",
+  "origin": "produced",
+  "graded": "by-judge",
+  "bar": "../bar.json",
+  "caseCount": 5,
+  "cases": "cases.jsonl",
+  "sameForEveryCase": { "class": "reply_quality" },
+  "expectByClass": { "reply_quality": "4" },
+  "rubric": { "file": "rubric.md" },
+  "seed": "NO_SEED",
+  "system": {
+    "modelRequested": "example-model-a",
+    "modelServed": "example-model-a-2026-01-15",
+    "prompt": { "file": "system_prompt.txt" },
+    "tools": { "json": [] },
+    "harnessVersion": "refund-eval 1.4.0",
+    "settings": {
+      "sent": { "endpoint": "example-provider:messages", "temperature": 0, "maxOutputTokens": 512 },
+      "everyOtherKey": "NOT_SENT"
+    }
+  },
+  "judge": {
+    "modelRequested": "example-judge",
+    "modelServed": "example-judge-2026-02-01",
+    "definition": { "file": "judge_prompt.txt" },
+    "harnessVersion": "refund-eval 1.4.0",
+    "settings": {
+      "sent": { "endpoint": "example-provider:messages", "temperature": 0, "maxOutputTokens": 256 },
+      "everyOtherKey": "NOT_SENT"
+    },
+    "gradedReplyStop": "end"
+  }
+}

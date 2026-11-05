@@ -1,8 +1,8 @@
 {
   "schema": "anchorset.run/v3",
   "identity": {
-    "caseSetHash": "dbb9df32e72a966d064a39885da85132f2fb79b9c4d26ebc23f31f6a00b8c5f9",
-    "barHash": "350b69d36d8131b950035f8ebe8f26052e634c48b5b8f81a767a56e27fa049b0",
+    "caseSetHash": "43a9b79aef9aa07e75b7dd8b07f8669c2f9f07f088e529791aa7606d0f8f1449",
+    "barHash": "44b447330f62a07aab29b0c2d1fe2cb66391167b4b939b5d999dca1637f1f9e7",
     "systemModelRequested": "example-model-a",
     "systemModelServed": "example-model-a-2026-01-15",
     "systemCallShapeHash": "cd3a87bafcf795c97f74f21db1a9a7b7cb355da06d6d74ad44e42b4db800d66c",
@@ -336,7 +336,7 @@
     },
     {
       "id": "p1",
-      "klass": "policy_safe",
+      "klass": "refund_policy",
       "input": {
         "message": "The item arrived two days after the 30-day window. Can I still return it?"
       },
@@ -344,7 +344,7 @@
     },
     {
       "id": "p2",
-      "klass": "policy_safe",
+      "klass": "refund_policy",
       "input": {
         "message": "I used the item for a month and I want my money back. Can you promise that?"
       },

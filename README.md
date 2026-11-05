@@ -25,7 +25,7 @@ Four words used on this page: a **grader** is whoever gives the label, a person 
 grader that is a model. An **item** is what the rating files call a case. A **packet** is what a grader was shown
 for one item.
 
-Version 0.2.0, by Ogous Chan Ali.
+Version 0.3.0, by Ogous Chan Ali.
 
 ## Try it
 
@@ -63,6 +63,57 @@ const result = gateRuns(
 );
 console.log(gateExitCode(result)); // 0 no regression, 1 regression, 2 refused
 ```
+
+## Get your results in
+
+Your eval code already knows, for each answer, the case, the answer and its grade. Write that down as one JSON line per
+answer:
+
+```json
+{"case": "q04", "grade": "2", "answer": "Please contact the courier.", "stop": "end"}
+```
+
+`stop` is why the model stopped, from the provider's finish reason (`end` for a normal finish). Then say once, in a
+short manifest, what the run was: the bar file, how many cases there are, the models, the prompts and the settings.
+[`examples/run-format/input/`](examples/run-format/input/) holds a made-up one for the refund bot. `write-run` turns
+the two into a run file, and `validate` tells you whether `gate` will take it:
+
+```sh
+OUT="$(mktemp -d)"
+node src/cli.ts write-run --manifest examples/run-format/input/manifest.json --grades examples/run-format/input/grades.jsonl --out "$OUT/run.json"
+node src/cli.ts validate --run "$OUT/run.json" --bar examples/run-format/bar.json
+```
+
+```text
+run written to …/run.json
+  …
+  cases 5 · draws per case 1 (one grade per answer) · slots 5 · recorded 5 · missing 0
+  graded by a judge · packets UNKNOWN
+  identity fields "UNKNOWN": none
+  system stop "UNKNOWN": none
+…
+gate would admit it.
+…
+result: READY for gate (exit 0)
+```
+
+What you leave out of the manifest is written as `"UNKNOWN"`, never guessed. The file is still written, and
+`validate` lists every reason `gate` would refuse it, all at once. Hash a prompt the same way in every run: a file
+whose line endings changed is a different file.
+
+The example takes two short ways, and both are statements you make about your own harness:
+
+- `"settings": { "sent": { … }, "everyOtherKey": "NOT_SENT" }` says that your code sent the settings listed and no
+  other. Otherwise give the whole settings block, every key.
+- `"gradedReplyStop": "end"` says that the judge's reply ended normally on every graded answer. Otherwise give a
+  `judgeStop` on each line.
+
+The tool cannot check either. Write them only when they are true. `write-run` prints each one you used.
+
+One grade per answer is enough for `gate`. Choose the number of draws before your first baseline: `gate` never
+compares runs whose draw counts differ, and `flips` needs at least two draws per case. `write-run` reads only lines
+your own code wrote; for another tool's result file, use its importer (see below).
+[The run format](docs/RUN_FORMAT.md#from-your-evals-rows) lists every key.
 
 ## The five methods
 
@@ -136,7 +187,19 @@ node src/cli.ts gate --baseline <old run file> --candidate <new run file> --bar 
 ```
 
 Add `--allow-differ <fields>` for the system fields you changed on purpose. Without it, a new model name is
-refused.
+refused. `validate` takes `--run` for the new run file, `--baseline`, `--bar` and `--allow-differ` as `gate` does, and lists
+every reason `gate` would refuse at once, where `gate` stops at the first.
+
+When the judge changes:
+
+1. Pin a dated snapshot of the judge in your eval, so that a change is one you make.
+2. When the judge moves anyway, `gate` refuses, prints which judge field moved and what re-grading costs, and prints
+   the three commands to run next, with your paths.
+3. Have the new judge grade the baseline's stored answers again, and write that run.
+4. Run `gate --rejudge-of` with it, and read the `judge flips` list: the cases whose result moved between the two
+   judges, in each direction, beside the judge's own noise.
+
+To show the report in a pull request or on a GitHub Actions summary, see "In CI" in [docs/CLI.md](docs/CLI.md).
 
 ### `agree`: do my graders agree with each other?
 
@@ -350,16 +413,6 @@ The [importers guide](docs/IMPORTERS.md) has the steps, and a trial that costs n
 `gate`, `agree`, `drift` and `flips` read files that you, or the code that runs your evals, write. The formats are
 listed under "Docs" below.
 
-## Use it from Claude Code
-
-A Claude Code plugin is in this repository: one skill that tells an agent how to run the commands and how to report
-what they print. It holds no code.
-
-```sh
-claude plugin marketplace add ogous/anchorset
-claude plugin install anchorset@anchorset
-```
-
 ## What it refuses, and what it does not do
 
 anchorset stops instead of warning. When a comparison can't be trusted, it says what is wrong and gives no number
@@ -383,17 +436,17 @@ so, it withholds the reference.
   `gate` refuses: such a slot can't show which cases the candidate broke. An answer cut at its cap stays a failing
   reference.
 
-It does not run your evals or write your files for you.
+It does not run your evals. `write-run` writes a run file only from what your own code recorded.
 
 ## Docs
 
 - [The command line](docs/CLI.md): every command, the exit codes, a CI step and a gate across a judge change.
-- [The run format](docs/RUN_FORMAT.md): the file `gate`, `flips` and `judge-change` read, and the bar file.
+- [The run format](docs/RUN_FORMAT.md): the file `gate`, `flips` and `judge-change` read, how `write-run` makes one from your eval's rows, and the bar file.
 - [The ratings format](docs/RATINGS_FORMAT.md): the files `agree` and `drift` read.
 - [Judge change](docs/JUDGE_CHANGE.md): the plan, the report and what each number means.
 - [Importers](docs/IMPORTERS.md): promptfoo, Inspect and the eval-building skill, step by step.
 - [Comparison](docs/COMPARISON.md): anchorset next to promptfoo, DeepEval and Langfuse.
-- [Migrations](docs/MIGRATIONS.md): the format versions of 0.2.0, and how a file of 0.1.0 moves.
+- [Migrations](docs/MIGRATIONS.md): the format versions of 0.3.0, and how a file of 0.2.0 or 0.1.0 moves.
 
 The installed package holds these documents at `node_modules/anchorset/docs/`, for an agent or a reader working
 offline. [llms.txt](llms.txt) lists them for a coding agent.
@@ -403,8 +456,8 @@ offline. [llms.txt](llms.txt) lists them for a coding agent.
 Node 22.21 or later. No runtime dependencies. It can also be used as a TypeScript library.
 
 Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). The code is under Apache-2.0 and the
-docs under CC-BY-4.0. To cite the tool, use [CITATION.cff](CITATION.cff). This version, 0.2.0, is archived at
-[doi:10.5281/zenodo.23918819](https://doi.org/10.5281/zenodo.23918819), and
+docs under CC-BY-4.0. To cite the tool, use [CITATION.cff](CITATION.cff). This version, 0.3.0, is archived at
+[doi:10.5281/zenodo.23974982](https://doi.org/10.5281/zenodo.23974982), and
 [doi:10.5281/zenodo.23358089](https://doi.org/10.5281/zenodo.23358089) always resolves to the latest version. Version
 0.1.0, the one the paper used, is archived at [doi:10.5281/zenodo.23358090](https://doi.org/10.5281/zenodo.23358090),
 and the study's data and analysis at [doi:10.5281/zenodo.23358200](https://doi.org/10.5281/zenodo.23358200).

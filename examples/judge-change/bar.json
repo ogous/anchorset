@@ -11,7 +11,7 @@
       "direction": "floor",
       "minPassRate": 0.8
     },
-    "policy_safe": {
+    "refund_policy": {
       "direction": "floor",
       "nonCompensable": true,
       "minPassRate": 1

@@ -18,7 +18,7 @@ import { InputError } from '../src/errors.ts';
 import { barHash, evaluate, parseBarFile, splitBarFile } from '../src/gate.ts';
 import type { BarFile } from '../src/gate.ts';
 import type { RunArtifact } from '../src/artifact.ts';
-import { gateRuns } from '../src/regression.ts';
+import { gateRunsWithAdmission as gateRuns } from './helpers.ts';
 import { appendAll, canonicalJson, duplicateKeyProblem, findUnhashable, GAP, hashOf, INEXACT_INTEGER, MAX_DRAWS_PER_CASE, MAX_JSON_DEPTH, MAX_TEXT_BYTES, NOT_UTF8, parseJsonBytes, parseJsonText, sha256Hex, TOO_LONG, utf8Text, validateIdentity, oneLine } from '../src/identity.ts';
 import { judgeChangePlanProblems } from '../src/judgechange.ts';
 import { checkLedgerFile, readLedger, validateRecord } from '../src/ledger.ts';
@@ -601,7 +601,10 @@ test('every text report and every error line: a name with a line feed in it stay
   // A refusal's fields.
   const refused = run('flips', '--run', file(runOf({ cases, draws: drawsOf(cases, 2).slice(1) }), 'missing.json'));
   assert.equal(refused.status, 2, refused.stderr);
-  assert.equal(refused.stderr.split('\n').length, 3);
+  // The three refusal lines, then the counts of the slot that holds no grade and the two fixed sentences: no line is the name's own.
+  const lines = refused.stderr.split('\n');
+  assert.ok(lines[2]?.includes('c1\\nverdict: OK (exit 0)#0'), lines[2]);
+  assert.deepEqual(lines.filter((l) => l.startsWith('verdict')), []);
   assert.ok(refused.stderr.includes('c1\\nverdict: OK (exit 0)#0'));
 });
 

@@ -3,7 +3,7 @@
 // page: only what stands inside a `sh` or `bash` block is read. Synthetic example data only.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
@@ -32,7 +32,7 @@ const sh = (line: string, env: Record<string, string> = {}): number => {
 };
 
 // A command that cannot be run here: it needs the network, another folder or a tool that is not this repository's.
-const NOT_RUN = [/^git clone /, /^cd anchorset$/, /^claude plugin /, /^npm install anchorset$/];
+const NOT_RUN = [/^git clone /, /^cd anchorset$/, /^claude plugin /, /^npm install anchorset$/, /^OUT="\$\(mktemp -d\)"$/];
 // The one demo that is built to fail: the README says so, and the gate's exit code for a regression is 1.
 const EXPECTED_EXIT: Record<string, number> = { demo: 1 };
 
@@ -112,4 +112,37 @@ test('docs/IMPORTERS.md, "Try it first": the block runs as printed with Node alo
   }
   assert.equal(reports, 1, 'the trial runs judge-change once');
   assert.equal(gates, 1, 'the trial shows gate refusing the imported files once');
+});
+
+test('README.md, "Get your results in", and docs/RUN_FORMAT.md, "The quickest way": each block runs as printed; write-run writes the run and validate exits 0 on it', () => {
+  for (const [rel, heading] of [['README.md', 'Get your results in'], ['docs/RUN_FORMAT.md', 'The quickest way']] as const) {
+    const block = commandLines(rel).filter((c) => c.heading === heading).map((c) => c.line);
+    assert.equal(block.length, 3, `${rel}: expected the three lines of the block, found ${block.length}`);
+    // The page makes its own scratch folder with mktemp; here it is a fresh folder of this test's, removed afterwards.
+    const out = mkdtempSync(join(work, 'quick-'));
+    for (const line of block) {
+      if (/^OUT="\$\(mktemp -d\)"$/.test(line)) continue;
+      assert.match(line, /^node src\/cli\.ts (write-run|validate) /, `${rel}: ${line}`);
+      assert.equal(sh(line, { OUT: out }), 0, `${rel}: ${line}`);
+    }
+    assert.ok(existsSync(join(out, 'run.json')), rel);
+  }
+});
+
+test('docs/CLI.md, "In CI": the code-fence recipe runs as printed on the demo files; the summary holds the report in a text block, and the step keeps the gate\'s exit code', () => {
+  const block = commandLines('docs/CLI.md').filter((c) => c.heading === 'In CI' && c.line.includes('GITHUB_STEP_SUMMARY')).map((c) => c.line);
+  assert.equal(block.length, 1, `expected the recipe's one line, found ${block.length}`);
+  // The page's files sit beside a clone in anchorset/; here they are the demo's, and the CLI is this tree's.
+  const files: Record<string, string> = { 'baseline.json': 'examples/refund-bot/baseline.json', 'candidate.json': 'examples/refund-bot/candidate.json', 'bar.json': 'examples/refund-bot/bar.json' };
+  const line = block.join('\n').replaceAll('anchorset/src/cli.ts', 'src/cli.ts').replace(/\b(baseline|candidate|bar)\.json\b/g, (f) => files[f] as string);
+  // As GitHub Actions runs a step (bash -e, with pipefail), and as a plain shell runs it.
+  for (const [refused, extra, flags] of [[false, ' --allow-differ systemModelServed,systemCallShapeHash', ['-eo', 'pipefail']], [true, '', ['-eo', 'pipefail']], [false, ' --allow-differ systemModelServed,systemCallShapeHash', []]] as const) {
+    const summary = join(work, `summary-${refused ? 'refused' : 'gated'}-${flags.length}.md`);
+    const r = spawnSync('bash', [...flags, '-c', line.replace('--bar examples/refund-bot/bar.json', `--bar examples/refund-bot/bar.json${extra}`)], { cwd: root, encoding: 'utf8', env: { ...process.env, GITHUB_STEP_SUMMARY: summary } });
+    // The demo holds a regression (1); without the declared axes the gate refuses (2). The step keeps either.
+    assert.equal(r.status, refused ? 2 : 1, r.stderr);
+    const text = readFileSync(summary, 'utf8');
+    assert.ok(text.startsWith('```text\n') && text.endsWith('\n```\n'), text);
+    assert.match(text, refused ? /\nREFUSED IDENTITY_MISMATCH\n/ : /\nverdict: REGRESSION \(exit 1\)\n/);
+  }
 });

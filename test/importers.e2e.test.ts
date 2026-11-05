@@ -8,7 +8,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { JUDGE_FIELDS } from '../src/identity.ts';
-import { callShapeHash, gateRuns, hashOf, IDENTITY_FIELDS, judgeChangeRuns, parseBarFile, parseJudgeChangePlan, parseRunArtifact, repeatFlips, sha256Hex } from '../src/index.ts';
+import { gateRunsWithAdmission as gateRuns } from './helpers.ts';
+import { callShapeHash, hashOf, IDENTITY_FIELDS, judgeChangeRuns, parseBarFile, parseJudgeChangePlan, parseRunArtifact, repeatFlips, sha256Hex } from '../src/index.ts';
 import type { BarFile, IdentityField, JudgeChangePlan, JudgeChangeReport, RunArtifact } from '../src/index.ts';
 import { RefusalError } from '../src/index.ts';
 import { buildInspectRun } from '../examples/importers/inspect/import.ts';
@@ -470,13 +471,13 @@ for (const tool of TOOLS) {
     if (tool === 'promptfoo') {
       assert.match(jc.stdout, /systems 1 · scored cases 2 · items 2/);
       assert.match(jc.stdout, /per-draw pass rate {1,}1\.000 {1,}1\.000 {1,}\+0\.000/);
-      assert.match(jc.stdout, /items whose label differs between the judges \(0\):/);
+      assert.match(jc.stdout, /items whose label differs between the judges \(0: pass -> fail 0, fail -> pass 0\):/);
       assert.match(jc.stdout, /refund_safety\/refund-bot\/c3 {2}old judge fails draws \[\] · new judge fails draws \[0, 1, 2\] · worst-of-N differs between the judges/);
     } else {
       assert.match(jc.stdout, /systems 1 · scored cases 3 · items 3/);
       assert.match(jc.stdout, /per-draw pass rate {1,}1\.000 {1,}0\.667 {1,}-0\.333/);
       assert.match(jc.stdout, /label pass rate \(majority\) {1,}1\.000 {1,}0\.667 {1,}-0\.333/);
-      assert.match(jc.stdout, /items whose label differs between the judges \(1\):\n {2}refund-bot\/c3 {2}pass -> fail/);
+      assert.match(jc.stdout, /items whose label differs between the judges \(1: pass -> fail 1, fail -> pass 0\):\n {2}refund-bot\/c3 {2}pass -> fail/);
     }
     // The same two runs given to gate are refused, exit 2, whatever may be allowed to differ.
     const gate = cli('gate', '--baseline', outs['old'] as string, '--candidate', outs['new'] as string, '--bar', join(dirOf(tool), 'bar.json'), '--allow-differ', WAIVABLE.join(','));

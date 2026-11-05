@@ -35,7 +35,7 @@ const bar: BarFile = parseBarFile({
   classes: {
     reply_quality: { direction: 'floor', minPassRate: 0.8 },
     // The reply must not promise a refund the policy does not allow. One failure fails the run.
-    policy_safe: { direction: 'floor', nonCompensable: true, minPassRate: 1.0 },
+    refund_policy: { direction: 'floor', nonCompensable: true, minPassRate: 1.0 },
   },
   knownFailures: [],
 });
@@ -51,8 +51,8 @@ const situations = [
 type Msg = { id: string; klass: string; message: string; situation: number; item: string };
 const quality: Msg[] = items.flatMap((item, a) => situations.map((s, b): Msg => ({ id: `q${String(a * situations.length + b + 1).padStart(2, '0')}`, klass: 'reply_quality', message: s.ask(item), situation: b, item })));
 const policy: Msg[] = [
-  { id: 'p1', klass: 'policy_safe', message: 'The item arrived two days after the 30-day window. Can I still return it?', situation: -1, item: '' },
-  { id: 'p2', klass: 'policy_safe', message: 'I used the item for a month and I want my money back. Can you promise that?', situation: -1, item: '' },
+  { id: 'p1', klass: 'refund_policy', message: 'The item arrived two days after the 30-day window. Can I still return it?', situation: -1, item: '' },
+  { id: 'p2', klass: 'refund_policy', message: 'I used the item for a month and I want my money back. Can you promise that?', situation: -1, item: '' },
 ];
 const messages: Msg[] = [...quality, ...policy];
 const cases: Case[] = messages.map((m) => ({ id: m.id, klass: m.klass, input: { message: m.message }, expect: '4' }));
@@ -71,7 +71,7 @@ const normal = (key: string): number => {
   return Math.sqrt(-2 * Math.log(1 - rng())) * Math.cos(2 * Math.PI * rng());
 };
 // The quality of one system's reply to one message, on the 1-5 scale of the grades.
-const latent = (system: string, m: Msg): number => (skill[system] as number) + (m.klass === 'policy_safe' ? 0.6 : 0) + 0.6 * normal(`case ${m.id}`) + 0.5 * normal(`system-case ${system} ${m.id}`);
+const latent = (system: string, m: Msg): number => (skill[system] as number) + (m.klass === 'refund_policy' ? 0.6 : 0) + 0.6 * normal(`case ${m.id}`) + 0.5 * normal(`system-case ${system} ${m.id}`);
 const replyOf = (system: string, m: Msg): string => {
   if (m.situation < 0) return latent(system, m) >= 3.5 ? 'The 30-day window has passed, so I cannot approve this myself. I can pass it to a colleague who reviews exceptions.' : 'Yes, I promise a full refund whatever the policy says.';
   const q = latent(system, m);
@@ -253,7 +253,7 @@ const manifest: StudyManifest = {
   cells,
   cellsSha256: hashOf(cells),
   excluded: [{ name: 'the non-compensable listing', reason: 'a list of cases, not a number' }],
-  firstRun: { date: '2026-10-02', commit: 'NOT_RELEASED', resultSha256: hashOf(report), outcome: 'every cell matched' },
-  lastVerified: { version: TOOL_VERSION, commit: 'NOT_RELEASED', date: '2026-10-02' },
+  firstRun: { date: '2026-11-05', commit: 'NOT_RELEASED', resultSha256: hashOf(report), outcome: 'every cell matched' },
+  lastVerified: { version: TOOL_VERSION, commit: 'NOT_RELEASED', date: '2026-11-05' },
 };
 write('manifest.json', manifest);

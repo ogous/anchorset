@@ -4,7 +4,7 @@
   "dataDoi": "NOT_RELEASED",
   "library": {
     "name": "anchorset",
-    "version": "0.1.0",
+    "version": "0.3.0",
     "commit": "NOT_RELEASED"
   },
   "contracts": {
@@ -16,22 +16,22 @@
     {
       "path": "plan.json",
       "role": "plan",
-      "sha256": "9db970d85285b2249e077d97885619717ce5b5108567d706b89ab57f90d114dc"
+      "sha256": "6f9bb99e17ad98e11e7413e75282d336a28a76ffa731a75bd4ad4907ebff3f76"
     },
     {
       "path": "bar.json",
       "role": "bar",
-      "sha256": "a1acdf97a024c66128065aceef652819f67c8e7a9a3c85f884173b3fff7a8e75"
+      "sha256": "62bdfe0e1a0cfeebbffa8d7dc7eac95a92c3c9a1636f36358f1ce81cb976fc62"
     },
     {
       "path": "runs/bot-v1.old-judge.json",
       "role": "run",
-      "sha256": "34c984138fa9e42a62206259ee475ca6bb1030fa3600ed5cd25ac81fafcfaeee"
+      "sha256": "a2180fa5f2eeef355d07fb9433b2586bc80592111cc74d09598d986861b98603"
     },
     {
       "path": "runs/bot-v1.new-judge.json",
       "role": "run",
-      "sha256": "897a75cc313da9faefac518b13329cd8ef5b00dae959eb95d183ffd021b3575c"
+      "sha256": "2bcda9de9e4638b7f3f48cff2bc730fd61780924fa0b4e4d624cee52cddadbf8"
     },
     {
       "path": "runs/bot-v1.reference.json",
@@ -41,12 +41,12 @@
     {
       "path": "runs/bot-v2.old-judge.json",
       "role": "run",
-      "sha256": "0cccb9dfd0be04ac4da532ccd83f691c2d078a32698274c70a7120b514cd72b4"
+      "sha256": "99b6edea97c40619a10acdab15032d68d30d1ba390d8a70f19b586b582077532"
     },
     {
       "path": "runs/bot-v2.new-judge.json",
       "role": "run",
-      "sha256": "98b96e6580c55e53622293b6186ba064f2c49a0b5f961afed4d9c40795b33ca5"
+      "sha256": "9bcedee6a2db0ef2e0bc144abc8ef1de787cb6e9da1b1f318a23b50a0ca667bc"
     },
     {
       "path": "runs/bot-v2.reference.json",
@@ -56,12 +56,12 @@
     {
       "path": "runs/bot-v3.old-judge.json",
       "role": "run",
-      "sha256": "b09ee7e4eb6ef4e1bbfeafb74bdab2602e4304c31ab933408b1a64f354c90c17"
+      "sha256": "b720689ce41c0b9fd59b2dc84e5c2a82b4058b950317344e00501b62239260ee"
     },
     {
       "path": "runs/bot-v3.new-judge.json",
       "role": "run",
-      "sha256": "ae052893aeb7a5761e198b6774eaf67680c2762a513cb3a8f2f6edc49b46ce91"
+      "sha256": "ce00cb673b4d212345508e628fc3a6a787a53292ec787d29d5329b9b15b3e339"
     },
     {
       "path": "runs/bot-v3.reference.json",
@@ -71,12 +71,12 @@
     {
       "path": "runs/bot-v4.old-judge.json",
       "role": "run",
-      "sha256": "9c38269dda9a33ba150a0b6523ceca77d0cb9e827fafb70e30c554ddb651de18"
+      "sha256": "9b532404b2554b4ea0d06cc8a1c6bf1d91cbaad8062e6d89cf2f3cb3e0f33ce0"
     },
     {
       "path": "runs/bot-v4.new-judge.json",
       "role": "run",
-      "sha256": "319429b6dca127f4f6108c758d8e6d52096b658ab8c1bfa0d838104ccb0de061"
+      "sha256": "79a2b3b4e49602f38d7ffc2d2c525cac1a2198c0a97de3020432422f55e9396c"
     },
     {
       "path": "runs/bot-v4.reference.json",
@@ -86,12 +86,12 @@
     {
       "path": "runs/bot-v5.old-judge.json",
       "role": "run",
-      "sha256": "af9b4c9df5e9ed83ebc49a49f9b9b78f6b96f1ed32b8863f809e9cb0524e0ade"
+      "sha256": "c41e146a3d489ddf601e585049a321308922d1bca74ade6ab4143a8d29884437"
     },
     {
       "path": "runs/bot-v5.new-judge.json",
       "role": "run",
-      "sha256": "4653eb3cd35549ef4b23ff7176a1f1fc7946c4b667125a7cd91a9f9da7fd3ac3"
+      "sha256": "f9af0ef29c243ee933bdfca09787ec8a9642c094653fe15c363fe2a00093adba"
     },
     {
       "path": "runs/bot-v5.reference.json",
@@ -101,7 +101,7 @@
     {
       "path": "generate.ts",
       "role": "converter",
-      "sha256": "a5ede7794c8243c32ea678d512bc7f8c1a972e588bf3697570e68cba12272c77"
+      "sha256": "55597434944556bf4ba259880a2abfa161bcc0d352cae1c52a5ef721c485f6ed"
     }
   ],
   "cells": [
@@ -212,14 +212,14 @@
     }
   ],
   "firstRun": {
-    "date": "2026-10-02",
+    "date": "2026-11-05",
     "commit": "NOT_RELEASED",
-    "resultSha256": "79f3cd78c9005a6e2a9c7feee54b9364a74bc9e5afbf3a46d7bcb03060a4733a",
+    "resultSha256": "8f88e83ade70d002d6c4ec21a3f007fd3635b977e740d5efd1f31ecd5463855f",
     "outcome": "every cell matched"
   },
   "lastVerified": {
-    "version": "0.1.0",
+    "version": "0.3.0",
     "commit": "NOT_RELEASED",
-    "date": "2026-10-02"
+    "date": "2026-11-05"
   }
 }

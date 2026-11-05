@@ -21,6 +21,7 @@
     "REJUDGE_BOOTSTRAP_DEFAULTS",
     "REPORT_SCHEMAS",
     "RESAMPLE_SCHEMA",
+    "RUN_INPUT_SCHEMA",
     "RUN_SCHEMA",
     "RefusalError",
     "STOPS",

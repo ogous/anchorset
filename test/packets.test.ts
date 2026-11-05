@@ -461,8 +461,9 @@ test('one implementation: the comparison and its kernel are defined once, in art
 
 test('one implementation: regression.ts and judgechange.ts reach the comparison only through it', () => {
   // The gate: assertSamePackets is the gate's refusal around comparePackets, and regression.ts reads no packet itself.
+  // It is called twice: by the split (recorded packets) and by the judge-flip list (recorded or declared).
   const regression = code('regression.ts');
-  assert.equal(count(regression, /\bassertSamePackets\(/g), 1);
+  assert.equal(count(regression, /\bassertSamePackets\(/g), 2);
   assert.equal(count(regression, /packetHash|packetBasis|isSha256Hex|comparePackets|samePacket/g), 0);
   const gate = code('artifact.ts');
   const body = gate.slice(gate.indexOf('export function assertSamePackets('));

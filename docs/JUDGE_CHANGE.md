@@ -33,8 +33,8 @@ shortened: `…` cuts a hash or stands for systems `bot-v2` to `bot-v5`.
 ```text
 {
   "schema": "anchorset.judge-change-plan/v1",
-  "barHash": "350b69d36d81…",
-  "caseSetHash": "dbb9df32e72a…",
+  "barHash": "44b447330f62…",
+  "caseSetHash": "43a9b79aef9a…",
   "drawsPerCase": 6,
   "judges": {
     "old": {
@@ -56,7 +56,7 @@ shortened: `…` cuts a hash or stands for systems `bot-v2` to `bot-v5`.
   },
   "judgeMoves": ["judgeModelServed"],
   "systems": {
-    "bot-v1": { "old": "34c984138fa9…", "new": "897a75cc313d…", "reference": "7b2a5b113bf1…" },
+    "bot-v1": { "old": "a2180fa5f2ee…", "new": "2bcda9de9e46…", "reference": "7b2a5b113bf1…" },
     …
   },
   "storedOutputs": "system-side-compared",
@@ -209,21 +209,43 @@ judges. It shows how much labels move with no change of judge. The third is the 
 
 ```text
 labels that differ between the judges (majority)              0.275
+  in each direction, never netted: pass -> fail 28 · fail -> pass 5 (of 120 items)
 labels that differ between two sets of one judge (majority)   0.167
+  as counts: old judge 20 of 120 items, new judge 20 of 120 items differ between their two sets
 the first share minus the second (from the counts)            0.108
+the judge's own variation: items whose estimate draws split between pass and fail: old judge 44 of 120 · new judge 41 of 120
 ```
 
-Then come the same rates for each system, with two or more systems, and a list of every item whose label
-differs:
+The line under the first share counts the two directions apart: 28 answers went from pass to fail and 5 from fail to
+pass. A net change of 23 would hide the 5. The counts under the second share are the answers behind it, for each
+judge. The last line counts the answers on which one judge both passed and failed the same stored answer across its
+estimate draws: that is the judge's own noise, in the same unit as the flips. With one estimate draw per case it reads
+`not measured (one draw per case)`, and so do the second and third shares. With more draws and no `reask` set, those
+two read `not measured (the plan declares no re-ask set)`.
+
+Then come the same rates for each system, with two or more systems, each with its count of answers in each
+direction. A class that your bar file marks non-compensable comes next. It gets no rate: one line counts its cases
+that went from pass to fail and from fail to pass, worst of every draw, and its cases with a failing draw are listed
+one by one, although it is not the measured class.
 
 ```text
-items whose label differs between the judges (33):
+non-compensable classes (refund_policy): cases with a failing draw, listed, never pooled (9):
+  refund_policy: pass -> fail 2 · fail -> pass 0, worst of every draw
+  refund_policy/bot-v1/p1  old judge fails draws [0, 1, 3, 4, 5] · new judge fails draws [0, 1, 2, 3, 4, 5]
+…
+```
+
+Then every item whose label differs:
+
+```text
+items whose label differs between the judges (33: pass -> fail 28, fail -> pass 5):
   bot-v1/q03  pass -> fail
 …
 ```
 
-A class that your bar file marks non-compensable gets no rate. Its cases with a failing draw are listed one by one,
-although it is not the measured class.
+These counts are in the text report only. The `--json` report keeps its keys as they were: every count above can be
+read off `flips.items` and `nonCompensable`, apart from the judge's own variation and the counts of each judge under
+the second share.
 
 **Agreement with a reference.** Printed if the plan names a reference file for each system. The example's are in
 [`examples/judge-change/runs/`](../examples/judge-change/runs/). Kappa and AC1 are agreement beyond luck
@@ -288,7 +310,8 @@ the brackets: on 95% of the resamples the change fell between -0.244 and -0.117.
 have given, and say nothing about another day, other systems or other draws. Whether such brackets hold the true
 value 95% of the time is not checked. On counts of pairs and on `map` rows the two columns carry no level.
 
-The report ends with notes on what it does not show.
+The report ends with notes on what it does not show. The last two say that agreement between judges is not evidence
+of correctness, and that the identities are as the run files declare them: anchorset calls no model.
 
 ## If it stops
 
@@ -306,7 +329,9 @@ A refusal prints `REFUSED`, a code, the fields concerned and a sentence, and no 
 - `PACKET_MISMATCH` → the judges were not shown the same thing on the draws listed, or a run file does not say
   what was shown. Grade again so that both see the same packet and it is recorded.
 - `ITEM_SET_MISMATCH` or `INCOMPLETE_RUN` → a draw is missing, or has no label, under one judge, in any class of the
-  file, measured or not. Grade it again.
+  file, measured or not. Grade it again. Under `INCOMPLETE_RUN` a table counts, for each run file, the draws with no
+  label by reason, so you can see which judge broke and how. A reply that cannot be read (`parse-failure`), a
+  content filter and a `client-error` are final; a timeout or a cut reply may be asked again.
   Or a reference file does not cover exactly the scored cases, or a file of draws you supplied does not fit them.
 - `invalid input (INVALID_PLAN)` → each line names a key of the plan and what it must be.
 

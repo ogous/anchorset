@@ -637,6 +637,21 @@ export type SpreadReport = {
   quantities: Record<string, { point: Stat } & Spread & Labelled>;
 };
 
+/**
+ * The two fixed sentences, defined once. Every output that sets two judges side by side, or refuses on a judge or on slots
+ * that hold no grade, prints them: the gate's refusal on a judge field, every refusal on such slots, the judge-flip list
+ * of `gate --rejudge-of`, `validate`, and the text of a judge-change report. Each says what was measured and never what
+ * it means: agreement is not correctness, and an identity is what a file declares.
+ */
+export const AGREEMENT_SENTENCE = 'Agreement between judges is not evidence of correctness; no human labels were compared.';
+/** The first sentence where a judge-change plan names a reference. */
+export const AGREEMENT_SENTENCE_WITH_REFERENCE = 'Agreement between judges is not evidence of correctness; the reference labels were compared as given, and anchorset does not know how they were made.';
+export const AS_DECLARED_SENTENCE = 'Identities are as declared in the run files; anchorset calls no model and cannot verify what was sent.';
+/** The two sentences in the order they are printed. */
+export const FIXED_SENTENCES: readonly [string, string] = Object.freeze([AGREEMENT_SENTENCE, AS_DECLARED_SENTENCE]) as readonly [string, string];
+
+// The last note is kept word for word: the study's recorded first-run reports hold it, and a report that drops it is no
+// longer that run's report. It is a negation; no output says which judge is right.
 const NOTES = [
   'the report has no verdict and never exits 1; any pair state below is the outcome of a simulated decision rule on majority labels, not of `anchorset gate`',
   'nothing here shows the plan preceded the scores',
@@ -1260,10 +1275,43 @@ function mapQuantities(m: MapNumbers): Record<string, number> {
 }
 
 /**
+ * Counts read off the same label table as the report, for the text report only. They are kept out of the report itself,
+ * so that the report a recorded run made stays that run's report: the counts add nothing a later run could not print
+ * beside it. Every value is a count beside its denominator, never a rate, and no count is netted against another.
+ *
+ * - `directions`: of the items whose label differs between the judges (`flips.items`), how many went from pass to fail
+ *   and how many from fail to pass, overall and per system. The two sum to `flips.items.length`.
+ * - `byClass`: non-compensable classes first, by name, each labelled worst of every draw; then the measured class,
+ *   labelled by the plan's rule. Ids are `system/case`, sorted.
+ * - `ownVariation`: items whose estimate draws split between pass and fail, per judge. Each item holds one stored
+ *   output (the report refuses otherwise), so such a split is that judge's alone. One estimate draw: not measured.
+ * - `withinJudgeCounts`: with a re-ask set, the items whose label differs between a judge's two sets, per judge; their
+ *   sum over twice the items is `flips.withinJudge`.
+ */
+export type JudgeChangeReading = {
+  directions: { passToFail: number; failToPass: number; items: number };
+  perSystem: { system: string; passToFail: number; failToPass: number; items: number }[];
+  byClass: { klass: string; nonCompensable: boolean; labelledBy: string; passToFail: string[]; failToPass: string[] }[];
+  ownVariation: { old: { split: number; items: number }; new: { split: number; items: number }; set: 'estimate' } | typeof ONE_ESTIMATE_DRAW;
+  withinJudgeCounts: { old: number; new: number; items: number } | typeof NOT_DECLARED;
+};
+
+/** What the own-variation counts read on a plan whose estimate set is one draw. */
+export const ONE_ESTIMATE_DRAW = 'not measured (one draw per case)';
+
+/**
  * Measures a judge change on stored outputs. Throws InputError for invalid input and RefusalError
  * for a comparison it will not stand behind; otherwise it returns points and provenance.
  */
 export function judgeChangeRuns(files: readonly JudgeChangeInput[], barFile: BarFile, plan: JudgeChangePlan): JudgeChangeReport {
+  return judgeChangeWithReading(files, barFile, plan).report;
+}
+
+/**
+ * The report and the counts the text report prints beside it (JudgeChangeReading), from one admission and one label
+ * table. Internal: the reader of the CLI; not re-exported from index.ts.
+ */
+export function judgeChangeWithReading(files: readonly JudgeChangeInput[], barFile: BarFile, plan: JudgeChangePlan): { report: JudgeChangeReport; reading: JudgeChangeReading } {
   parseBarFile(barFile);
   const planProblems = judgeChangePlanProblems(plan);
   if (planProblems.length > 0) throw new InputError('INVALID_PLAN', planProblems);
@@ -1739,7 +1787,25 @@ export function judgeChangeRuns(files: readonly JudgeChangeInput[], barFile: Bar
   const shapes = [first.old.run.callShapes.judge, first.new.run.callShapes.judge];
   const state = (x: unknown): BlockState => (x === NOT_DECLARED ? NOT_DECLARED : isObj(x) && 'withheld' in x ? `withheld: ${String(x['withheld'])}` : COMPUTED);
 
-  return {
+  // Counts only, from the point table: each direction apart, never netted.
+  const ways = (xs: readonly { old: boolean; new: boolean }[]): { passToFail: number; failToPass: number } => ({ passToFail: xs.filter((x) => x.old && !x.new).length, failToPass: xs.filter((x) => !x.old && x.new).length });
+  const strictWays = (klass: string, from: 'old' | 'new'): string[] =>
+    nonCompensable.filter((x) => x.klass === klass && (from === 'old' ? x.oldFailingDraws.length === 0 && x.newFailingDraws.length > 0 : x.oldFailingDraws.length > 0 && x.newFailingDraws.length === 0)).map((x) => `${x.system}/${x.caseId}`).sort();
+  const splitCount = (counts: readonly (readonly number[])[]): number => counts.reduce((acc, row) => acc + row.filter((k) => k > 0 && k < estimate.length).length, 0);
+  const differCount = (x: readonly (readonly boolean[])[], y: readonly (readonly boolean[])[]): number => x.reduce((acc, row, i) => acc + row.filter((v, k) => v !== (y[i] as readonly boolean[])[k]).length, 0);
+  const items = pairs.length * nCases;
+  const reading: JudgeChangeReading = {
+    directions: { ...ways(flipped), items },
+    perSystem: systems.map((system) => ({ system, ...ways(flipped.filter((x) => x.system === system)), items: nCases })),
+    byClass: [
+      ...nonCompClasses.map((klass) => ({ klass, nonCompensable: true, labelledBy: 'worst of every draw', passToFail: strictWays(klass, 'old'), failToPass: strictWays(klass, 'new') })),
+      { klass: plan.measuredClass, nonCompensable: false, labelledBy: plan.labelRule, passToFail: flipped.filter((x) => x.old && !x.new).map((x) => `${x.system}/${x.caseId}`).sort(), failToPass: flipped.filter((x) => !x.old && x.new).map((x) => `${x.system}/${x.caseId}`).sort() },
+    ],
+    ownVariation: estimate.length < 2 ? ONE_ESTIMATE_DRAW : { old: { split: splitCount(table.oldCount), items }, new: { split: splitCount(table.newCount), items }, set: 'estimate' },
+    withinJudgeCounts: reask === undefined ? NOT_DECLARED : { old: differCount(table.old, table.oldReask), new: differCount(table.new, table.newReask), items },
+  };
+
+  const report: JudgeChangeReport = {
     kind: 'measurement',
     tool: { name: TOOL_NAME, version: TOOL_VERSION },
     contracts: { run: RUN_SCHEMA, plan: JUDGE_CHANGE_PLAN_SCHEMA },
@@ -1803,4 +1869,5 @@ export function judgeChangeRuns(files: readonly JudgeChangeInput[], barFile: Bar
       ...(gate === NOT_DECLARED || 'withheld' in gate ? [] : GATE_NOTES), ...(typeof map === 'object' && !('withheld' in map) ? MAP_NOTES : []), ...(spread === NOT_DECLARED || 'withheld' in spread ? ['points only: no spread is computed'] : SPREAD_NOTES),
     ],
   };
+  return { report, reading };
 }

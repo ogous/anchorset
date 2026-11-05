@@ -178,6 +178,19 @@ export function unknownOutputHashes(draws: unknown): string[] {
 }
 
 /**
+ * How many distinct stored answers the draws of one case hold: the output hash together with the system's outcome and
+ * stop, read off each draw's final attempt (systemFacts). A draw where the system gave no response counts as one answer
+ * of its own kind. The one count behind the one-output basis of `flips` and the answer count of the judge-flip list of
+ * `gate --rejudge-of`. Internal: not re-exported from index.ts.
+ */
+export function storedAnswerCount(draws: readonly Draw[]): number {
+  return new Set(draws.map((d) => {
+    const f = systemFacts(finalAttempt(d));
+    return `${f.outputHash}\u0000${f.outcome}`;
+  })).size;
+}
+
+/**
  * Label flips among the repeat draws of one run, split by what the draws held (see RepeatBasis).
  * The two shares are never pooled: only a one-output case isolates the grader. Built on groupDraws
  * and flipRate, so "the draws did not all get the same outcome" has one implementation.
@@ -192,7 +205,7 @@ export function unknownOutputHashes(draws: unknown): string[] {
 export function repeatFlips(draws: readonly Draw[], drawsPerCase: number, caseIds: readonly string[], bootstrap: BootstrapOptions, stops: StopReading = {}): RepeatFlipReport {
   if (!Number.isInteger(drawsPerCase) || drawsPerCase < 1) throw new InputError('INVALID_ARGUMENT', [`drawsPerCase must be a positive integer, got ${drawsPerCase}`]);
   if (drawsPerCase < 2) {
-    throw new RefusalError('UNSUPPORTED_DESIGN', ['drawsPerCase'], 'the run has one draw per case; a flip needs at least two draws of a case');
+    throw new RefusalError('UNSUPPORTED_DESIGN', ['drawsPerCase'], 'the run has one draw per case; a flip needs at least two draws of a case: draw each case at least twice (drawsPerCase 2 or more) to measure how often the grade changes on a repeat');
   }
   const unhashed = unknownOutputHashes(draws);
   if (unhashed.length > 0) {
@@ -204,10 +217,7 @@ export function repeatFlips(draws: readonly Draw[], drawsPerCase: number, caseId
   for (const d of draws) (byCase.get(d.caseId) as Draw[]).push(d);
   if (stops.admitUnknown === true) {
     // Before the slots are read for a grade: the declaration's one condition on a case comes before the locks every run meets.
-    const many = caseIds.filter((id) => new Set((byCase.get(id) as Draw[]).map((d) => {
-      const f = systemFacts(finalAttempt(d));
-      return `${f.outputHash}\u0000${f.outcome}`;
-    })).size > 1).sort();
+    const many = caseIds.filter((id) => storedAnswerCount(byCase.get(id) as Draw[]) > 1).sort();
     if (many.length > 0) {
       throw new RefusalError('HASH_MISMATCH', many, `stored outputs were declared, but the draws of ${listed(many)} hold more than one output (output hash, outcome or stop); a stored output is one text`);
     }
@@ -222,12 +232,9 @@ export function repeatFlips(draws: readonly Draw[], drawsPerCase: number, caseId
   const mixedPackets: string[] = [];
   const cases: RepeatCase[] = stability.cases.map((c) => {
     const finals = (byCase.get(c.caseId) as Draw[]).slice().sort((x, y) => x.drawIndex - y.drawIndex).map((d) => ({ d, a: finalAttempt(d) }));
-    const outputs = new Set(finals.map(({ a }) => {
-      const f = systemFacts(a);
-      return `${f.outputHash}\u0000${f.outcome}`;
-    }));
+    const outputs = storedAnswerCount(finals.map(({ d }) => d));
     const graded = finals.flatMap(({ d, a }) => (a.kind === 'graded' ? [{ d, a }] : []));
-    const basis: RepeatBasis = graded.length === 0 ? 'ungraded' : outputs.size === 1 ? 'one-output' : 'different-outputs';
+    const basis: RepeatBasis = graded.length === 0 ? 'ungraded' : outputs === 1 ? 'one-output' : 'different-outputs';
     if (basis === 'one-output') {
       const gaps = graded.filter(({ a }) => a.packetHash === GAP).map(({ d }) => `packetHash[${c.caseId}#${d.drawIndex}]`);
       appendAll(unknownPackets, gaps);
@@ -237,7 +244,7 @@ export function repeatFlips(draws: readonly Draw[], drawsPerCase: number, caseId
       caseId: c.caseId,
       draws: c.draws,
       basis,
-      distinctOutputs: outputs.size,
+      distinctOutputs: outputs,
       outcomes: (outcomes.get(c.caseId) as readonly Outcome[]).filter((o): o is ModalOutput => o.kind !== 'absent'),
       disagreeShare: c.disagreeShare as number,
       flipped: c.flipped === true,

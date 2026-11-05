@@ -4,8 +4,7 @@ Copyright 2026 Ogous Chan Ali (ORCID: https://orcid.org/0009-0005-7182-2137)
 This product includes software developed by Ogous Chan Ali.
 
 Licensed under the Apache License, Version 2.0 (Apache-2.0); see LICENSE. The code,
-the example importers and graders, the tools and the tests, and the plugin's skill file and
-manifests are all under that licence. Code snippets and machine-readable schemas inside the
+the example importers and graders, the tools and the tests are all under that licence. Code snippets and machine-readable schemas inside the
 documentation follow the code licence. Documentation and specification text are licensed
 under CC-BY-4.0; see REUSE.toml for the file-by-file map.
 

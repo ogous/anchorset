@@ -122,6 +122,9 @@ const KEYS: Readonly<Record<NamedKey, Check>> = {
   timeoutMs: posInt,
 };
 
+/** Every key of a call shape but `schema`, in the schema's order: the named keys, then `extras`. Internal: not re-exported from index.ts. */
+export const CALL_SHAPE_FIELDS: readonly string[] = Object.freeze([...Object.keys(KEYS), 'extras']);
+
 /** Wire spellings of each named key, compared after lowercasing and dropping "-", "_", "." and spaces. */
 const ALIASES: Readonly<Record<NamedKey | 'schema' | 'extras', readonly string[]>> = {
   schema: ['schema'],
@@ -151,8 +154,8 @@ const ALIASES: Readonly<Record<NamedKey | 'schema' | 'extras', readonly string[]
 };
 const SHADOWED = new Map<string, string>(Object.entries(ALIASES).flatMap(([key, spellings]) => spellings.map((s): [string, string] => [norm(s), key])));
 
-/** True when GAP appears anywhere in the value, at any depth. */
-function containsGap(v: unknown): boolean {
+/** True when GAP appears anywhere in the value, at any depth. Internal: not re-exported from index.ts. */
+export function containsGap(v: unknown): boolean {
   if (v === GAP) return true;
   if (Array.isArray(v)) return v.some(containsGap);
   if (typeof v === 'object' && v !== null) return Object.values(v).some(containsGap);

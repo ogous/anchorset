@@ -1,0 +1,5 @@
+{"case": "q01", "grade": "4", "answer": "Refunds usually show up within 14 days. I have checked your order and the refund was sent on day 3.", "stop": "end"}
+{"case": "q02", "grade": "5", "answer": "Yes. Worn items can be returned within 30 days if the tags are still on.", "stop": "end"}
+{"case": "q03", "grade": "4", "answer": "Sorry about that. I have found the second charge and asked for it to be reversed.", "stop": "end"}
+{"case": "q04", "grade": "2", "answer": "Please contact the courier.", "stop": "end"}
+{"case": "q05", "grade": "4", "answer": "Card refunds take three to five working days after we send them.", "stop": "end"}

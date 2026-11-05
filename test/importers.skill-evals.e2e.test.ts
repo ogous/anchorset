@@ -8,7 +8,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { JUDGE_FIELDS } from '../src/identity.ts';
-import { callShapeHash, gateRuns, IDENTITY_FIELDS, judgeChangeRuns, parseBarFile, parseJudgeChangePlan, parseRunArtifact, RefusalError, repeatFlips, sha256Hex } from '../src/index.ts';
+import { gateRunsWithAdmission as gateRuns } from './helpers.ts';
+import { callShapeHash, IDENTITY_FIELDS, judgeChangeRuns, parseBarFile, parseJudgeChangePlan, parseRunArtifact, RefusalError, repeatFlips, sha256Hex } from '../src/index.ts';
 import type { BarFile, IdentityField, JudgeChangePlan, RunArtifact } from '../src/index.ts';
 import { asRecorded, makeCallShape } from './helpers.ts';
 import { parseCasesFile } from '../examples/importers/shared.ts';
@@ -366,7 +367,7 @@ test('end to end: the two imported runs under the committed plan give the judge-
   assert.match(jc.stdout, /systems 1 · scored cases 2 · items 2/);
   assert.match(jc.stdout, /per-draw pass rate {1,}1\.000 {1,}0\.500 {1,}-0\.500/);
   assert.match(jc.stdout, /label pass rate \(majority\) {1,}1\.000 {1,}0\.500 {1,}-0\.500/);
-  assert.match(jc.stdout, /items whose label differs between the judges \(1\):\n {2}refund-bot\/clearance-organiser {2}pass -> fail/);
+  assert.match(jc.stdout, /items whose label differs between the judges \(1: pass -> fail 1, fail -> pass 0\):\n {2}refund-bot\/clearance-organiser {2}pass -> fail/);
   // The same two runs given to gate are refused, exit 2, whatever may be allowed to differ.
   const gate = cli('gate', '--baseline', imported.old.path, '--candidate', imported.new.path, '--bar', join(dir, 'bar.json'), '--allow-differ', WAIVABLE.join(','));
   assert.equal(gate.status, 2, gate.stderr);

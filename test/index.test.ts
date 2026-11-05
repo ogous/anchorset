@@ -102,15 +102,18 @@ test('the strict reader is public: parseJsonBytes names a key given twice, and i
   if ('json' in read) assert.equal(api.parseRunArtifact(read.json).schema, api.RUN_SCHEMA);
 });
 
-test('the three contract constants of the ratings, anchor and report files are public', () => {
+test('the contract constants of the ratings, anchor, run-input and report files are public', () => {
   assert.equal(api.RATINGS_SCHEMA, 'anchorset.ratings/v2');
+  assert.equal(api.RUN_INPUT_SCHEMA, 'anchorset.run-input/v1');
   assert.equal(api.ANCHOR_SCHEMA, 'anchorset.anchor/v1');
   assert.deepEqual(api.REPORT_SCHEMAS, {
-    gate: 'anchorset.gate-report/v1',
+    gate: 'anchorset.gate-report/v2',
     agree: 'anchorset.agree-report/v2',
     drift: 'anchorset.drift-report/v2',
     flips: 'anchorset.flips-report/v2',
-    refusal: 'anchorset.refusal/v1',
+    'write-run': 'anchorset.write-run-report/v1',
+    validate: 'anchorset.validate-report/v1',
+    refusal: 'anchorset.refusal/v2',
   });
 });
 
@@ -131,7 +134,7 @@ const internalNames = (): string[] => {
 };
 // Keys of a report that an internal function happens to share its name with. A page names them as fields of the
 // JSON; one written as a call (`prevalence(`) is still refused below.
-const REPORT_FIELDS = ['percentAgreement', 'prevalence', 'rateShiftMinItems'];
+const REPORT_FIELDS = ['percentAgreement', 'prevalence', 'rateShiftMinItems', 'judgeDiff'];
 
 test('the format pages, the migrations page and the changelog name no function or constant that the package does not export', () => {
   const internal = internalNames();
@@ -155,9 +158,9 @@ test('docs/MIGRATIONS.md is the list of the schema strings of this version: ever
   const page = readFileSync(join(repo, 'docs', 'MIGRATIONS.md'), 'utf8');
   const strings = [
     api.RUN_SCHEMA, api.CALL_SHAPE_SCHEMA, api.LEDGER_SCHEMA, api.JUDGE_CHANGE_PLAN_SCHEMA, api.REFERENCE_SCHEMA, api.TIE_BREAK_SCHEMA,
-    api.RESAMPLE_SCHEMA, api.RATINGS_SCHEMA, api.ANCHOR_SCHEMA, ...Object.values(api.REPORT_SCHEMAS),
+    api.RESAMPLE_SCHEMA, api.RATINGS_SCHEMA, api.ANCHOR_SCHEMA, api.RUN_INPUT_SCHEMA, ...Object.values(api.REPORT_SCHEMAS),
   ];
-  assert.equal(strings.length, 14);
+  assert.equal(strings.length, 17);
   for (const x of strings) assert.ok(page.includes(`\`${x}\``), `docs/MIGRATIONS.md does not list ${x}`);
   for (const m of page.matchAll(/`([A-Z][A-Z_]*_SCHEMAS?)(?:\.(\w+))?`/g)) {
     const [, name, key] = m as unknown as [string, string, string | undefined];

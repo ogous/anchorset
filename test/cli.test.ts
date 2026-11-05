@@ -297,7 +297,7 @@ test('drift refuses (exit 2, PACKET_MISMATCH) when neither anchor file carries p
   assert.equal(item.status, 2);
   // Under --json a refusal is the one JSON object on stdout, for every command, and nothing is written to stderr.
   const refusal = JSON.parse(item.stdout) as { schema: string; kind: string; command: string; code: string; fields: string[]; exitCode: number };
-  assert.deepEqual([refusal.schema, refusal.kind, refusal.command, refusal.code, refusal.exitCode], ['anchorset.refusal/v1', 'refused', 'drift', 'PACKET_MISMATCH', 2]);
+  assert.deepEqual([refusal.schema, refusal.kind, refusal.command, refusal.code, refusal.exitCode], ['anchorset.refusal/v2', 'refused', 'drift', 'PACKET_MISMATCH', 2]);
   assert.deepEqual(refusal.fields, ['a07']);
   assert.equal(item.stderr, '');
   const differ = run('drift', '--old', ex('anchor_old.json'), '--new', anchor('anchor_new.json', (f) => void ((f['packetHashes'] as Record<string, string>)['a02'] = 'b'.repeat(64))), '--flag', 'handoff');
@@ -432,7 +432,7 @@ test('flips refuses (exit 2) a run with one draw per case, an unknown output has
   const unhashed = run('flips', '--run', edit((f) => void (at(f, 'r01', 2).attempts[0]!['outputHash'] = 'UNKNOWN')), '--json');
   assert.equal(unhashed.status, 2, unhashed.stderr);
   const unhashedJson = JSON.parse(unhashed.stdout) as { schema: string; kind: string; command: string; code: string; fields: string[] };
-  assert.deepEqual([unhashedJson.schema, unhashedJson.kind, unhashedJson.command, unhashedJson.code, unhashedJson.fields], ['anchorset.refusal/v1', 'refused', 'flips', 'IDENTITY_GAP', ['outputHash[r01#2]']]);
+  assert.deepEqual([unhashedJson.schema, unhashedJson.kind, unhashedJson.command, unhashedJson.code, unhashedJson.fields], ['anchorset.refusal/v2', 'refused', 'flips', 'IDENTITY_GAP', ['outputHash[r01#2]']]);
   assert.equal(unhashed.stderr, '');
   const timedOut = run('flips', '--run', edit((f) => void (at(f, 'r02', 1).attempts = [{ kind: 'unmeasured', role: 'system', reason: 'timeout', detail: 'no response' }])));
   assert.equal(timedOut.status, 2);
@@ -455,7 +455,7 @@ test('flips refuses (exit 2) a run with one draw per case, an unknown output has
 test('no shipped text keeps a sentence the report contradicts: the gate prints intervals under --rejudge-of, the split is three movements and not a share, and an ask is recorded only when its slot ends with a record', () => {
   const flat = (rel: string): string => readFileSync(join(root, rel), 'utf8').replace(/\s+/g, ' ');
   const shipped = ['README.md', 'CHANGELOG.md', 'docs/RUN_FORMAT.md', 'docs/JUDGE_CHANGE.md', 'docs/IMPORTERS.md', 'docs/MIGRATIONS.md',
-    'examples/refund-bot/README.md', 'examples/importers/README.md', 'examples/run-format/write-run.ts', 'src/cli.ts', 'src/regression.ts'];
+    'examples/refund-bot/README.md', 'examples/importers/README.md', 'src/runinput.ts', 'src/cli.ts', 'src/regression.ts'];
   for (const rel of shipped) {
     const text = flat(rel);
     assert.doesNotMatch(text, /The gate prints no interval/, rel);
@@ -469,7 +469,7 @@ test('no shipped text keeps a sentence the report contradicts: the gate prints i
 
 test('--help names every command, flips among them', () => {
   const h = run('--help').stdout;
-  for (const c of ['gate', 'agree', 'drift', 'flips', 'judge-change']) assert.match(h, new RegExp(`^  anchorset ${c} `, 'm'));
+  for (const c of ['write-run', 'validate', 'gate', 'agree', 'drift', 'flips', 'judge-change']) assert.match(h, new RegExp(`^  anchorset ${c} `, 'm'));
   assert.match(h, /anchorset agree --ratings <file\.json> \[--ledger <path>\] \[--json\]/);
   assert.match(h, /anchorset drift --old <file\.json> --new <file\.json> --flag <label,\.\.\.>\n? *\[--bootstrap-seed <uint32>\] \[--ledger <path>\] \[--json\]/);
 });
@@ -672,6 +672,8 @@ test('gate --rejudge-of: every row prints n; a non-compensable class prints coun
     '  s             n 3     failing: original baseline 1 (s3) · re-judged baseline 1 (s1) · candidate 1 (s2)',
     '    original baseline -> re-judged baseline: newly failing 1 (s1) · newly passing 1 (s3)',
     '    re-judged baseline -> candidate: newly failing 1 (s2) · newly passing 1 (s1)',
+    // One draw per case in this fixture: the block says what one draw cannot separate.
+    "  one draw per case: both effects include the judge's own repeat variation, which one draw cannot measure",
   ]);
   // On the class's own lines: no decimal number, no bracket, no percent sign.
   for (const l of block.slice(3)) assert.doesNotMatch(l, /\d\.\d|\[|\]|%/, l);
@@ -731,8 +733,10 @@ test('gate --rejudge-of: a real system break still exits 1', () => {
   const r = run('gate', '--baseline', t.b, '--candidate', c, '--bar', t.bar, '--rejudge-of', t.a, '--allow-differ', 'systemModelServed');
   assert.equal(r.status, 1, r.stderr);
   assert.match(r.stdout, /BROKE \(1\)\n {2}k\/c2/);
-  // One draw per case in this fixture, and it fails: 1 of 1.
-  assert.ok(r.stdout.split('\n').some((l) => /^ {2}k\/c2 {2}attributed draw #0: .*; 1 of 1 draws fail$/.test(l)), r.stdout);
+  // One draw per case in this fixture: the row names the one draw and counts nothing (no "attributed", no "1 of 1 draws fail").
+  assert.ok(r.stdout.split('\n').some((l) => /^ {2}k\/c2 {2}draw #0: lo$/.test(l)), r.stdout);
+  assert.doesNotMatch(r.stdout, /attributed draw|1 of 1 draws fail/);
+  assert.match(r.stdout, /^draws per case: 1 — each case's result is one draw; whether it repeats is not measured \(flips needs at least two draws per case\)$/m);
 });
 
 test('gate --rejudge-of refuses (exit 2) when the re-judged baseline graded different outputs', () => {
@@ -810,15 +814,18 @@ test('gate --rejudge-of: differing packets refuse the split only; verdict, diff 
   assert.equal(r.status, ok.status);
   assert.match(r.stdout, /judge-controlled: not computed \(PACKET_MISMATCH: packetHash\[c1#0\]\); this does not change the exit code\n {2}the two judges .*re-judge the baseline's stored outputs/);
   assert.doesNotMatch(r.stdout, /judge\s+-0\.500/);
-  // Everything outside the judge-controlled block is the same text.
-  const outside = (s: string): string => s.replace(/judge-controlled[\s\S]*?\n\n/, '');
+  // The judge-flip list takes the split's admission: it is not computed either, and says so the same way.
+  assert.match(r.stdout, /judge flips: not computed \(PACKET_MISMATCH: packetHash\[c1#0\]\); the verdict and exit code are not affected\n {2}the two judges /);
+  // Everything outside the judge-flip and judge-controlled blocks is the same text.
+  const outside = (s: string): string => s.replace(/judge flips[\s\S]*?\n\n/, '').replace(/judge-controlled[\s\S]*?\n\n/, '');
   assert.equal(outside(r.stdout), outside(ok.stdout));
   assert.match(r.stdout, /verdict: OK \(exit 0\)/);
   const json = run('gate', '--baseline', b, ...args, '--json');
   assert.equal(json.status, 0);
-  const out = JSON.parse(json.stdout) as { judgeControl: { refused: { code: string; fields: string[] } } };
+  const out = JSON.parse(json.stdout) as { judgeControl: { refused: { code: string; fields: string[] } }; judgeFlips: { refused: { code: string; fields: string[] } } };
   assert.equal(out.judgeControl.refused.code, 'PACKET_MISMATCH');
   assert.deepEqual(out.judgeControl.refused.fields, ['packetHash[c1#0]']);
+  assert.deepEqual([out.judgeFlips.refused.code, out.judgeFlips.refused.fields], ['PACKET_MISMATCH', ['packetHash[c1#0]']]);
 });
 
 test('gate --rejudge-of --json and --ledger carry the decomposition and its seed', () => {
@@ -849,9 +856,10 @@ test('gate --rejudge-of --json and --ledger record a refused split and its per-c
   const r = run('gate', '--baseline', t.b, '--candidate', partial, '--bar', t.bar, '--rejudge-of', t.a, '--allow-differ', 'systemModelServed', '--json', '--ledger', ledger);
   assert.equal(r.status, 1, r.stderr);
   const out = JSON.parse(r.stdout) as { judgeControl: { refused: { code: string; fields: string[] } } };
-  assert.equal(out.judgeControl.refused.code, 'ITEM_SET_MISMATCH');
-  assert.deepEqual(out.judgeControl.refused.fields, ['c2']);
-  assert.deepEqual(readLedger(ledger)[0]?.result['judgeControl'], { refused: 'ITEM_SET_MISMATCH', fields: ['c2'] });
+  // The candidate holds case c2 with no record of its draw: an incomplete run naming the slot, not a changed case set.
+  assert.equal(out.judgeControl.refused.code, 'INCOMPLETE_RUN');
+  assert.deepEqual(out.judgeControl.refused.fields, ['c2#0']);
+  assert.deepEqual(readLedger(ledger)[0]?.result['judgeControl'], { refused: 'INCOMPLETE_RUN', fields: ['c2#0'] });
   const okLedger = join(dir, 'rejudge-ok', 'ledger.jsonl');
   assert.equal(run('gate', '--baseline', t.b, '--candidate', t.c, '--bar', t.bar, '--rejudge-of', t.a, '--allow-differ', 'systemModelServed', '--ledger', okLedger).status, 0);
   const jc = readLedger(okLedger)[0]?.result['judgeControl'] as { perClass: Record<string, { judgeEffect: number }> };

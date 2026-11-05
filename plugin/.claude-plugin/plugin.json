@@ -1,9 +1,0 @@
-{
-  "name": "anchorset",
-  "description": "A guide for running the anchorset CLI. It holds no code and decides nothing: every verdict and every number comes from the CLI.",
-  "version": "0.2.0",
-  "license": "Apache-2.0",
-  "author": { "name": "Ogous Chan Ali" },
-  "repository": "https://github.com/ogous/anchorset",
-  "keywords": ["evals", "llm-judge", "regression-gate", "agreement"]
-}

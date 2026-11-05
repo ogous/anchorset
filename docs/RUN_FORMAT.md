@@ -9,40 +9,147 @@ answers, and a **label** is what it gives an answer. The **packet** is what the 
 
 ## The quickest way
 
-An example script writes a run file from a plain record of your run. You need Node 22.21 or later and a clone of
-this repository. Run the commands from its root.
+Write one JSON line per answer from your eval code, and a short manifest that says once what the run was.
+`write-run` turns the two into a run file, and `validate` says whether `gate` will take it. You need Node 22.21 or
+later and a clone of this repository. Run the commands from its root.
 
 ```bash
 OUT="$(mktemp -d)"
-node examples/run-format/write-run.ts --in examples/run-format/input/recorded.json --out "$OUT/run.json"
+node src/cli.ts write-run --manifest examples/run-format/input/manifest.json --grades examples/run-format/input/grades.jsonl --out "$OUT/run.json"
+node src/cli.ts validate --run "$OUT/run.json" --bar examples/run-format/bar.json
 ```
 
-It prints `run written to` with the path, a `run hash:` line, and `identity fields left "UNKNOWN": none`.
+`write-run` prints `run written to` with the path and the file's sha256, every file it read with its sha256, and
+then what the run holds: `cases 5 · draws per case 1 (one grade per answer)`, `identity fields "UNKNOWN": none`
+and `system stop "UNKNOWN": none`. `validate` ends with `result: READY for gate (exit 0)`.
 
-The input is [`recorded.json`](../examples/run-format/input/recorded.json): the bar file's content, the cases,
-what you know about the model, and for every draw the answer, its label and why the system stopped. The script
-works out the hashes of the cases, the bar file, the settings and each answer. You make the other hashes yourself,
-and it writes what you leave out as `"UNKNOWN"`. The script is
-[`write-run.ts`](../examples/run-format/write-run.ts).
+The input is in [`examples/run-format/input/`](../examples/run-format/input/): the manifest, the answers in
+`grades.jsonl`, the cases in `cases.jsonl`, and the prompts and the rubric the manifest names. `write-run` works out
+the hashes of the cases, the bar file, the settings, the files you name and each answer. It writes what you leave
+out as `"UNKNOWN"`.
 
-- The script never overwrites `--out`. Use a new name to write again.
-- For a run that a judge graded, it writes every packet as `"UNKNOWN"`. `gate` reads such a file and `flips`
-  refuses it. To record packets, write the file from your own code.
+- `write-run` never overwrites `--out`. Use a new name to write again. If an input is not in its format, it lists
+  every problem with its place and writes nothing (exit 65).
+- `--manifest` and `--grades` take the same input in `validate`, which then builds the run in memory and writes
+  nothing.
+- The paths in a manifest are read from the manifest's own folder.
 
-The keys of the input:
+## From your eval's rows
 
-- `graded`: `"by-code"` or `"by-judge"`.
-- `bar`, `cases` and `callShapes`: as in the bar file and the run file below. `callShapes` is optional.
-- `drawsPerCase`: a whole number.
-- `identity`: the fields you know, named as in the `identity` table below, without the four hashes the script
-  works out and without `drawsPerCase`, which has its own key. With `"by-code"`, also without the judge fields.
-- `draws`: one entry for each case and draw, with `case`, `draw` and `attempts`.
+### The rows
 
-An attempt takes one of three forms:
+One JSON object per line, UTF-8, with no blank line. A line is one attempt: an answer with its grade, or a call that
+failed. Most runs have one line per answer.
 
-- An answer with its label: `output`, `label` and `stop`; also `judgeStop` when a judge graded.
-- A failure of the system: `failed` (the reason), `detail` and `stop`.
-- Nothing measured: `unmeasured` (the reason), `role` and `detail`; for the role `"judge"`, also `output` and `stop`.
+| Key | When | What it is |
+|---|---|---|
+| `case` | Always | The case id |
+| `grade` | An answer that got a grade | The grade, as text: `"4"`, not `4` |
+| `answer` or `answerHash` | With `grade`, on a judge line with no grade, and on a `truncated` line | The answer's text, or the sha256 of its UTF-8 bytes. One of the two. The text is hashed and never stored |
+| `stop` | Optional with `grade`; required with `failed` | Why the system stopped (the table below). Left out, it is `"UNKNOWN"`, and `gate` refuses the run |
+| `judgeStop` | With `grade`, when a judge graded | Why the judge stopped: `end` or `tool-use`. Not needed when the manifest states `gradedReplyStop` |
+| `failed` | The system failed on its own | `truncated` (its answer hit the token limit, with `stop` `max-tokens`), `client-error` or `system-error` (with `stop` `"NOT_SENT"`) |
+| `unmeasured` and `role` | No grade was obtained | The reason, as in [the attempts table](#draws-and-their-attempts), and `"system"` or `"judge"` |
+| `detail` | With `failed` and `unmeasured` | A note, as text; it may be empty |
+| `packetHash` | Every judge line, when the manifest states `packets` | The sha256 of what the judge was shown |
+| `draw` | Every line or none | The draw, counted from 0. Leave it out when each case has one answer |
+| `attempt` | Every line or none | 0, 1, 2… within a draw, when a call was asked again. Leave it out when nothing was |
+| `class`, `expect`, `input` | Every line or none | The case's class, expected label and input, when the rows hold them |
+
+A line with a `failed` reason or an `unmeasured` one takes no `grade`. An answer cut at its cap is a `failed` line
+with `truncated`, never a graded one, and it carries its `answer` (or `answerHash`); a `client-error` or
+`system-error` line has no answer and carries none. The rules of [what may be asked again](#what-may-be-asked-again) hold for the
+lines of one draw.
+
+From Python:
+
+```python
+import json
+
+with open("grades.jsonl", "w", encoding="utf-8") as f:
+    for r in results:  # what your eval recorded
+        row = {"case": r["id"], "grade": str(r["grade"]), "answer": r["answer"]}
+        if r.get("stop"):  # the finish reason your eval logged, written as the table below says
+            row["stop"] = r["stop"]
+        f.write(json.dumps(row) + "\n")
+```
+
+From a pandas table whose columns have these names: `df.to_json("grades.jsonl", orient="records", lines=True)`.
+Make the grade column text first, and fill no cell with an empty value: pandas writes a missing value as `null`, and
+`write-run` refuses `null`. For `answerHash`, `hashlib.sha256(answer.encode()).hexdigest()`.
+
+### Finish reasons
+
+The provider names below are those of OpenAI's Chat Completions, Anthropic's Messages API and Gemini's
+`generateContent`, as their API references listed them when this page was written; check your provider's current list.
+A value not in the table goes in the last row.
+
+| Your provider says | Write |
+|---|---|
+| `stop` (OpenAI), `end_turn` (Anthropic), `STOP` (Gemini) | `"stop": "end"` |
+| `stop_sequence` (Anthropic) | `"stop": "stop-sequence"` |
+| `tool_calls` (OpenAI), `tool_use` (Anthropic) | `"stop": "tool-use"` |
+| `content_filter` (OpenAI), `SAFETY` (Gemini) | `"stop": "content-filter"` |
+| `refusal` (Anthropic) | `"stop": "refusal"` |
+| `length` (OpenAI), `max_tokens` (Anthropic), `MAX_TOKENS` (Gemini) | A `failed` line: `"failed": "truncated", "stop": "max-tokens"` |
+| Anything else, or nothing logged | `"stop": "UNKNOWN"`, or leave `stop` out |
+
+A filtered answer or a refusal is still an answer: grade it.
+
+### The manifest
+
+One JSON object. An unknown key is refused, and so is `null`. Leave out what you do not know: it is written as
+`"UNKNOWN"`. You can also write `"UNKNOWN"` yourself.
+
+| Key | Required | What it is |
+|---|---|---|
+| `schema` | Yes | `"anchorset.run-input/v1"` |
+| `origin` | Yes | `"produced"`: your own code ran the cases and wrote the rows |
+| `graded` | Yes | `"by-judge"` or `"by-code"` |
+| `bar` | Yes | The path of the bar file |
+| `caseCount` | Yes | How many cases the run holds. The rows alone cannot show a case that was never run |
+| `drawsPerCase` | With a `draw` column | How many draws each case has. Leave it out without one |
+| `cases` | No | The path of a case file: one line per case, `{"id", "input", "class", "expect"}`. With it, the file fixes the case set, and a case with no row is in the run with its draws missing |
+| `sameForEveryCase` | No | `{"class": "<class>"}`, when every case has one class |
+| `expectByClass` | No | `{"<class>": "<label>"}`: the expected label of every case of a class |
+| `rubric` | No | The rubric, as a hashed value (below) |
+| `seed` | No | The seed of your code's random choices, or `"NO_SEED"` when it made none |
+| `system` | No | `modelRequested`, `modelServed`, `prompt` and `tools` (hashed values), `harnessVersion`, `settings` |
+| `judge` | No; not with `"by-code"` | `modelRequested`, `modelServed`, `definition` (a hashed value: the judge's prompt, tools and output format), `harnessVersion`, `settings`, `gradedReplyStop` |
+| `packets` | No | `{"basis": "recorded"}` or `{"basis": "declared", "source": "<text>"}`, and then every judge line has its `packetHash` |
+
+Each of a case's `input`, `class` and `expect` comes from one place for the whole run: the case file, the rows, or
+the manifest. Two places are refused, also when they agree.
+
+A hashed value is one of `{"file": "<path>"}` (the sha256 of the file's bytes as they are),
+`{"files": ["<path>", …]}`, `{"json": <value>}` (`{"json": []}` for no tools), `{"sha256": "<hash>"}` (a hash your
+code already makes) or `"UNKNOWN"`. A rubric written inside the judge's prompt is named under both `rubric` and
+`judge.definition`. Hash a text the same way in every run: `gate` refuses two runs that hash the same prompt in
+different ways, and a change of line endings is a change of the file.
+
+`settings` is the settings of the model call (`callShapes` below), in one of three ways:
+
+- the whole block, inline or as `{"file": "<path>"}`. A block that lacks a key is refused, naming the key;
+- `{"sent": { <the keys your code sent, with their values> }, "everyOtherKey": "NOT_SENT"}`. This is your statement
+  that your code sent no other setting. Every other key is written as `"NOT_SENT"`, and `extras` as `{}`. `sent`
+  must hold the `endpoint`;
+- left out: every setting is `"UNKNOWN"`.
+
+`judge.gradedReplyStop`, `"end"` or `"tool-use"`, is your statement that the judge's reply stopped that way on every
+graded answer. A line may not then carry its own `judgeStop`. There is no such statement for the system's stop:
+it is set line by line.
+
+`write-run` and `validate` print each of the two statements you used. Neither can be checked by the tool.
+
+`packets` matters when the judge changes. `gate --rejudge-of` lists the cases whose result moved between the old and
+the new judge only when both baselines state what their judge was shown, with a `packetHash` on every judge line.
+`{"basis": "recorded"}` means the code that showed the judge its packet made the hash; `{"basis": "declared", …}`
+means it was worked out afterwards, and the list then says `packets equal by declaration, not observed`. The split of
+the judge's and the system's movement takes recorded packets only. Without packets, both say `not computed`, name the
+reason, and the verdict stays the same.
+
+`write-run` reads only this format, written by your own code. A result file of another tool goes through that tool's
+importer, where one exists ([IMPORTERS.md](IMPORTERS.md)).
 
 ## A complete example
 
@@ -296,7 +403,7 @@ failure in every rate and in the verdict. While it fails, the report adds the li
 `known failures (still counted): <case ids>` under its class. Adding or removing an entry changes the bar's hash, so run
 files written for the old bar are refused until they are written again for the new one.
 
-To check a run file, gate it against itself:
+To check a run file, run `validate` on it, or gate it against itself:
 
 ```bash
 node src/cli.ts gate --baseline examples/run-format/run.json --candidate examples/run-format/run.json --bar examples/run-format/bar.json
@@ -492,6 +599,9 @@ the tool refuses those. A file with unknowns is valid, but an unknown blocks eve
 - `judge-change` has its own list, in [JUDGE_CHANGE.md](JUDGE_CHANGE.md).
 
 `"NOT_SENT"`, `"NO_JUDGE"` and `"NO_SEED"` count as known.
+
+`validate --run <run file> --bar <bar file>` names every unknown that `gate` would refuse, all at once, where `gate`
+stops at the first. It also says whether `flips` and `judge-change` can read the file.
 
 ## If the tool refuses your file
 

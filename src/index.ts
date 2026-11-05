@@ -42,4 +42,4 @@ export type { PacketBasis, RunArtifact } from './artifact.ts';
 export { JUDGE_CHANGE_PLAN_SCHEMA, judgeChangeRuns, parseJudgeChangePlan, REFERENCE_SCHEMA, RESAMPLE_SCHEMA, TIE_BREAK_SCHEMA } from './judgechange.ts';
 export type { AgreementSpread, GateReport, JudgeChangeInput, JudgeChangePlan, JudgeChangeReport, JudgeSide, LabelRule, MapReport, OverSeeds, PacketEquality, PairGate, PassRates, Placebo, RaterAgreement, ReferenceFile, ReferencePacketLabel, ReferenceReport, ResampleFile, SpreadReport, TieBreakFile, Withheld } from './judgechange.ts';
 export type { FoldCut } from './cutmap.ts';
-export { ANCHOR_SCHEMA, RATINGS_SCHEMA, REPORT_SCHEMAS, TOOL_NAME, TOOL_VERSION } from './version.ts';
+export { ANCHOR_SCHEMA, RATINGS_SCHEMA, REPORT_SCHEMAS, RUN_INPUT_SCHEMA, TOOL_NAME, TOOL_VERSION } from './version.ts';
