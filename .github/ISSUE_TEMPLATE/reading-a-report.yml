@@ -1,0 +1,35 @@
+name: Help reading a report
+description: You ran gate, agree, drift, flips or judge-change and are not sure what the output means.
+labels: [question]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The docs say what each line of a report means: docs/CLI.md for every command and its exit codes, and
+        docs/JUDGE_CHANGE.md for judge-change. If they leave you unsure, ask here. Please paste no private data.
+  - type: textarea
+    id: command
+    attributes:
+      label: What you ran
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: What it printed
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: What you want to know
+      description: For example, whether a change in pass rate comes from your system or from the judge.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: anchorset version
+      description: The output of `npx anchorset --version`.

@@ -1,5 +1,12 @@
 # anchorset
 
+[![npm](https://img.shields.io/npm/v/anchorset)](https://www.npmjs.com/package/anchorset)
+[![CI](https://github.com/ogous/anchorset/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ogous/anchorset/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/ogous/anchorset/blob/main/LICENSE)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23358089.svg)](https://doi.org/10.5281/zenodo.23358089)
+
+**Regression tests for your LLM evals, and checks on the judge that grades them.**
+
 anchorset checks two things about your LLM evals: whether your new version got worse, and whether the judge that
 grades it still grades the way it did.
 
@@ -8,7 +15,8 @@ With anchorset you can:
 - **Gate a release**: set the pass rate you require, and see case by case what broke since your last results.
 - **Check your graders** against each other before you trust their labels.
 - **Watch your judge** for change over time, and for noise within one run.
-- **Measure a judge upgrade** on answers you already stored, before you mix old and new labels.
+- **Measure a judge upgrade** on answers you already stored, before you mix old and new labels, and compare
+  re-judging your baseline with recalibrating its old labels.
 
 It is a command-line tool. The `anchorset` command calls no model: it reads files that your own eval code writes in
 its formats.
@@ -386,6 +394,9 @@ It does not run your evals or write your files for you.
 - [Importers](docs/IMPORTERS.md): promptfoo, Inspect and the eval-building skill, step by step.
 - [Comparison](docs/COMPARISON.md): anchorset next to promptfoo, DeepEval and Langfuse.
 - [Migrations](docs/MIGRATIONS.md): the format versions of 0.2.0, and how a file of 0.1.0 moves.
+
+The installed package holds these documents at `node_modules/anchorset/docs/`, for an agent or a reader working
+offline. [llms.txt](llms.txt) lists them for a coding agent.
 
 ## Requirements, contributing, license and citing
 

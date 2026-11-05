@@ -1,0 +1,22 @@
+# anchorset
+
+> anchorset checks two things about your LLM evals: whether your new version got worse, and whether the judge that grades it still grades the way it did. It is a command-line tool that calls no model: it reads files that your own eval code writes in its formats.
+
+Install with `npm install anchorset` (Node 22.21 or later, no runtime dependencies), or run `npx anchorset --help`. The five commands are `gate` (a release gate against a baseline), `agree` (agreement between graders), `drift` (a judge's labels over time), `flips` (a judge's noise within one run) and `judge-change` (a judge upgrade measured on stored answers). A command that cannot compare two runs fairly refuses with exit code 2 and names what differs or is unknown; it does not warn and go on.
+
+The installed package holds these documents, for the version installed, at `node_modules/anchorset/docs/`. The links below are those of the repository's main branch.
+
+## Docs
+
+- [The command line](https://raw.githubusercontent.com/ogous/anchorset/main/docs/CLI.md): every command, the exit codes, a CI step and a gate across a judge change.
+- [The run format](https://raw.githubusercontent.com/ogous/anchorset/main/docs/RUN_FORMAT.md): the file `gate`, `flips` and `judge-change` read, and the bar file.
+- [The ratings format](https://raw.githubusercontent.com/ogous/anchorset/main/docs/RATINGS_FORMAT.md): the files `agree` and `drift` read.
+- [Judge change](https://raw.githubusercontent.com/ogous/anchorset/main/docs/JUDGE_CHANGE.md): the plan, the report and what each number means.
+- [Importers](https://raw.githubusercontent.com/ogous/anchorset/main/docs/IMPORTERS.md): promptfoo, Inspect and the eval-building skill, step by step.
+- [Comparison](https://raw.githubusercontent.com/ogous/anchorset/main/docs/COMPARISON.md): anchorset next to promptfoo, DeepEval and Langfuse.
+- [Migrations](https://raw.githubusercontent.com/ogous/anchorset/main/docs/MIGRATIONS.md): the format versions, and how an older file moves.
+
+## Optional
+
+- [README](https://raw.githubusercontent.com/ogous/anchorset/main/README.md): the overview, with a worked example of each command.
+- [Changelog](https://raw.githubusercontent.com/ogous/anchorset/main/CHANGELOG.md): what changed in each version.

@@ -201,8 +201,10 @@ test('a flag, with one dash or two, or a second path is a usage error, never a p
 });
 
 // The three tests below start the tool as a process. npm is told to stay off the network through its own
-// environment setting; the tool itself has no switch that skips or softens a check.
-const offline = { ...process.env, npm_config_offline: 'true', npm_config_update_notifier: 'false' };
+// environment setting; the tool itself has no switch that skips or softens a check. The sample package is anchorset at
+// 0.0.0, below the version npm calls `latest`, which npm 11.9 and later refuse to dry-run without a tag; the tag is
+// `ci`, the one the release gate of ci.yml states on a released version. It names a dist-tag and changes no check.
+const offline = { ...process.env, npm_config_offline: 'true', npm_config_update_notifier: 'false', npm_config_tag: 'ci' };
 
 test('as a process: a tree whose package.json is private exits 2, names the field, and npm is not started', () => {
   const root = tree({ ...goodPackage(), private: true, scripts: { prepack: 'node -e "require(\'fs\').writeFileSync(\'npm-ran\', \'\')"' } });

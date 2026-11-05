@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "license": "Apache-2.0",
   "author": "Ogous Chan Ali",
-  "description": "LLM eval regression gates that refuse to compare runs whose declared identities differ outside the fields you allow, or are unknown, and check whether a judge's verdicts on the same set of items have moved.",
+  "description": "Regression tests for your LLM evals, and checks on the judge that grades them.",
   "type": "module",
   "engines": {
     "node": ">=22.21.0"
@@ -20,6 +20,7 @@
   "files": [
     "dist",
     "README.md",
+    "llms.txt",
     "CHANGELOG.md",
     "CONTRIBUTING.md",
     "SECURITY.md",

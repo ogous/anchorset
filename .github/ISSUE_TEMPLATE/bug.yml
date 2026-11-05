@@ -1,0 +1,45 @@
+name: Bug report
+description: anchorset crashed, printed something wrong, or refused a comparison you think it should accept.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please paste no private data. A run file can be cut down to the few cases that show the problem, and model
+        names or answers can be replaced with placeholders.
+  - type: textarea
+    id: command
+    attributes:
+      label: What you ran
+      description: The full command, with its flags.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: What it printed
+      description: The output, and the exit code (0, 1 or 2).
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: anchorset version
+      description: The output of `npx anchorset --version`.
+    validations:
+      required: true
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      description: The output of `node --version`.
+    validations:
+      required: true

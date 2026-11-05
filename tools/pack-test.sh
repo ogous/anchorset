@@ -15,7 +15,7 @@ npm run --silent build
 TARBALL=$(npm pack --silent --pack-destination "$WORK" | tail -1)
 CONTENTS=$(tar -tzf "$WORK/$TARBALL")
 # The notices, the licence texts and every document package.json ships from docs/: the allow-list further down names the same seven.
-for f in LICENSE NOTICE CITATION.cff TRADEMARKS.md AUTHORSHIP.md \
+for f in LICENSE NOTICE CITATION.cff TRADEMARKS.md AUTHORSHIP.md llms.txt \
   CHANGELOG.md CONTRIBUTING.md SECURITY.md REUSE.toml \
   LICENSES/Apache-2.0.txt LICENSES/CC-BY-4.0.txt LICENSES/CC0-1.0.txt \
   docs/CLI.md docs/COMPARISON.md docs/IMPORTERS.md docs/JUDGE_CHANGE.md docs/MIGRATIONS.md docs/RATINGS_FORMAT.md docs/RUN_FORMAT.md; do
