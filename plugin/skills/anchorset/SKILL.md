@@ -1,6 +1,6 @@
 ---
 name: anchorset
-description: Use when the user wants to compare two LLM eval runs, gate a change on an eval, measure what replacing or changing an LLM judge does to the labels, check agreement between raters or a judge's drift on anchor items, or count label flips between repeat draws. Runs the anchorset CLI and reports what it printed.
+description: Use when the user wants to turn their own eval's graded results into a run file, check whether a run is ready to gate, compare two LLM eval runs or gate a change on an eval (in CI too), gate across a change of LLM judge, measure what replacing or changing an LLM judge does to the labels, check agreement between raters or a judge's drift on anchor items, or count label flips between repeat draws. Runs the anchorset CLI and reports what it printed.
 ---
 
 # anchorset
@@ -46,6 +46,29 @@ refusal `gate` would make. A usage error (64) and invalid input (65) are text on
 `docs/` folder of https://github.com/ogous/anchorset. Where anchorset 0.3.0 is installed in the project, the same
 documents, for that version, are in `node_modules/anchorset/docs/`. Result files of other eval tools do not go into these commands
 directly: the repository has example importers, run from a checkout at the release tag, and each one says what it needs.
+
+## The usual path
+
+Most users want two things: their CI to stop a release when an eval got worse, and not to be misled when the judge
+that grades it changed. Take them through it in this order, one step at a time, and report each step's output before
+the next:
+
+1. Get the results in. If their own eval code records, for each graded answer, the case, the answer and the
+   grade, the run file comes from `write-run`: the rows file their code wrote and a manifest they approve (rule 7).
+   Results of promptfoo, Inspect or a skill-evals flow go through an importer instead (the table's last row).
+2. Check before gating. Run `validate` on the candidate with `--bar` and `--baseline`, and report its `result:`
+   line and every refusal it lists (rule 2).
+3. Gate. Run `gate --baseline <run.json> --candidate <run.json> --bar <bar.json>` and report its verdict line
+   (rule 2). In CI the exit code is what stops the release: 1 for a regression, 2 for a refused comparison. The
+   section "In CI" of `docs/CLI.md` shows the step.
+4. When `gate` refuses on a judge field, the judge changed between the runs. Report the judge diff and quote the
+   `next:` steps it prints; they are the user's to take (rule 3). Once the user's own code has graded the baseline's
+   stored answers again with the new judge and that run is written, gate across the change with `gate --baseline
+   <re-graded baseline> --rejudge-of <baseline as first graded> --candidate <run.json> --bar <bar.json>`, and report
+   its judge-flip list as rule 6 says.
+
+`judge-change`, `agree`, `drift` and `flips` are measurements, for when the user asks about the judge itself. They
+give no verdict.
 
 ## Rules
 

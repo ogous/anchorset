@@ -2,7 +2,8 @@
 
 An LLM judge grades your answers, and you want to change it: a new model version, a new prompt, new settings.
 You give `judge-change` a plan and the run files of both judges. It tells you what the change does to your labels.
-It is a measurement, with no pass/fail verdict.
+It is a measurement, with no pass/fail verdict. To gate a release across a judge change instead, use
+`gate --rejudge-of` ([CLI.md](CLI.md)): it lists the baseline's cases whose result moved between the two judges.
 
 The **judge** is the model that grades. A **draw** is one repeat of a case; on this page every draw of a case
 grades the same stored answer again. A **system** is one version of the thing you evaluate. A **run file** holds

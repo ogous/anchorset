@@ -17,6 +17,11 @@ With anchorset you can:
 - **Watch your judge** for change over time, and for noise within one run.
 - **Measure a judge upgrade** on answers you already stored, before you mix old and new labels, and compare
   re-judging your baseline with recalibrating its old labels.
+- **Gate across a judge change**: when the judge moves, `gate` refuses, names what moved and prints the next
+  commands; once the new judge has graded your baseline again, `gate --rejudge-of` lists the cases whose result
+  flipped between the two judges, in each direction.
+- **Bring in results from any provider**: `write-run` turns one JSON line per graded answer into a run file, and
+  `validate` lists every reason `gate` would refuse it, all at once.
 
 It is a command-line tool. The `anchorset` command calls no model: it reads files that your own eval code writes in
 its formats.
@@ -124,6 +129,10 @@ your own code wrote; for another tool's result file, use its importer (see below
 | [Did my judge shift over time?](#drift-is-my-judge-still-grading-the-same-way) | `drift` |
 | [How much does my judge wobble?](#flips-how-noisy-is-my-judge) | `flips` |
 | [What did a judge upgrade do?](#judge-change-i-swapped-the-judge-what-changed) | `judge-change` |
+
+Two more commands get your results in: `write-run` and `validate` ([Get your results in](#get-your-results-in)). When
+the judge changed between your baseline and your candidate, `gate --rejudge-of` gates across the change and lists
+the cases that flipped between the two judges (under [`gate`](#gate-did-my-new-version-get-worse)).
 
 `gate` is the only one that gives a pass/fail verdict. The other four are measurements: they show you numbers and
 you decide.
@@ -385,6 +394,9 @@ On your own files:
 ```sh
 node src/cli.ts judge-change --plan <plan file> --bar <bar file> --inputs <folder of run files>
 ```
+
+`judge-change` measures a judge change. To gate a release across one, use `gate --rejudge-of` (under
+[`gate`](#gate-did-my-new-version-get-worse)): it lists the baseline's cases whose result moved between the two judges.
 
 ## Use it with what you already run
 
