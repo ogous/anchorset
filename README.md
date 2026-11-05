@@ -413,6 +413,16 @@ The [importers guide](docs/IMPORTERS.md) has the steps, and a trial that costs n
 `gate`, `agree`, `drift` and `flips` read files that you, or the code that runs your evals, write. The formats are
 listed under "Docs" below.
 
+## Use it from Claude Code
+
+A Claude Code plugin is in this repository: one skill that tells an agent how to run the commands and how to report
+what they print. It holds no code.
+
+```sh
+claude plugin marketplace add ogous/anchorset
+claude plugin install anchorset@anchorset
+```
+
 ## What it refuses, and what it does not do
 
 anchorset stops instead of warning. When a comparison can't be trusted, it says what is wrong and gives no number

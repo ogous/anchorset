@@ -1,0 +1,13 @@
+{
+  "name": "anchorset",
+  "description": "A Claude Code guide for the anchorset CLI: regression tests for your LLM evals, and checks on the judge that grades them.",
+  "owner": { "name": "Ogous Chan Ali" },
+  "plugins": [
+    {
+      "name": "anchorset",
+      "description": "Run the anchorset CLI from Claude Code: regression tests for your LLM evals, and checks on the judge that grades them.",
+      "source": "./plugin",
+      "license": "Apache-2.0"
+    }
+  ]
+}
