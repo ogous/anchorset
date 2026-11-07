@@ -12,18 +12,25 @@
 #   python fixture_inputs.py source-reask-exhausted <log dir>  a 3-sample source whose first output carries
 #        [[times:2:truncated]]: under a bound of one re-ask, both asks of one slot are cut (re-graded into
 #        bad-fixtures/reask-exhausted.json)
+#   python fixture_inputs.py mixed-wires <source log> <log dir> <epochs> <port>
+#        re-grade through the recording grader with a scorer of its own, named model_graded_qa, that grades the samples c1 and c2 on the OpenAI
+#        wire and c3 on the Anthropic wire (the stand-in's two routes, on 127.0.0.1:<port>): one file that holds the records of two wires, which
+#        the importer refuses (bad-fixtures/mixed-wires.json). A Python file that only this script uses.
 #   python fixture_inputs.py plain <source log> <log dir> <epochs>
 #        re-grade with Inspect's own provider "anthropic/claude-fake-1" as the grader (the base URL and a dummy key come
 #        from the environment: ANTHROPIC_BASE_URL, ANTHROPIC_API_KEY), so the log holds no record of the call.
 #        The fake endpoint does not stream, so streaming is off and max_tokens is 1024 (the client refuses a long
 #        non-streaming request).
+import os
 import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
 
 from inspect_ai import Task, eval
 from inspect_ai.dataset import Sample
 from inspect_ai.log import read_eval_log
 from inspect_ai.model import GenerateConfig, ModelOutput, get_model
-from inspect_ai.scorer import model_graded_qa
+from inspect_ai.scorer import accuracy, model_graded_qa, scorer, stderr
 from inspect_ai.solver import Generate, TaskState, solver
 
 POLICY = "The reply follows the refund policy (within 30 days or damaged goods, never more than once)."
@@ -85,6 +92,38 @@ def main(argv: list[str]) -> int:
         task = Task(name="refund_bot", dataset=[Sample(id=i, input=q, target=t) for i, q, t, _ in rows],
                     solver=replay({i: o for i, _, _, o in rows}))
         logs = eval(task, model="mockllm/refund-bot", log_dir=argv[1], log_format="json", max_connections=1, display="none")
+    elif mode == "mixed-wires":
+        sys.path.insert(0, HERE)
+        import recording_grader  # noqa: F401  registers the provider "recording"; it calls nothing by itself
+
+        src = read_eval_log(argv[1])
+        samples = src.samples or []
+        stored = {str(s.id): s.output.choices[0].message.content for s in samples}
+        base = f"http://127.0.0.1:{int(argv[4])}"
+        cfg = GenerateConfig(max_tokens=256, temperature=0)
+        openai = get_model("recording/fake-judge-old", config=cfg, base_url=f"{base}/v1", memoize=False,
+                           wire="openai-responses/v1", effort="NOT_SENT", verbosity="NOT_SENT", max_reasks=0)
+        anthropic = get_model("recording/fake-judge-old", config=cfg, base_url=base, memoize=False,
+                              wire="anthropic-messages/v1", thinking="NOT_SENT", effort="NOT_SENT", max_reasks=0)
+
+        @scorer(metrics=[accuracy(), stderr()], name="model_graded_qa")
+        def mixed(template: str, instructions: str, model):
+            on_openai = model_graded_qa(template=template, instructions=instructions, model=model)
+            on_anthropic = model_graded_qa(template=template, instructions=instructions, model=anthropic)
+
+            async def score(state, target):
+                return await (on_anthropic if state.sample_id == "c3" else on_openai)(state, target)
+
+            return score
+
+        with open(os.path.join(HERE, "template.txt"), "rb") as f:
+            template = f.read().decode("utf-8")
+        with open(os.path.join(HERE, "instructions.txt"), "rb") as f:
+            instructions = f.read().decode("utf-8")
+        task = Task(name="regrade", dataset=[Sample(id=s.id, input=s.input, target=s.target) for s in samples],
+                    solver=replay(stored), scorer=mixed(template=template, instructions=instructions, model=openai))
+        logs = eval(task, model="mockllm/unused-system", log_dir=argv[2], log_format="json", epochs=int(argv[3]),
+                    fail_on_error=True, display="none")
     elif mode == "plain":
         src = read_eval_log(argv[1])
         samples = src.samples or []

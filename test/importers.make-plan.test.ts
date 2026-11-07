@@ -7,13 +7,14 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
 import { hashOf, sha256Hex } from '../src/index.ts';
+import { scratchEnv } from './helpers.ts';
 
 const root = join(import.meta.dirname, '..');
 const importers = join(root, 'examples', 'importers');
 const work = mkdtempSync(join(tmpdir(), 'anchorset-make-plan-'));
 after(() => rmSync(work, { recursive: true, force: true }));
 
-const node = (script: string, args: string[]) => spawnSync(process.execPath, [script, ...args], { encoding: 'utf8', cwd: root });
+const node = (script: string, args: string[]) => spawnSync(process.execPath, [script, ...args], { encoding: 'utf8', cwd: root, env: scratchEnv() });
 const READING = 'one-json-object-boolean-pass/v1';
 const SKILL_FLOW = join(importers, 'skill-evals', 'example-flow');
 
@@ -211,5 +212,102 @@ describe('make-plan.ts: where it stands', () => {
     const m = /import \{([^}]*)\} from '\.\.\/\.\.\/src\/index\.ts';/.exec(source);
     assert.ok(m);
     for (const name of (m[1] as string).split(',').map((n) => n.trim()).filter(Boolean)) assert.ok(name in api, name);
+  });
+});
+
+// ---- the cross-wire note ------------------------------------------------------------------------------------------------------
+
+describe('make-plan.ts: the note printed when the two run files were graded through two wires', () => {
+  const pf = join(importers, 'promptfoo');
+  /** A promptfoo fixture imported by the real command into the scratch folder. */
+  const importPf = (fixture: string, out: string): string => {
+    const dest = join(work, 'wires');
+    mkdirSync(dest, { recursive: true });
+    const path = join(dest, out);
+    const r = node(join(pf, 'import.ts'), ['--in', join(pf, 'fixtures', `${fixture}.json`), '--cases', join(pf, 'cases.json'), '--bar', join(pf, 'bar.json'), '--out', path, '--reading', READING]);
+    assert.equal(r.status, 0, r.stderr);
+    return path;
+  };
+  const choices = (moves: string): string[] => ['--bar', join(pf, 'bar.json'), '--system', 'refund-bot', '--stored-outputs', 'system-side-not-compared', '--measured-class', 'refund_policy', '--cut', 'pass', '--label-rule', 'majority', '--pooling', 'items-equal', '--estimate-draws', '0,1,2', '--judge-moves', moves];
+  const plan = (oldRun: string, newRun: string, out: string, moves: string) => node(makePlan, ['--old', oldRun, '--new', newRun, '--out', join(work, out), ...choices(moves)]);
+  const FOUR = 'judgeModelRequested,judgeModelServed,judgeCallShapeHash,judgeHarnessVersion';
+  /** The note, word for word: the two names fill the two places. */
+  const note = (a: string, b: string): string =>
+    `The two run files were graded through two APIs (\`${a}\` and \`${b}\`). The report measures the change of the whole grading path: the model, the provider's API, the provider's defaults for every setting not sent, and how the reply is taken from the response. It does not separate the model from the rest. A setting with the same value in both files is the same text in the record, not the same setting: \`effort\`, \`temperature\`, the output cap and \`NOT_SENT\` mean different things to the two providers. Compare the two imports' reasoning and re-ask lines.`;
+  const stripWire = (from: string, to: string): string => {
+    const run = JSON.parse(readFileSync(from, 'utf8')) as { identity: { judgeHarnessVersion: string } };
+    run.identity.judgeHarnessVersion = run.identity.judgeHarnessVersion.replace(/; wire [^;]+/, '');
+    writeFileSync(join(work, 'wires', to), JSON.stringify(run, null, 2));
+    return join(work, 'wires', to);
+  };
+
+  it('a Claude judge against a GPT judge: four judge fields move, the note is printed on standard error before the plan is written, and the plan is written', () => {
+    const a = importPf('old-judge', 'anth-old.json');
+    const o = importPf('openai-new-judge', 'openai-new.json');
+    const r = plan(a, o, 'cross-plan.json', FOUR);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(r.stderr, `${note('anthropic-messages/v1', 'openai-responses/v1')}\n`);
+    assert.equal(r.stdout.split('\n')[0], `plan written to ${join(work, 'cross-plan.json')}`);
+    assert.ok(existsSync(join(work, 'cross-plan.json')));
+    const p = JSON.parse(readFileSync(join(work, 'cross-plan.json'), 'utf8')) as { judgeMoves: string[] };
+    assert.deepEqual(p.judgeMoves, ['judgeModelRequested', 'judgeModelServed', 'judgeCallShapeHash', 'judgeHarnessVersion']);
+  });
+
+  it('the plan is refused when either of the last two fields is left out of the moves, and the note does not make up for it', () => {
+    const a = importPf('old-judge', 'anth-old-2.json');
+    const o = importPf('openai-new-judge', 'openai-new-2.json');
+    for (const moves of ['judgeModelRequested,judgeModelServed,judgeCallShapeHash', 'judgeModelRequested,judgeModelServed,judgeHarnessVersion', 'judgeModelRequested,judgeModelServed']) {
+      const out = `refused-${moves.length}.json`;
+      const r = plan(a, o, out, moves);
+      assert.equal(r.status, 2, r.stderr);
+      assert.match(r.stderr, /^REFUSED IDENTITY_MISMATCH\n/);
+      assert.equal(existsSync(join(work, out)), false);
+      assert.ok(!r.stderr.includes('graded through two APIs'), 'a refused plan prints no note: nothing is written');
+    }
+  });
+
+  it('two OpenAI judges: both name the same wire, so no note is printed', () => {
+    const o = importPf('openai-old-judge', 'oa-old.json');
+    const n = importPf('openai-new-judge', 'oa-new.json');
+    const r = plan(o, n, 'same-wire-plan.json', 'judgeModelRequested,judgeModelServed');
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(r.stderr, '');
+  });
+
+  it('two Anthropic judges: no note', () => {
+    const r = plan(importPf('old-judge', 'a1.json'), importPf('new-judge', 'a2.json'), 'anth-plan.json', 'judgeModelRequested,judgeModelServed');
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(r.stderr, '');
+  });
+
+  it('a run imported before the wire was named (no component) against one that names it: the note is printed, and the missing name reads "not named in the run file"', () => {
+    const named = importPf('openai-new-judge', 'oa-named.json');
+    const bare = stripWire(importPf('old-judge', 'anth-for-strip.json'), 'anth-bare.json');
+    // the older side is the old run
+    const r = plan(bare, named, 'bare-old-plan.json', FOUR);
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(r.stderr, `${note('not named in the run file', 'openai-responses/v1')}\n`);
+    // and the other way round, with the old run named and the new one bare
+    const r2 = plan(importPf('openai-old-judge', 'oa-old-2.json'), stripWire(importPf('new-judge', 'anth-new-for-strip.json'), 'anth-bare-new.json'), 'bare-new-plan.json', FOUR);
+    assert.equal(r2.status, 0, r2.stderr);
+    assert.equal(r2.stderr, `${note('openai-responses/v1', 'not named in the run file')}\n`);
+  });
+
+  it('neither run names a wire: both are older runs, and no wire is inferred for either; no note', () => {
+    const a = stripWire(importPf('old-judge', 'anth-old-3.json'), 'bare-a.json');
+    const b = stripWire(importPf('new-judge', 'anth-new-3.json'), 'bare-b.json');
+    const r = plan(a, b, 'neither-plan.json', 'judgeModelRequested,judgeModelServed');
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(r.stderr, '');
+  });
+
+  it('the wire component is read from the harness string: after max-reasks, before script-files', async () => {
+    const { wireOfHarness, wireNote } = await import('../examples/importers/make-plan.ts');
+    assert.equal(wireOfHarness('promptfoo 0.1; g js sha256:x; node v1; max-reasks 0; wire openai-responses/v1'), 'openai-responses/v1');
+    assert.equal(wireOfHarness('skill-evals skill-evals/1; g js sha256:x; node v1; max-reasks 2; wire anthropic-messages/v1; script-files sha256:abc'), 'anthropic-messages/v1');
+    assert.equal(wireOfHarness('promptfoo 0.1; g js sha256:x; node v1; max-reasks 0'), undefined);
+    assert.equal(wireNote('a; wire x', 'b; wire x'), undefined);
+    assert.equal(wireNote('a', 'b'), undefined);
+    assert.ok(wireNote('a; wire x', 'b; wire y')?.startsWith('The two run files were graded through two APIs (`x` and `y`).'));
   });
 });

@@ -2,15 +2,38 @@
 // The recording grader for promptfoo (anchorset importer example).
 //
 // It is a promptfoo provider, named in the config as the grader of one `llm-rubric` assertion. It makes the
-// judge's call itself over the Anthropic Messages wire format, one request per ask, no redirect, and returns the
-// reply with a record of the slot in `metadata.graderEvidence` (schema example.grader-evidence/v7).
+// judge's call itself, one request per ask, no redirect, and returns the reply with a record of the slot in
+// `metadata.graderEvidence` (schema example.grader-evidence/v8).
 // The record is the grader's own declaration of what it sent and what came back; it is not independent evidence.
+//
+// THE WIRE. The setting `wire` is required and has no default. It is one of two names:
+//   anthropic-messages/v1   Anthropic's Messages API:  POST <base>/v1/messages
+//   openai-responses/v1     OpenAI's Responses API:    POST <base>/responses
+// A wire name versions two things together: how the request is built and how the reply is taken from the response. The
+// settings, the request, the checks of a 200 body, the record's keys and the gateway variable are each fixed by the
+// wire (the table is the settings table of the importers' documentation); a setting of the other wire is refused when
+// the grader is built, before any call. The Anthropic record is the version 7 record plus `schema` v8 and `wire`.
+// The OpenAI request always sends `store: false` and `truncation: "disabled"`; neither is a setting, and both are
+// recorded (`sent.store`, `sent.truncation`). A 200 body is held to these checks, in this order, before any text is
+// joined: it is a JSON object whose `object` is "response"; `error` is absent or null; `status` is "completed" or
+// "incomplete"; `incomplete_details` is absent or null with "completed" and an object with a printable `reason` with
+// "incomplete"; an echoed `truncation` is "disabled" and an echoed `store` is false; `id`, `model` and `usage` follow
+// the form rules below; `output` is a list of items that each have a plain `type`. Anything else is a malformed body:
+// the slot ends with no record and is never asked again. The reply is the text of the `output_text` parts of the
+// `message` items, joined; a reasoning item is never read. The record lists the output items in `contentTypes`: a
+// reasoning item as "reasoning", a message item's parts as "message/<part type>" when the item's status is "completed"
+// and it holds no `phase`, otherwise as "message[status=<s>]/<part type>" or "message[phase=<p>]/<part type>" (the label is
+// written as it is; the importers read a completed message with `phase` absent or exactly "final_answer", and any other
+// phase stays unreadable). Whether
+// a reply is read at all is the importer's rule, never the grader's: this file reads no verdict.
 //
 // One call of the tool is one slot. A slot is asked once, and asked again, at most `maxReasks` times (a stated
 // setting, 0 to 3, no default), only when an ask ended in one of five things the grader sees without reading the
-// reply's text: the deadline passed, the connection failed, a status 5xx, a status 429, or a status 200 whose
-// stop_reason is exactly "max_tokens". Every ask of a slot sends the same bytes. A finished reply is never asked
-// again, whatever it says; nor is any other 4xx, a redirect, a malformed body or a response in a content encoding. A
+// reply's text: the deadline passed, the connection failed, a status 5xx, a status 429, or a status 200 that is a cut
+// (on the Anthropic wire a stop_reason of exactly "max_tokens"; on the OpenAI wire a status of "incomplete" with the
+// reason "max_output_tokens", and no other reason). Every ask of a slot sends the same bytes. A finished reply is never asked
+// again, whatever it says (on the OpenAI wire an "incomplete" reply of any other reason is recorded, not asked again);
+// nor is any other 4xx, a redirect, a malformed body or a response in a content encoding. A
 // status other than 200 is judged by the status alone: its body is never read.
 //
 // An ask is in the record only when its slot ends with a record: the record then holds every ask of the slot. A slot
@@ -31,6 +54,11 @@
 // text, the JSON text of a message list ([system, user] or [user]), and the hash is over that text. The Inspect grader
 // writes the same field over what Inspect hands it, which is one user message and no such text, so the two values are
 // not comparable across tools. `sent.system` and `sent.user` are the hashes of the texts sent, on both.
+//
+// The key goes in the `x-api-key` header on the Anthropic wire and in `authorization: Bearer <key>` on the OpenAI wire. The
+// gateway variable that is checked before any call is ANTHROPIC_BASE_URL on the first; on the second it is each of OPENAI_BASE_URL,
+// OPENAI_API_BASE_URL, OPENAI_API_HOST and OPENAI_HOST (the first three are the ones promptfoo 0.125.1 reads), by the same rule: any one set (non-empty) and not
+// equal to the stated baseUrl, or set with no baseUrl stated, refuses the grader before any call, naming the variable.
 //
 // The base URL is taken only in its plain form, the one a URL parser leaves as written: "https://", or "http://" for
 // the two literal addresses 127.0.0.1 and [::1] and for no name (not "localhost": a name is whatever the machine's
@@ -59,11 +87,15 @@ const path = require('node:path');
 const TESTED_VERSIONS_FILE = path.join(__dirname, '..', 'tested-versions.json');
 const TESTED_VERSIONS_SCHEMA = 'example.tested-versions/v1';
 const TESTED_ENTRY_KEYS = ['badFixtures', 'fixtures', 'gradingPathRead', 'runtimes', 'testedOn', 'version'];
-const RECORD_SCHEMA = 'example.grader-evidence/v7';
+const RECORD_SCHEMA = 'example.grader-evidence/v8';
+const WIRE_ANTHROPIC = 'anthropic-messages/v1';
+const WIRE_OPENAI = 'openai-responses/v1';
+const WIRES = [WIRE_ANTHROPIC, WIRE_OPENAI];
 const CALL_SHAPE_SCHEMA = 'anchorset.callshape/v1';
 const NOT_SENT = 'NOT_SENT';
 const GRADER_NAME = 'anchorset-recording-grader';
 const DEFAULT_BASE_URL = 'https://api.anthropic.com';
+const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
 const DEFAULT_API_VERSION = '2023-06-01';
 const DEFAULT_TIMEOUT_MS = 60000;
 // The longest deadline an ask may be given: one hour. A larger value is refused when the grader is built, before any
@@ -71,8 +103,16 @@ const DEFAULT_TIMEOUT_MS = 60000;
 // would end as a passed deadline while the record states the larger value.
 const MAX_TIMEOUT_MS = 3600000;
 const DEFAULT_KEY_ENV = 'ANTHROPIC_API_KEY';
+const DEFAULT_OPENAI_KEY_ENV = 'OPENAI_API_KEY';
 const POSTED_PATH = '/v1/messages';
+const OPENAI_POSTED_PATH = '/responses';
+// The three variables promptfoo 0.125.1 reads for an OpenAI address (read in its dist on 2026-11-07), and OPENAI_HOST as well. Each is checked by the one rule.
+const OPENAI_ADDRESS_VARIABLES = ['OPENAI_BASE_URL', 'OPENAI_API_BASE_URL', 'OPENAI_API_HOST', 'OPENAI_HOST'];
+// The settings of each wire (`wire` and the tool's own `basePath` are looked at apart). A key of the other wire, or any other key, is refused.
 const ALLOWED_CONFIG = new Set(['model', 'max_tokens', 'temperature', 'baseUrl', 'timeoutMs', 'apiVersion', 'apiKeyEnv', 'thinking', 'effort', 'maxReasks']);
+const OPENAI_ALLOWED_CONFIG = new Set(['model', 'max_output_tokens', 'temperature', 'baseUrl', 'timeoutMs', 'apiKeyEnv', 'effort', 'verbosity', 'maxReasks']);
+// The smallest cap OpenAI's Responses API accepts.
+const OPENAI_MIN_OUTPUT_TOKENS = 16;
 // The most re-asks a slot may be given. The stated bound is an integer from 0 to this.
 const MAX_REASKS_CEILING = 3;
 // The closed list of what an earlier ask of a slot can have ended in. Nothing else is ever asked again.
@@ -85,6 +125,12 @@ const REASK_WAITS_MS = [2000, 4000, 8000];
 const NO_RESPONSE = 'NO_RESPONSE';
 // The efforts the grader sends. The rule by which a reply is read is not the grader's: the importer is told it, at import.
 const EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max'];
+// The efforts OpenAI's pages list. No table of what a model accepts: a word the model refuses is a 4xx on the first ask.
+const OPENAI_EFFORTS = ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'];
+const VERBOSITIES = ['low', 'medium', 'high'];
+// A type, a status or a phase that is copied into the record: a plain lower-case identifier, so a value can never forge the "/" and
+// "[...]" of a label made from it.
+const TYPE_FORM = /^[a-z][a-z0-9_]{0,59}$/;
 // The hosts plain http is taken for: the two literal loopback addresses. The name "localhost" is not one of them: the key
 // would go, in clear text, to whatever address the machine's resolver gives for that name.
 const LOOPBACK = new Set(['127.0.0.1', '[::1]']);
@@ -152,7 +198,7 @@ function plainHost(host) {
  * of the address must be the address (with the one "/" it adds to an address that has no path). No refusal shows the
  * URL: it may hold a credential.
  */
-function parseBaseUrl(raw) {
+function parseBaseUrl(raw, postedPath) {
   if (!nonEmptyString(raw)) throw new Error('grader: baseUrl must be a non-empty string');
   if (/[ \t\n\r\f\v?#@\\]/.test(raw)) throw new Error('grader: baseUrl must hold no whitespace, user information, query or fragment');
   // As written: a scheme, "//", the host with its port, then the path.
@@ -187,21 +233,28 @@ function parseBaseUrl(raw) {
   if (!/^[\x21-\x7e]+$/.test(raw) || u.href !== (writtenPath === '' ? `${raw}/` : raw) || u.origin !== origin || u.username !== '' || u.password !== '' || u.search !== '' || u.hash !== '') {
     throw new Error(PLAIN_FORM_WORDS);
   }
-  return { url: `${origin}${path}${POSTED_PATH}`, origin };
+  return { url: `${origin}${path}${postedPath}`, origin };
 }
 
 /**
- * A gateway the user's other tools honour: the environment variable ANTHROPIC_BASE_URL. This grader never reads it as an
+ * A gateway the user's other tools honour: the environment variable ANTHROPIC_BASE_URL on the Anthropic wire, and on the OpenAI wire
+ * each of OPENAI_BASE_URL, OPENAI_API_BASE_URL, OPENAI_API_HOST and OPENAI_HOST. This grader never reads one as an
  * address, so with no base URL stated, or another one, the key in the key variable (which may be the gateway's credential)
  * would go to the public host. Refused when the grader is built, before any call. The variable is named and its value is
  * never printed. An empty variable is not set. Under promptfoo the address to state is `baseUrl` in this provider's config,
  * and promptfoo still writes its result file, with an error in every row.
  */
-function assertNoGatewayVariable(statedBaseUrl) {
-  const gateway = process.env.ANTHROPIC_BASE_URL;
-  if (gateway === undefined || gateway === '' || statedBaseUrl === gateway) return;
-  const how = statedBaseUrl === undefined ? 'no base URL was stated, so the grader would use its default' : 'the base URL stated differs from it';
-  throw new Error(`grader: the environment variable ANTHROPIC_BASE_URL is set, and this grader never reads it: ${how}, and the key would go there instead of to the address your other tools use. State the same address as \`baseUrl\` in the grader's config, or unset the variable. No call was made.`);
+function assertNoGatewayVariable(wire, statedBaseUrl) {
+  for (const name of wire === WIRE_OPENAI ? OPENAI_ADDRESS_VARIABLES : ['ANTHROPIC_BASE_URL']) {
+    const gateway = process.env[name];
+    if (gateway === undefined || gateway === '' || statedBaseUrl === gateway) continue;
+    const how = statedBaseUrl === undefined ? 'no base URL was stated, so the grader would use its default' : 'the base URL stated differs from it';
+    throw gatewayError(name, how);
+  }
+}
+
+function gatewayError(name, how) {
+  return new Error(`grader: the environment variable ${name} is set, and this grader never reads it: ${how}, and the key would go there instead of to the address your other tools use. ${/_HOST$/.test(name) ? 'Unset the variable.' : "State the same address as \`baseUrl\` in the grader's config, or unset the variable."} No call was made.`);
 }
 
 /**
@@ -381,23 +434,33 @@ function parseThinking(v) {
   throw refusal;
 }
 
-/** The `effort` setting: NOT_SENT or one of the closed words. */
-function parseEffort(v) {
-  if (v === NOT_SENT || (typeof v === 'string' && EFFORTS.includes(v))) return v;
-  throw new Error(`grader: config.effort must be "NOT_SENT" or one of ${EFFORTS.join(', ')}`);
+/** The `effort` setting: NOT_SENT or one of the closed words of the wire. */
+function parseEffort(v, words) {
+  if (v === NOT_SENT || (typeof v === 'string' && words.includes(v))) return v;
+  throw new Error(`grader: config.effort must be "NOT_SENT" or one of ${words.join(', ')}`);
 }
 
-/** The thinking-token counter of a response body, or ABSENT when the body has none. A counter that is there and is not a non-negative integer stops the call, and a null or a non-object at any level on the way to it is "there". */
-function thinkingTokensOf(body) {
+/** The `verbosity` setting (the OpenAI wire): NOT_SENT or one of the closed words. */
+function parseVerbosity(v) {
+  if (v === NOT_SENT || (typeof v === 'string' && VERBOSITIES.includes(v))) return v;
+  throw new Error(`grader: config.verbosity must be "NOT_SENT" or one of ${VERBOSITIES.join(', ')}`);
+}
+
+/**
+ * The thinking-token counter of a response body (the Anthropic wire: `thinking_tokens`; the OpenAI wire: `reasoning_tokens`), or ABSENT
+ * when the body has none. A counter that is there and is not a non-negative integer stops the call, and a null or a non-object at any
+ * level on the way to it is "there".
+ */
+function thinkingTokensOf(body, key = 'thinking_tokens', name = 'thinking-token') {
   if (!('usage' in body)) return 'ABSENT';
   const usage = body.usage;
-  if (!isObject(usage)) throw new Error('grader: the thinking-token counter is malformed (usage is not an object)');
+  if (!isObject(usage)) throw new Error(`grader: the ${name} counter is malformed (usage is not an object)`);
   if (!('output_tokens_details' in usage)) return 'ABSENT';
   const details = usage.output_tokens_details;
-  if (!isObject(details)) throw new Error('grader: the thinking-token counter is malformed (usage.output_tokens_details is not an object)');
-  if (!('thinking_tokens' in details)) return 'ABSENT';
-  if (!Number.isSafeInteger(details.thinking_tokens) || details.thinking_tokens < 0) throw new Error('grader: the thinking-token counter is not a non-negative integer');
-  return details.thinking_tokens;
+  if (!isObject(details)) throw new Error(`grader: the ${name} counter is malformed (usage.output_tokens_details is not an object)`);
+  if (!(key in details)) return 'ABSENT';
+  if (!Number.isSafeInteger(details[key]) || details[key] < 0) throw new Error(`grader: the ${name} counter is not a non-negative integer`);
+  return details[key];
 }
 
 /**
@@ -412,6 +475,103 @@ function usageOf(body) {
   const counter = (n) => Number.isSafeInteger(n) && n >= 0;
   if (!counter(usage.input_tokens) || !counter(usage.output_tokens)) throw new Error('grader: the token usage is malformed (input_tokens and output_tokens must both be non-negative integers)');
   return { input_tokens: usage.input_tokens, output_tokens: usage.output_tokens };
+}
+
+/**
+ * The checks of a status 200 body on the Anthropic wire (unchanged since version 7) and the reply taken from it. Returns the fields of
+ * a reply, `cut` for a stop_reason of exactly "max_tokens".
+ */
+function parseMessages(data) {
+  if (!isObject(data) || !nonEmptyString(data.id) || !nonEmptyString(data.model) || !nonEmptyString(data.stop_reason) || !Array.isArray(data.content) || data.content.length === 0) {
+    throw new Error('grader: the response lacks id, model, stop_reason or content');
+  }
+  // The id is not shown: it is the part of the response that is not of the form a record and a terminal can hold.
+  if (!RESPONSE_ID_FORM.test(data.id)) throw new Error('grader: the response id is not 1 to 200 visible ASCII characters with no space; it is not shown');
+  // The served model is copied into the record and the run's identity, as the id is: the same form, and not shown.
+  if (!RESPONSE_ID_FORM.test(data.model)) throw new Error('grader: the response model is not 1 to 200 visible ASCII characters with no space; it is not shown');
+  // The stop reason is copied into the record and printed by the importer: one printable line, and not shown.
+  if (!isPrintableLine(data.stop_reason)) throw new Error('grader: the response stop_reason is not one printable line (visible ASCII, single spaces, at most 200 characters); it is not shown');
+  // A value the importers read as a gap is refused at import: so it is here, with nothing shown.
+  if (readsAsGap(data.id) || readsAsGap(data.model) || readsAsGap(data.stop_reason)) throw new Error('grader: the response id, model or stop_reason reads as unknown; it is not shown');
+  const thinkingTokens = thinkingTokensOf(data);
+  const usage = usageOf(data);
+  // The reply is the text of the response's text blocks, joined (one block in every reply the importer accepts). A thinking block's text, signature or data is never read or recorded. A reply
+  // with other shapes of content (two text blocks, a tool block) is recorded as it came and refused at import.
+  const contentTypes = [];
+  let reply = '';
+  for (const block of data.content) {
+    if (!isObject(block) || !nonEmptyString(block.type)) throw new Error('grader: a content block has no type');
+    contentTypes.push(block.type);
+    if (block.type === 'text') {
+      if (typeof block.text !== 'string') throw new Error('grader: a text block has no text');
+      reply += block.text;
+    }
+  }
+  return { servedModel: data.model, responseId: data.id, stopReason: data.stop_reason, contentTypes, thinkingTokens, usage, text: reply, cut: data.stop_reason === 'max_tokens' };
+}
+
+/**
+ * The checks of a status 200 body on the OpenAI wire, in this order, all of them before any text is joined, and the reply taken from
+ * it. Every failure is a malformed body: the slot ends, with no record, and is not asked again. No value of the body is shown in a
+ * message. Fields the grader does not read may hold anything (`encrypted_content` of a reasoning item included); none is read or recorded.
+ */
+function parseResponses(data) {
+  // 1. A JSON object whose `object` is "response".
+  if (!isObject(data) || data.object !== 'response') throw new Error('grader: the response is not a Responses object (its object is not "response")');
+  // 2. `error` is absent or null. (null is taken in this field and in incomplete_details, and nowhere else.)
+  if (data.error !== undefined && data.error !== null) throw new Error('grader: the response holds an error that is not null on a status 200');
+  // 3. `status` is completed or incomplete: failed, in_progress, cancelled, queued and anything else are malformed.
+  if (data.status !== 'completed' && data.status !== 'incomplete') throw new Error('grader: the response status is neither "completed" nor "incomplete"; the value is not shown');
+  // 4. incomplete_details fits the status.
+  let incompleteReason = 'ABSENT';
+  const details = data.incomplete_details;
+  if (data.status === 'completed') {
+    if (details !== undefined && details !== null) throw new Error('grader: the response is "completed" and holds incomplete_details');
+  } else {
+    if (!isObject(details) || !isPrintableLine(details.reason) || readsAsGap(details.reason) || details.reason === 'ABSENT') {
+      throw new Error('grader: the response is "incomplete" and its incomplete_details hold no printable reason; the value is not shown');
+    }
+    incompleteReason = details.reason;
+  }
+  // 5. Echoes: the truncation and the store that were sent. A key that is there and holds anything else, null included, is malformed.
+  if (data.truncation !== undefined && data.truncation !== 'disabled') throw new Error('grader: the response echoes a truncation other than "disabled"');
+  if (data.store !== undefined && data.store !== false) throw new Error('grader: the response echoes a store other than false');
+  // 6. id, model, usage and output.
+  if (!nonEmptyString(data.id) || !nonEmptyString(data.model) || !Array.isArray(data.output)) throw new Error('grader: the response lacks id, model or output');
+  if (!RESPONSE_ID_FORM.test(data.id)) throw new Error('grader: the response id is not 1 to 200 visible ASCII characters with no space; it is not shown');
+  if (!RESPONSE_ID_FORM.test(data.model)) throw new Error('grader: the response model is not 1 to 200 visible ASCII characters with no space; it is not shown');
+  if (readsAsGap(data.id) || readsAsGap(data.model)) throw new Error('grader: the response id or model reads as unknown; it is not shown');
+  const thinkingTokens = thinkingTokensOf(data, 'reasoning_tokens', 'reasoning-token');
+  const usage = usageOf(data);
+  const contentTypes = [];
+  let reply = '';
+  for (const item of data.output) {
+    if (!isObject(item) || typeof item.type !== 'string' || !TYPE_FORM.test(item.type)) throw new Error('grader: an output item has no type of the plain form (a lower-case identifier); it is not shown');
+    if (item.type === 'reasoning') {
+      contentTypes.push('reasoning');
+      continue;
+    }
+    if (item.type !== 'message') {
+      contentTypes.push(item.type);
+      continue;
+    }
+    if (typeof item.status !== 'string' || !TYPE_FORM.test(item.status)) throw new Error('grader: a message item has no status of the plain form; it is not shown');
+    if ('phase' in item && (typeof item.phase !== 'string' || !TYPE_FORM.test(item.phase))) throw new Error('grader: a message item holds a phase that is not of the plain form; it is not shown');
+    if (!Array.isArray(item.content)) throw new Error('grader: a message item has no content list');
+    // The label is written as it is. The importers read a completed message with phase absent or exactly "final_answer"; the other forms say in the record why a message is not taken as the answer.
+    const label = item.status !== 'completed' ? `message[status=${item.status}]` : 'phase' in item ? `message[phase=${item.phase}]` : 'message';
+    // A message with no parts still shows in the list, by its bare label: it must not vanish beside a message that is complete.
+    if (item.content.length === 0) contentTypes.push(label);
+    for (const part of item.content) {
+      if (!isObject(part) || typeof part.type !== 'string' || !TYPE_FORM.test(part.type)) throw new Error('grader: a content part has no type of the plain form; it is not shown');
+      contentTypes.push(`${label}/${part.type}`);
+      if (part.type === 'output_text') {
+        if (typeof part.text !== 'string') throw new Error('grader: an output_text part has no text');
+        reply += part.text;
+      }
+    }
+  }
+  return { servedModel: data.model, responseId: data.id, stopReason: data.status, incompleteReason, contentTypes, thinkingTokens, usage, text: reply, cut: data.status === 'incomplete' && incompleteReason === 'max_output_tokens' };
 }
 
 /** A wait of `ms` that the tool's own abort ends at once. */
@@ -469,8 +629,14 @@ module.exports = class RecordingGrader {
   constructor(options) {
     const config = options && options.config !== undefined ? options.config : {};
     if (!isObject(config)) throw new Error('grader: config must be an object');
-    // First of all, before any other setting is looked at: a gateway the grader would ignore sends the key to the public host.
-    assertNoGatewayVariable(config.baseUrl);
+    // The wire first: it fixes every other setting, and the gateway variable that is checked. It has no default.
+    if (config.wire === undefined) throw new Error(`grader: config.wire is required (no default): one of ${WIRES.join(', ')}`);
+    if (typeof config.wire !== 'string' || !WIRES.includes(config.wire)) throw new Error(`grader: config.wire must be one of ${WIRES.join(', ')}`);
+    const wire = config.wire;
+    const openai = wire === WIRE_OPENAI;
+    // Before any other setting is looked at: a gateway the grader would ignore sends the key to the public host.
+    assertNoGatewayVariable(wire, config.baseUrl);
+    const allowed = openai ? OPENAI_ALLOWED_CONFIG : ALLOWED_CONFIG;
     for (const k of Object.keys(config)) {
       // The tool's own bookkeeping: it puts `basePath` (the config's folder) into every provider's config. It is not a
       // setting of the call: never sent, never recorded, never in the call shape.
@@ -478,44 +644,58 @@ module.exports = class RecordingGrader {
         if (typeof config.basePath !== 'string') throw new Error("grader: config.basePath, the tool's own key, must be a string when present");
         continue;
       }
-      if (!ALLOWED_CONFIG.has(k)) throw new Error(`grader: config key "${k}" is not one the grader sends; it never drops a setting silently`);
+      if (k === 'wire') continue;
+      if (!allowed.has(k)) throw new Error(`grader: config key "${k}" is not one the grader sends on the ${wire} wire; it never drops a setting silently`);
     }
     if (!nonEmptyString(config.model)) throw new Error('grader: config.model is required');
     // Before any call: a model id the importer would refuse (one that reads as a gap, or is not one printable line) is refused here, not after the bill.
     if (!isPrintableLine(config.model) || readsAsGap(config.model)) throw new Error('grader: config.model must be one printable line (visible ASCII, single spaces, at most 200 characters) that does not read as unknown; the value is not shown');
-    if (!Number.isInteger(config.max_tokens) || config.max_tokens <= 0) throw new Error('grader: config.max_tokens is required, a positive integer');
-    if (config.temperature !== undefined && !(typeof config.temperature === 'number' && Number.isFinite(config.temperature) && config.temperature >= 0 && config.temperature <= 1)) {
-      throw new Error('grader: config.temperature must be a number in [0, 1]');
+    // The cap is named for the wire: max_tokens, or max_output_tokens (an integer, at least 16).
+    const cap = openai ? config.max_output_tokens : config.max_tokens;
+    if (openai) {
+      if (!Number.isSafeInteger(cap) || cap < OPENAI_MIN_OUTPUT_TOKENS) throw new Error(`grader: config.max_output_tokens is required, an integer of at least ${OPENAI_MIN_OUTPUT_TOKENS}`);
+    } else if (!Number.isSafeInteger(cap) || cap <= 0) {
+      throw new Error('grader: config.max_tokens is required, a positive integer');
+    }
+    const temperatureMax = openai ? 2 : 1;
+    if (config.temperature !== undefined && !(typeof config.temperature === 'number' && Number.isFinite(config.temperature) && config.temperature >= 0 && config.temperature <= temperatureMax)) {
+      throw new Error(`grader: config.temperature must be a number in [0, ${temperatureMax}]`);
     }
     const timeoutMs = config.timeoutMs === undefined ? DEFAULT_TIMEOUT_MS : config.timeoutMs;
     if (!Number.isInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > MAX_TIMEOUT_MS) throw new Error(`grader: config.timeoutMs must be a positive integer of at most ${MAX_TIMEOUT_MS} (one hour)`);
-    const apiVersion = config.apiVersion === undefined ? DEFAULT_API_VERSION : config.apiVersion;
-    if (!nonEmptyString(apiVersion)) throw new Error('grader: config.apiVersion must be a non-empty string');
-    // The same: an API version that is not 1 to 200 visible ASCII characters, or reads as a gap, is refused here, as the importer refuses it.
-    if (!RESPONSE_ID_FORM.test(apiVersion) || readsAsGap(apiVersion)) throw new Error('grader: config.apiVersion must be 1 to 200 visible ASCII characters with no space that do not read as unknown; the value is not shown');
-    const keyEnv = config.apiKeyEnv === undefined ? DEFAULT_KEY_ENV : config.apiKeyEnv;
+    // The API version is the Anthropic wire's header; the OpenAI wire has none (the key is refused above).
+    const apiVersion = openai ? NOT_SENT : config.apiVersion === undefined ? DEFAULT_API_VERSION : config.apiVersion;
+    if (!openai) {
+      if (!nonEmptyString(apiVersion)) throw new Error('grader: config.apiVersion must be a non-empty string');
+      // The same: an API version that is not 1 to 200 visible ASCII characters, or reads as a gap, is refused here, as the importer refuses it.
+      if (!RESPONSE_ID_FORM.test(apiVersion) || readsAsGap(apiVersion)) throw new Error('grader: config.apiVersion must be 1 to 200 visible ASCII characters with no space that do not read as unknown; the value is not shown');
+    }
+    const keyEnv = config.apiKeyEnv === undefined ? (openai ? DEFAULT_OPENAI_KEY_ENV : DEFAULT_KEY_ENV) : config.apiKeyEnv;
     if (!nonEmptyString(keyEnv)) throw new Error('grader: config.apiKeyEnv must be a non-empty string');
     // The name of a variable, never a key: a key put here by mistake is refused, so it is never carried in the config.
     if (!KEY_ENV_NAME.test(keyEnv)) throw new Error('grader: config.apiKeyEnv must be the name of an environment variable (letters, digits and underscores)');
     // No default for either: a judge's settings are stated, never inherited from the provider.
-    for (const k of ['thinking', 'effort']) {
+    for (const k of openai ? ['effort', 'verbosity'] : ['thinking', 'effort']) {
       if (config[k] === undefined) throw new Error(`grader: config.${k} is required (no default)`);
     }
-    const thinking = parseThinking(config.thinking);
-    const effort = parseEffort(config.effort);
+    const thinking = openai ? undefined : parseThinking(config.thinking);
+    const effort = parseEffort(config.effort, openai ? OPENAI_EFFORTS : EFFORTS);
+    const verbosity = openai ? parseVerbosity(config.verbosity) : undefined;
     // No default here either: every re-ask is a paid call, so how many a slot may get is stated. 0 asks once.
     if (config.maxReasks === undefined) throw new Error(`grader: config.maxReasks is required (no default): an integer from 0 to ${MAX_REASKS_CEILING}; 0 asks every slot once`);
     if (!Number.isInteger(config.maxReasks) || config.maxReasks < 0 || config.maxReasks > MAX_REASKS_CEILING) throw new Error(`grader: config.maxReasks must be an integer from 0 to ${MAX_REASKS_CEILING}`);
     this.maxReasks = config.maxReasks;
+    this.wire = wire;
     this.thinking = thinking;
     this.effort = effort;
+    this.verbosity = verbosity;
     this.model = config.model;
-    this.maxTokens = config.max_tokens;
+    this.maxTokens = cap;
     this.temperature = config.temperature;
     this.timeoutMs = timeoutMs;
     this.apiVersion = apiVersion;
     this.keyEnv = keyEnv;
-    this.target = parseBaseUrl(config.baseUrl === undefined ? DEFAULT_BASE_URL : config.baseUrl);
+    this.target = parseBaseUrl(config.baseUrl === undefined ? (openai ? DEFAULT_OPENAI_BASE_URL : DEFAULT_BASE_URL) : config.baseUrl, openai ? OPENAI_POSTED_PATH : POSTED_PATH);
     // Before any call: a promptfoo the importer would refuse after the bill. (The gateway variable is checked first, above.)
     assertTestedPromptfoo();
   }
@@ -576,32 +756,7 @@ module.exports = class RecordingGrader {
     } catch {
       throw new Error('grader: the response is not JSON');
     }
-    if (!isObject(data) || !nonEmptyString(data.id) || !nonEmptyString(data.model) || !nonEmptyString(data.stop_reason) || !Array.isArray(data.content) || data.content.length === 0) {
-      throw new Error('grader: the response lacks id, model, stop_reason or content');
-    }
-    // The id is not shown: it is the part of the response that is not of the form a record and a terminal can hold.
-    if (!RESPONSE_ID_FORM.test(data.id)) throw new Error('grader: the response id is not 1 to 200 visible ASCII characters with no space; it is not shown');
-    // The served model is copied into the record and the run's identity, as the id is: the same form, and not shown.
-    if (!RESPONSE_ID_FORM.test(data.model)) throw new Error('grader: the response model is not 1 to 200 visible ASCII characters with no space; it is not shown');
-    // The stop reason is copied into the record and printed by the importer: one printable line, and not shown.
-    if (!isPrintableLine(data.stop_reason)) throw new Error('grader: the response stop_reason is not one printable line (visible ASCII, single spaces, at most 200 characters); it is not shown');
-    // A value the importers read as a gap is refused at import: so it is here, with nothing shown.
-    if (readsAsGap(data.id) || readsAsGap(data.model) || readsAsGap(data.stop_reason)) throw new Error('grader: the response id, model or stop_reason reads as unknown; it is not shown');
-    const thinkingTokens = thinkingTokensOf(data);
-    const usage = usageOf(data);
-    // The reply is the text of the response's text blocks, joined (one block in every reply the importer accepts). A thinking block's text, signature or data is never read or recorded. A reply
-    // with other shapes of content (two text blocks, a tool block) is recorded as it came and refused at import.
-    const contentTypes = [];
-    let reply = '';
-    for (const block of data.content) {
-      if (!isObject(block) || !nonEmptyString(block.type)) throw new Error('grader: a content block has no type');
-      contentTypes.push(block.type);
-      if (block.type === 'text') {
-        if (typeof block.text !== 'string') throw new Error('grader: a text block has no text');
-        reply += block.text;
-      }
-    }
-    return { reply: { servedModel: data.model, responseId: data.id, stopReason: data.stop_reason, contentTypes, thinkingTokens, usage, text: reply } };
+    return { reply: this.wire === WIRE_OPENAI ? parseResponses(data) : parseMessages(data) };
   }
 
   /**
@@ -629,18 +784,32 @@ module.exports = class RecordingGrader {
     const apiKey = this.preflight();
 
     // The request and the call shape are built here from the same variables.
-    const body = { model: this.model, max_tokens: this.maxTokens, messages: [{ role: 'user', content: user }] };
-    if (system !== undefined) body.system = system;
-    if (this.temperature !== undefined) body.temperature = this.temperature;
-    if (this.thinking.body !== undefined) body.thinking = this.thinking.body;
-    if (this.effort !== NOT_SENT) body.output_config = { effort: this.effort };
+    const openai = this.wire === WIRE_OPENAI;
+    let body;
+    if (openai) {
+      // Key order is the documented order; store and truncation are always sent and are not settings.
+      body = { model: this.model, input: [{ role: 'user', content: user }] };
+      if (system !== undefined) body.instructions = system;
+      body.max_output_tokens = this.maxTokens;
+      body.store = false;
+      body.truncation = 'disabled';
+      if (this.temperature !== undefined) body.temperature = this.temperature;
+      if (this.effort !== NOT_SENT) body.reasoning = { effort: this.effort };
+      if (this.verbosity !== NOT_SENT) body.text = { verbosity: this.verbosity };
+    } else {
+      body = { model: this.model, max_tokens: this.maxTokens, messages: [{ role: 'user', content: user }] };
+      if (system !== undefined) body.system = system;
+      if (this.temperature !== undefined) body.temperature = this.temperature;
+      if (this.thinking.body !== undefined) body.thinking = this.thinking.body;
+      if (this.effort !== NOT_SENT) body.output_config = { effort: this.effort };
+    }
     const callShape = {
       schema: CALL_SHAPE_SCHEMA,
       endpoint: this.target.url,
-      apiVersion: this.apiVersion,
+      apiVersion: openai ? NOT_SENT : this.apiVersion,
       betaFlags: NOT_SENT,
-      thinkingMode: this.thinking.mode,
-      thinkingBudgetTokens: this.thinking.budget,
+      thinkingMode: openai ? NOT_SENT : this.thinking.mode,
+      thinkingBudgetTokens: openai ? NOT_SENT : this.thinking.budget,
       effort: this.effort,
       toolChoice: NOT_SENT,
       toolChoiceName: NOT_SENT,
@@ -658,11 +827,14 @@ module.exports = class RecordingGrader {
       contextPolicy: 'none',
       stream: NOT_SENT,
       timeoutMs: this.timeoutMs,
-      extras: {},
+      // `store` and `verbosity` are not named keys of the call shape. (`truncation` is: it is the context policy above.)
+      extras: openai ? { 'openai.store': false, ...(this.verbosity === NOT_SENT ? {} : { 'openai.verbosity': this.verbosity }) } : {},
     };
     // Serialised once: every ask of this slot sends these bytes and these headers.
     const payload = JSON.stringify(body);
-    const headers = { 'content-type': 'application/json', 'accept-encoding': 'identity', 'anthropic-version': this.apiVersion, 'x-api-key': apiKey };
+    const headers = openai
+      ? { 'content-type': 'application/json', 'accept-encoding': 'identity', authorization: `Bearer ${apiKey}` }
+      : { 'content-type': 'application/json', 'accept-encoding': 'identity', 'anthropic-version': this.apiVersion, 'x-api-key': apiKey };
     const toolSignal = callOptions && callOptions.abortSignal instanceof AbortSignal ? callOptions.abortSignal : undefined;
 
     // The asks of this slot before the last, in the order made. Each ask has its own call number and call id.
@@ -684,26 +856,38 @@ module.exports = class RecordingGrader {
       } catch (e) {
         throw endsSlot(e);
       }
-      if (got.reply !== undefined && !(got.reply.stopReason === 'max_tokens' && earlier.length < this.maxReasks)) {
+      if (got.reply !== undefined && !(got.reply.cut && earlier.length < this.maxReasks)) {
         // The slot's last ask: a reply that is not cut, whatever it says, or a cut reply with the bound used up.
         const last = got.reply;
+        const sent = openai
+          ? {
+              system: system === undefined ? NOT_SENT : sha256(system),
+              user: sha256(user),
+              reasoning: this.effort === NOT_SENT ? NOT_SENT : { effort: this.effort },
+              text: this.verbosity === NOT_SENT ? NOT_SENT : { verbosity: this.verbosity },
+              store: false,
+              truncation: 'disabled',
+            }
+          : {
+              system: system === undefined ? NOT_SENT : sha256(system),
+              user: sha256(user),
+              thinking: this.thinking.body === undefined ? NOT_SENT : this.thinking.body,
+              output_config: this.effort === NOT_SENT ? NOT_SENT : { effort: this.effort },
+            };
         const graderEvidence = {
           schema: RECORD_SCHEMA,
+          wire: this.wire,
           grader: { name: GRADER_NAME, language: 'js', sha256: graderSha256, runtime },
           graderRunId,
           callSeq: seq,
           callId,
           promptSha256: sha256(prompt),
-          sent: {
-            system: system === undefined ? NOT_SENT : sha256(system),
-            user: sha256(user),
-            thinking: this.thinking.body === undefined ? NOT_SENT : this.thinking.body,
-            output_config: this.effort === NOT_SENT ? NOT_SENT : { effort: this.effort },
-          },
+          sent,
           requestedModel: this.model,
           servedModel: last.servedModel,
           responseId: last.responseId,
           stopReason: last.stopReason,
+          ...(openai ? { incompleteReason: last.incompleteReason } : {}),
           contentTypes: last.contentTypes,
           thinkingTokens: last.thinkingTokens,
           usage: last.usage,
@@ -719,7 +903,7 @@ module.exports = class RecordingGrader {
         const cut = got.reply;
         // A text with an unpaired surrogate has no UTF-8 bytes of its own, so no hash: such a body ends the slot.
         if (Buffer.from(cut.text, 'utf8').toString('utf8') !== cut.text) throw endsSlot(new Error('grader: the cut reply holds an unpaired surrogate; it has no UTF-8 bytes of its own'));
-        earlier.push({ reason: 'truncated', callSeq: seq, callId, httpStatus: 200, responseId: cut.responseId, servedModel: cut.servedModel, stopReason: cut.stopReason, contentTypes: cut.contentTypes, thinkingTokens: cut.thinkingTokens, usage: cut.usage, replySha256: sha256(cut.text), replyUtf8Bytes: Buffer.byteLength(cut.text, 'utf8') });
+        earlier.push({ reason: 'truncated', callSeq: seq, callId, httpStatus: 200, responseId: cut.responseId, servedModel: cut.servedModel, stopReason: cut.stopReason, ...(openai ? { incompleteReason: cut.incompleteReason } : {}), contentTypes: cut.contentTypes, thinkingTokens: cut.thinkingTokens, usage: cut.usage, replySha256: sha256(cut.text), replyUtf8Bytes: Buffer.byteLength(cut.text, 'utf8') });
       } else {
         const ask = { reason: got.none.reason, callSeq: seq, callId, httpStatus: got.none.httpStatus, detail: got.none.detail };
         if (earlier.length >= this.maxReasks) {

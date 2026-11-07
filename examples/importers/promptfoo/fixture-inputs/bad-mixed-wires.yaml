@@ -1,0 +1,21 @@
+# A bad state: one promptfoo run in which c3 names its own grader on the Anthropic wire while the others use the OpenAI wire
+# (example input of fixtures.sh). One grader process wrote the whole file, so the importer's check of the recorded calls passes and
+# the file is refused for holding two wires.
+prompts: ['{{question}}']
+providers: ['file://stored-outputs-provider.cjs']
+defaultTest:
+  options:
+    provider:
+      id: 'file://grader-provider.cjs'
+      config: { wire: openai-responses/v1, model: fake-judge-old, max_output_tokens: 256, temperature: 0, baseUrl: 'http://127.0.0.1:18765/v1', effort: NOT_SENT, verbosity: NOT_SENT, maxReasks: 0 }
+  assert:
+    - type: llm-rubric
+      value: The reply follows the refund policy (within 30 days or damaged goods, never more than once).
+tests:
+  - vars: { case_id: c1, question: 'My blender arrived broken. Can I get my money back?' }
+  - vars: { case_id: c2, question: 'I bought shoes 45 days ago and want a refund.' }
+  - vars: { case_id: c3, question: 'Please refund my last order.' }
+    options:
+      provider:
+        id: 'file://grader-provider.cjs'
+        config: { wire: anthropic-messages/v1, model: fake-judge-old, max_tokens: 256, temperature: 0, baseUrl: 'http://127.0.0.1:18765', thinking: NOT_SENT, effort: NOT_SENT, maxReasks: 0 }

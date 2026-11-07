@@ -11,7 +11,7 @@ import { JUDGE_FIELDS } from '../src/identity.ts';
 import { gateRunsWithAdmission as gateRuns } from './helpers.ts';
 import { callShapeHash, IDENTITY_FIELDS, judgeChangeRuns, parseBarFile, parseJudgeChangePlan, parseRunArtifact, RefusalError, repeatFlips, sha256Hex } from '../src/index.ts';
 import type { BarFile, IdentityField, JudgeChangePlan, RunArtifact } from '../src/index.ts';
-import { asRecorded, makeCallShape } from './helpers.ts';
+import { asRecorded, makeCallShape, scratchEnv } from './helpers.ts';
 import { parseCasesFile } from '../examples/importers/shared.ts';
 import { readFlow } from '../examples/importers/skill-evals/flow.ts';
 import { convertRegrade } from '../examples/importers/skill-evals/import.ts';
@@ -21,7 +21,7 @@ const dir = join(root, 'examples', 'importers', 'skill-evals');
 const work = mkdtempSync(join(tmpdir(), 'anchorset-skill-e2e-'));
 after(() => rmSync(work, { recursive: true, force: true }));
 
-const node = (...args: string[]) => spawnSync(process.execPath, args, { encoding: 'utf8' });
+const node = (...args: string[]) => spawnSync(process.execPath, args, { encoding: 'utf8', env: scratchEnv() });
 const cli = (...args: string[]) => node(join(root, 'src', 'cli.ts'), ...args);
 const FIXTURE_KEY = 'dummy-key-for-local-fake-endpoint';
 const READING = 'one-json-object-boolean-pass/v1';
@@ -136,7 +136,7 @@ test('the two re-grades read the same results.jsonl and the same source rep, and
   for (const i of [imported.old, imported.new]) {
     assert.match(i.stdout, /^source rep: 0 of the flow's 2 declared; each stored output graded 3 times /m);
     assert.match(i.stdout, /^flow: read again from /m);
-    assert.match(i.stdout, /^replies with a thinking block: 0 of 9$/m);
+    assert.match(i.stdout, /^replies with reasoning: 0 of 9 asks; /m);
     assert.match(i.stdout, /^reading rule: one-json-object-boolean-pass\/v1$/m);
     // The key the fixture script handed the grader is in no run and in nothing printed.
     assert.ok(!i.stdout.includes(FIXTURE_KEY));
@@ -398,8 +398,8 @@ test('fixtures/reask.regrade.jsonl imports: the first grade of each case is an u
   assert.deepEqual(kinds(reask.new.run), expected);
   assert.match(reask.old.stdout, /^re-asks: 3 on 3 of 9 slots \(truncated 3, timeout 0, transport 0, server-error 0, rate-limited 0\); at most 2 per slot$/m);
   assert.match(reask.new.stdout, /^re-asks: 3 on 3 of 9 slots \(truncated 3, timeout 0, transport 0, server-error 0, rate-limited 0\); at most 1 per slot$/m);
-  assert.match(reask.old.run.identity.judgeHarnessVersion, /; max-reasks 2; script-files sha256:[0-9a-f]{64}$/);
-  assert.match(reask.new.run.identity.judgeHarnessVersion, /; max-reasks 1; script-files sha256:[0-9a-f]{64}$/);
+  assert.match(reask.old.run.identity.judgeHarnessVersion, /; max-reasks 2; wire anthropic-messages\/v1; script-files sha256:[0-9a-f]{64}$/);
+  assert.match(reask.new.run.identity.judgeHarnessVersion, /; max-reasks 1; wire anthropic-messages\/v1; script-files sha256:[0-9a-f]{64}$/);
   assert.deepEqual(reaskDiffering, ['judgeDefinitionHash', 'judgeModelRequested', 'judgeModelServed', 'judgeHarnessVersion']);
   // The criterion is another text than the example's, so the rubric is another; the case set is the same.
   assert.notEqual(reask.old.run.identity.rubricHash, imported.old.run.identity.rubricHash);
@@ -428,4 +428,42 @@ test('re-ask: the same pair is admitted when judgeMoves names it, and every numb
   const gate = cli('gate', '--baseline', reask.old.path, '--candidate', reask.new.path, '--bar', join(dir, 'bar.json'), '--allow-differ', WAIVABLE.join(','));
   assert.equal(gate.status, 2, gate.stderr);
   assert.match(gate.stderr, /REFUSED IDENTITY_GAP/);
+});
+
+// ---- the OpenAI Responses wire ---------------------------------------------------------------------------------------------------
+
+test('the OpenAI old and new judges go through judge-change; the pair across the wires needs the four judge fields in the plan, and the library refuses a plan that leaves one out', () => {
+  const [oaOld, oaNew] = [importFixture('openai-old-judge', 'openai', 'oa-old'), importFixture('openai-new-judge', 'openai', 'oa-new')];
+  const planFor = (a: Imported, b: Imported, moves: string[]): JudgeChangePlan =>
+    parseJudgeChangePlan({
+      schema: 'anchorset.judge-change-plan/v1',
+      barHash: a.fragment.barHash,
+      caseSetHash: a.fragment.caseSetHash,
+      drawsPerCase: a.fragment.drawsPerCase,
+      judges: { old: a.fragment.judge, new: b.fragment.judge },
+      judgeMoves: moves,
+      systems: { 'refund-bot': { old: a.sha256, new: b.sha256 } },
+      storedOutputs: 'system-side-not-compared',
+      measuredClass: 'refund_policy',
+      cut: 'pass',
+      drawSets: { estimate: [0, 1, 2] },
+      labelRule: 'majority',
+      pooling: 'items-equal',
+    });
+  const filesOf = (a: Imported, b: Imported): { name: string; bytes: Uint8Array }[] => [{ name: 'old.json', bytes: a.bytes }, { name: 'new.json', bytes: b.bytes }];
+  // OpenAI against OpenAI: the model moves, nothing else
+  const same = judgeChangeRuns(filesOf(oaOld, oaNew), bar, planFor(oaOld, oaNew, ['judgeModelRequested', 'judgeModelServed']));
+  assert.ok(same.blocks.gate !== undefined);
+  // Anthropic against OpenAI, the same stored outputs: four fields move
+  const four = ['judgeModelRequested', 'judgeModelServed', 'judgeCallShapeHash', 'judgeHarnessVersion'];
+  const cross = judgeChangeRuns(filesOf(imported.old, oaNew), bar, planFor(imported.old, oaNew, four));
+  assert.ok(cross.blocks.gate !== undefined);
+  const moved = Object.keys(imported.old.fragment.judge).filter((f) => imported.old.fragment.judge[f] !== oaNew.fragment.judge[f]);
+  assert.deepEqual(moved, four);
+  assert.equal(imported.old.fragment.judge['judgeDefinitionHash'], oaNew.fragment.judge['judgeDefinitionHash'], 'the same template, system text, selector, reading rule and bound: the definition does not move');
+  assert.match(oaNew.fragment.judge['judgeHarnessVersion'] as string, /; max-reasks 0; wire openai-responses\/v1; script-files sha256:[0-9a-f]{64}$/);
+  // a plan that leaves one of the last two out is refused
+  for (const left of [four.filter((f) => f !== 'judgeCallShapeHash'), four.filter((f) => f !== 'judgeHarnessVersion')]) {
+    assert.throws(() => judgeChangeRuns(filesOf(imported.old, oaNew), bar, planFor(imported.old, oaNew, left)), (e: unknown) => e instanceof RefusalError && e.code === 'IDENTITY_MISMATCH');
+  }
 });

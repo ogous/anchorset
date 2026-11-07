@@ -8,11 +8,14 @@ authors:
     given-names: "Ogous Chan"
     orcid: "https://orcid.org/0009-0005-7182-2137"
 license: Apache-2.0
-version: 0.3.0
-date-released: "2026-11-05"
+version: 0.4.0
+date-released: "2026-11-07"
 repository-code: "https://github.com/ogous/anchorset"
-doi: 10.5281/zenodo.23974982
+doi: 10.5281/zenodo.24033690
 identifiers:
+  - type: doi
+    value: 10.5281/zenodo.24033690
+    description: "The archived code of anchorset 0.4.0."
   - type: doi
     value: 10.5281/zenodo.23974982
     description: "The archived code of anchorset 0.3.0."

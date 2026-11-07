@@ -48,12 +48,12 @@ import {
   runImporter,
   runImporterAsProcess,
   shape,
-  thinkingRepliesLine,
+  reasoningLine,
   typeName,
   ungradedRefusal,
   valueTypeProblems,
 } from '../shared.ts';
-import type { CasesFile, GraderRecord, Io, Reading, RecordedSlot, SkeletonRow, TestedSet } from '../shared.ts';
+import type { CasesFile, GraderRecord, Io, Reading, RecordedSlot, SkeletonRow, TestedSet, Wire } from '../shared.ts';
 
 const GRADER_FILE = 'grader-provider.cjs';
 const STORED_SCHEMA = 'example.stored-output/v1';
@@ -73,6 +73,83 @@ function errorWords(row: Obj): string {
 // ---------------------------------------------------------------------------------------------------------------
 // The conversion
 // ---------------------------------------------------------------------------------------------------------------
+
+/**
+ * The one check of a promptfoo result file's tool version and format against the tested list: the importer and
+ * `stored-from-result.ts` read no other file. Returns the version; `IMPORT_TOOL_VERSION` otherwise.
+ */
+export function assertTestedPromptfoo(json: unknown, tested: TestedSet, what = 'this importer'): string {
+  const foundVersion = peek(json, 'metadata', 'promptfooVersion');
+  const foundFormat = peek(json, 'results', 'version');
+  if (typeof foundVersion !== 'string' || !tested.versions.includes(foundVersion) || foundFormat !== tested.format) {
+    throw new ImportRefusal(
+      'IMPORT_TOOL_VERSION',
+      ['/metadata/promptfooVersion', '/results/version'],
+      `${what} was tested on promptfoo ${tested.versions.join(', ')} (format ${tested.format}); the file says version ${JSON.stringify(foundVersion ?? 'missing')}, format ${JSON.stringify(foundFormat ?? 'missing')}`,
+    );
+  }
+  return foundVersion;
+}
+
+/**
+ * The one rule that a promptfoo result file holds one system's answers: one prompt and one provider in the config, one
+ * prompt in the results, one prompt index on the rows, and no test that answers from elsewhere. A test (or `defaultTest`)
+ * may name its own `provider`, or a fixed `providerOutput`, and its row still records the suite's provider; the row's
+ * `testCase` holds the key (read on promptfoo 0.125.1, 2026-11-06), and so may the config. `defaultTest.options.provider`
+ * is the grader, not the system, and is not read here. The importer and `stored-from-result.ts` both call it;
+ * `IMPORT_JUDGE_SELECTION` otherwise, its message ending with `why`.
+ */
+export function assertOneSystem(config: Obj, results: Obj, rows: readonly unknown[], why: string): void {
+  const elsewhere: string[] = [];
+  const answersElsewhere = (t: unknown): boolean => isObject(t) && (t['provider'] !== undefined || t['providerOutput'] !== undefined);
+  if (answersElsewhere(config['defaultTest'])) elsewhere.push('/config/defaultTest');
+  const tests = config['tests'];
+  if (Array.isArray(tests)) tests.forEach((t, i) => { if (answersElsewhere(t)) elsewhere.push(`/config/tests/${i}`); });
+  rows.forEach((r, i) => { if (answersElsewhere(peek(r, 'testCase'))) elsewhere.push(`/results/results/${i}/testCase`); });
+  if (elsewhere.length > 0) {
+    throw new ImportRefusal(
+      'IMPORT_JUDGE_SELECTION',
+      elsewhere,
+      `a test names its own provider or a fixed providerOutput (${elsewhere.slice(0, 3).join(', ')}${elsewhere.length > 3 ? ', …' : ''}), so its answer does not come from the suite's one provider; ${why}`,
+    );
+  }
+  const nPrompts = asArr(field(config, 'prompts', '/config'), '/config/prompts').length;
+  const nProviders = asArr(field(config, 'providers', '/config'), '/config/providers').length;
+  const nResultPrompts = asArr(field(results, 'prompts', '/results'), '/results/prompts').length;
+  const promptIdx = new Set(rows.map((r) => peek(r, 'promptIdx')));
+  if (nPrompts !== 1 || nProviders !== 1 || nResultPrompts !== 1 || promptIdx.size > 1) {
+    throw new ImportRefusal(
+      'IMPORT_JUDGE_SELECTION',
+      ['/config/prompts', '/config/providers', '/results/prompts'],
+      `this file compares ${Math.max(nPrompts, nProviders, nResultPrompts, promptIdx.size)} prompts or providers; ${why}`,
+    );
+  }
+}
+
+/**
+ * The one rule for a row the tool marked as an error: an `error` beside a failure reason other than 1 (1 is a failed
+ * assertion, whose reason the tool puts in `error`), and any failure reason other than 0 or 1. The words, [] when none.
+ */
+export function toolErrorWords(row: Obj): string[] {
+  const words: string[] = [];
+  const fr = row['failureReason'];
+  if (row['error'] !== undefined && fr !== 1) words.push(`the tool recorded an error: ${errorWords(row) || 'no text'}`);
+  if (fr !== 0 && fr !== 1) words.push(`failureReason ${JSON.stringify(fr ?? 'missing')} (an error or unknown)`);
+  return words;
+}
+
+/** The one rule that the rows of one case share their variables. The variables of each case, by id; `IMPORT_CASE_ID` otherwise. */
+export function oneVarsPerCase(rows: readonly { caseId: string; vars: Obj; path: string }[]): Map<string, Obj> {
+  const byCase = new Map<string, { vars: Obj; path: string }[]>();
+  for (const r of rows) byCase.set(r.caseId, [...(byCase.get(r.caseId) ?? []), r]);
+  const found = new Map<string, Obj>();
+  for (const [id, group] of byCase) {
+    const inputs = new Set(group.map((r) => hashOf(r.vars)));
+    if (inputs.size > 1) throw new ImportRefusal('IMPORT_CASE_ID', group.map((r) => `${r.path}/vars`), `${id}: the variables differ between the rows of one case (${inputs.size} distinct)`);
+    found.set(id, (group[0] as { vars: Obj }).vars);
+  }
+  return found;
+}
 
 type Row = {
   i: number;
@@ -101,7 +178,10 @@ export type ConvertResult = {
   drawsPerCase: number;
   grader: { name: string; language: string; runtime: string; sha256: string };
   sourceSha256: string;
-  thinkingReplies: string;
+  wire: Wire;
+  requestedModel: string;
+  servedModel: string;
+  reasoning: string;
   reasks: string;
   readingRule: Reading;
 };
@@ -113,15 +193,7 @@ export function convertPromptfoo(bytes: Uint8Array, fileName: string, cases: Cas
   const { json, sha256: sourceSha256 } = parseSourceFile(bytes, fileName, 'promptfoo');
 
   // -- the tool version and the format ------------------------------------------------------------------------
-  const foundVersion = peek(json, 'metadata', 'promptfooVersion');
-  const foundFormat = peek(json, 'results', 'version');
-  if (typeof foundVersion !== 'string' || !tested.versions.includes(foundVersion) || foundFormat !== tested.format) {
-    throw new ImportRefusal(
-      'IMPORT_TOOL_VERSION',
-      ['/metadata/promptfooVersion', '/results/version'],
-      `this importer was tested on promptfoo ${tested.versions.join(', ')} (format ${tested.format}); the file says version ${JSON.stringify(foundVersion ?? 'missing')}, format ${JSON.stringify(foundFormat ?? 'missing')}`,
-    );
-  }
+  const foundVersion = assertTestedPromptfoo(json, tested);
   const root = asObj(json, '/');
   const results = asObj(root['results'], '/results');
   const rows = asArr(results['results'], '/results/results');
@@ -130,17 +202,7 @@ export function convertPromptfoo(bytes: Uint8Array, fileName: string, cases: Cas
   const config = asObj(root['config'], '/config');
 
   // -- one prompt, one system provider ------------------------------------------------------------------------
-  const nPrompts = asArr(field(config, 'prompts', '/config'), '/config/prompts').length;
-  const nProviders = asArr(field(config, 'providers', '/config'), '/config/providers').length;
-  const nResultPrompts = asArr(field(results, 'prompts', '/results'), '/results/prompts').length;
-  const promptIdx = new Set(rows.map((r) => peek(r, 'promptIdx')));
-  if (nPrompts !== 1 || nProviders !== 1 || nResultPrompts !== 1 || promptIdx.size > 1) {
-    throw new ImportRefusal(
-      'IMPORT_JUDGE_SELECTION',
-      ['/config/prompts', '/config/providers', '/results/prompts'],
-      `this file compares ${Math.max(nPrompts, nProviders, nResultPrompts, promptIdx.size)} prompts or providers; an import needs one stored output per case`,
-    );
-  }
+  assertOneSystem(config, results, rows, 'an import needs one stored output per case');
 
   // -- slots the tool itself marked as not graded ---------------------------------------------------------------
   const marked: { caseId: string; draw: number; reason: string }[] = [];
@@ -150,10 +212,8 @@ export function convertPromptfoo(bytes: Uint8Array, fileName: string, cases: Cas
     const comp0 = peek(row, 'gradingResult', 'componentResults', 0);
     const words: string[] = [];
     // A judge's verdict of fail is failureReason 1 with the reason in `error` (seen in the fixtures); that is a graded
-    // fail. Any `error` with another failure reason, and any failure reason but 0 or 1, is a slot the tool marked as not graded.
-    const fr = row['failureReason'];
-    if (row['error'] !== undefined && fr !== 1) words.push(`the tool recorded an error: ${errorWords(row) || 'no text'}`);
-    if (fr !== 0 && fr !== 1) words.push(`failureReason ${JSON.stringify(fr ?? 'missing')} (an error or unknown)`);
+    // fail. The rows the tool marked as an error are `toolErrorWords`'s.
+    words.push(...toolErrorWords(row));
     if (!isObject(row['gradingResult'])) words.push('gradingResult is empty');
     else if (peek(comp0, 'metadata', 'graderError') === true) words.push('graderError: the grader returned no usable result');
     if (words.length > 0) {
@@ -298,12 +358,7 @@ export function convertPromptfoo(bytes: Uint8Array, fileName: string, cases: Cas
   }
   const byCase = new Map<string, Row[]>();
   for (const r of table) { const list = byCase.get(r.caseId); if (list === undefined) byCase.set(r.caseId, [r]); else list.push(r); }
-  const found = new Map<string, unknown>();
-  for (const [id, group] of byCase) {
-    const inputs = new Set(group.map((r) => hashOf(r.vars)));
-    if (inputs.size > 1) throw new ImportRefusal('IMPORT_CASE_ID', group.map((r) => `${r.path}/vars`), `${id}: the variables differ between the rows of one case (${inputs.size} distinct)`);
-    found.set(id, (group[0] as Row).vars);
-  }
+  const found: Map<string, unknown> = oneVarsPerCase(table);
   const roster = buildCases(cases, found);
 
   // -- the draw count ---------------------------------------------------------------------------------------------------
@@ -420,7 +475,7 @@ export function convertPromptfoo(bytes: Uint8Array, fileName: string, cases: Cas
     packetSource: `computed at import from promptfoo ${foundVersion} result file sha256:${sourceSha256}: the output slot of the rendered grading prompt; no system log`,
   };
   assertBarHasLabels(bar, draws.flatMap((d) => d.attempts.flatMap((a) => (a.kind === 'graded' ? [a.label] : []))));
-  return { run, judge, barHash: barDigest, caseSetHash: caseSet, drawsPerCase: repeat, grader: rec0.grader, sourceSha256, thinkingReplies: thinkingRepliesLine(table.map((r) => r.record)), reasks: reasksLine(table.map((r) => r.record)), readingRule: reading };
+  return { run, judge, barHash: barDigest, caseSetHash: caseSet, drawsPerCase: repeat, grader: rec0.grader, sourceSha256, wire: rec0.wire, requestedModel: rec0.requestedModel, servedModel: rec0.servedModel, reasoning: reasoningLine(table.map((r) => r.record)), reasks: reasksLine(table.map((r) => r.record)), readingRule: reading };
 }
 
 /** The grader named in the config as `{ id, config }`, and every setting there equal to what the record shows. */

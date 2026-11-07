@@ -80,9 +80,9 @@ Make the grade column text first, and fill no cell with an empty value: pandas w
 
 ### Finish reasons
 
-The provider names below are those of OpenAI's Chat Completions, Anthropic's Messages API and Gemini's
+The provider names in the table below are those of OpenAI's Chat Completions, Anthropic's Messages API and Gemini's
 `generateContent`, as their API references listed them when this page was written; check your provider's current list.
-A value not in the table goes in the last row.
+A value not in the table goes in the last row. OpenAI's Responses API has its own table after it.
 
 | Your provider says | Write |
 |---|---|
@@ -93,6 +93,23 @@ A value not in the table goes in the last row.
 | `refusal` (Anthropic) | `"stop": "refusal"` |
 | `length` (OpenAI), `max_tokens` (Anthropic), `MAX_TOKENS` (Gemini) | A `failed` line: `"failed": "truncated", "stop": "max-tokens"` |
 | Anything else, or nothing logged | `"stop": "UNKNOWN"`, or leave `stop` out |
+
+For OpenAI's Responses API, as OpenAI's API reference listed them on 2026-11-06, the response's `status` and
+`incomplete_details.reason` map as follows:
+
+| Responses API says | Maps to |
+|---|---|
+| `status: "completed"`, with only reasoning and message items in its output | `"stop": "end"` |
+| `status: "completed"` with a refusal part in its output | `"stop": "refusal"` |
+| `status: "incomplete"` with `max_output_tokens` | a `failed` line: `"failed": "truncated", "stop": "max-tokens"` |
+| `status: "incomplete"` with `content_filter` | `"stop": "content-filter"` |
+
+Any other `incomplete` reason goes in the last row of the table above. A completed response with any other output item,
+a tool call for example, goes in the last row of the table above too. (The example importers do not map such a
+response: they record its output types and refuse the file at import, because the reply is not one answer.)
+
+Of a message item, the example importers read a `phase` that is absent or exactly `final_answer`, and refuse any other
+value ([IMPORTERS.md](IMPORTERS.md#two-apis-and-a-switch-between-them) says what ran against OpenAI's API).
 
 A filtered answer or a refusal is still an answer: grade it.
 

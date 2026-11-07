@@ -1,8 +1,8 @@
 {
-  "evalId": "eval-sKM-2026-10-30T20:33:56",
+  "evalId": "eval-kYD-2026-11-07T10:31:07",
   "results": {
     "version": 3,
-    "timestamp": "2026-10-30T20:33:56.595Z",
+    "timestamp": "2026-11-07T10:31:07.445Z",
     "prompts": [
       {
         "id": "d3bcaf71c11c2678899be04d872718325f0916b3b0705e805ee29930663a42e2",
@@ -16,7 +16,7 @@
           "testErrorCount": 0,
           "assertPassCount": 9,
           "assertFailCount": 0,
-          "totalLatencyMs": 11,
+          "totalLatencyMs": 10,
           "tokenUsage": {
             "prompt": 0,
             "completion": 0,
@@ -97,16 +97,17 @@
               },
               "metadata": {
                 "graderEvidence": {
-                  "schema": "example.grader-evidence/v7",
+                  "schema": "example.grader-evidence/v8",
+                  "wire": "anthropic-messages/v1",
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
+                    "sha256": "9332e4a126939166f06bc838df330c2ce7e406eda46d77dadf1b879e770c8bc1",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
+                  "graderRunId": "d224ec87-99ef-4283-9f83-30f5bd59dbb0",
                   "callSeq": 1,
-                  "callId": "392794c1-a5dc-4e10-bc7e-46b6c2df9c22",
+                  "callId": "ea6f1eb7-a4a8-47d7-a559-f624f85cdee7",
                   "promptSha256": "6b5739a9670a184fa882d4150b8b04b63c7f745886572fa462fbc819bd16ec09",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -163,7 +164,7 @@
             }
           ]
         },
-        "id": "7e6a0074-f38b-41bc-8bb5-bd261022f23e",
+        "id": "3107d107-1005-42f0-9c4b-4921e173bd00",
         "latencyMs": 2,
         "namedScores": {},
         "prompt": {
@@ -173,6 +174,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -218,6 +220,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -318,16 +321,17 @@
               },
               "metadata": {
                 "graderEvidence": {
-                  "schema": "example.grader-evidence/v7",
+                  "schema": "example.grader-evidence/v8",
+                  "wire": "anthropic-messages/v1",
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
+                    "sha256": "9332e4a126939166f06bc838df330c2ce7e406eda46d77dadf1b879e770c8bc1",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
+                  "graderRunId": "d224ec87-99ef-4283-9f83-30f5bd59dbb0",
                   "callSeq": 2,
-                  "callId": "9f04aa67-3563-47bd-844b-f7299324fa58",
+                  "callId": "e85794b5-5fa0-4368-8da1-e212104b4fca",
                   "promptSha256": "6b5739a9670a184fa882d4150b8b04b63c7f745886572fa462fbc819bd16ec09",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -384,8 +388,8 @@
             }
           ]
         },
-        "id": "0a6d3cd9-c28f-45fd-a082-31f3e7f07d27",
-        "latencyMs": 3,
+        "id": "864a7a78-93f0-4cab-b10b-78cdb8fa801c",
+        "latencyMs": 1,
         "namedScores": {},
         "prompt": {
           "raw": "My blender arrived broken. Can I get my money back?",
@@ -394,6 +398,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -439,6 +444,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -539,16 +545,17 @@
               },
               "metadata": {
                 "graderEvidence": {
-                  "schema": "example.grader-evidence/v7",
+                  "schema": "example.grader-evidence/v8",
+                  "wire": "anthropic-messages/v1",
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
+                    "sha256": "9332e4a126939166f06bc838df330c2ce7e406eda46d77dadf1b879e770c8bc1",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
+                  "graderRunId": "d224ec87-99ef-4283-9f83-30f5bd59dbb0",
                   "callSeq": 3,
-                  "callId": "fd066415-fa23-4072-b686-e5837a7552a4",
+                  "callId": "014bf5d0-1a52-4492-b496-41ffd0c1cd4d",
                   "promptSha256": "6b5739a9670a184fa882d4150b8b04b63c7f745886572fa462fbc819bd16ec09",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -605,7 +612,7 @@
             }
           ]
         },
-        "id": "ba308d59-f039-47df-8b05-2edfca82d256",
+        "id": "6d71dfec-6a23-4ba4-ada1-b91a5521a0d3",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -615,6 +622,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -660,6 +668,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -760,16 +769,17 @@
               },
               "metadata": {
                 "graderEvidence": {
-                  "schema": "example.grader-evidence/v7",
+                  "schema": "example.grader-evidence/v8",
+                  "wire": "anthropic-messages/v1",
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
+                    "sha256": "9332e4a126939166f06bc838df330c2ce7e406eda46d77dadf1b879e770c8bc1",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
+                  "graderRunId": "d224ec87-99ef-4283-9f83-30f5bd59dbb0",
                   "callSeq": 4,
-                  "callId": "45d569d2-b988-4b63-b6f7-6231a6de507c",
+                  "callId": "72b92401-31f5-4b5e-a543-9281dffc0181",
                   "promptSha256": "2437e704713d1141a6e4746ff746a9fa6332d3aefd0660ce01c6c727ce08f8b7",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -826,7 +836,7 @@
             }
           ]
         },
-        "id": "4d338ac6-abbe-4d38-a2e2-f8526f6dc898",
+        "id": "8b881a64-cc26-4444-af46-258c7d983c9c",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -836,6 +846,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -881,6 +892,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -981,16 +993,17 @@
               },
               "metadata": {
                 "graderEvidence": {
-                  "schema": "example.grader-evidence/v7",
+                  "schema": "example.grader-evidence/v8",
+                  "wire": "anthropic-messages/v1",
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
+                    "sha256": "9332e4a126939166f06bc838df330c2ce7e406eda46d77dadf1b879e770c8bc1",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
+                  "graderRunId": "d224ec87-99ef-4283-9f83-30f5bd59dbb0",
                   "callSeq": 5,
-                  "callId": "20205bd2-e955-4840-92fc-eddc3f417717",
+                  "callId": "bc6a02c1-2a1f-4eef-839a-788e2b5fc620",
                   "promptSha256": "2437e704713d1141a6e4746ff746a9fa6332d3aefd0660ce01c6c727ce08f8b7",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1047,7 +1060,7 @@
             }
           ]
         },
-        "id": "f1fba261-1f87-4ffd-bddf-b04c7b9f09d7",
+        "id": "0600188e-e9a1-4f75-84e4-355f0f68d942",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -1057,6 +1070,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -1102,6 +1116,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -1202,16 +1217,17 @@
               },
               "metadata": {
                 "graderEvidence": {
-                  "schema": "example.grader-evidence/v7",
+                  "schema": "example.grader-evidence/v8",
+                  "wire": "anthropic-messages/v1",
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
+                    "sha256": "9332e4a126939166f06bc838df330c2ce7e406eda46d77dadf1b879e770c8bc1",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
+                  "graderRunId": "d224ec87-99ef-4283-9f83-30f5bd59dbb0",
                   "callSeq": 6,
-                  "callId": "b5021b45-2d2e-4366-a819-aa8cd1c8aa24",
+                  "callId": "b8d82034-c7cb-41ff-a2d7-c4eec1fce189",
                   "promptSha256": "2437e704713d1141a6e4746ff746a9fa6332d3aefd0660ce01c6c727ce08f8b7",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1268,7 +1284,7 @@
             }
           ]
         },
-        "id": "d1a498aa-4eb1-44cc-a978-552cd10f433f",
+        "id": "2a05b94b-19a3-4bda-9142-c4d3420790b3",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -1278,6 +1294,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -1323,6 +1340,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -1423,16 +1441,17 @@
               },
               "metadata": {
                 "graderEvidence": {
-                  "schema": "example.grader-evidence/v7",
+                  "schema": "example.grader-evidence/v8",
+                  "wire": "anthropic-messages/v1",
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
+                    "sha256": "9332e4a126939166f06bc838df330c2ce7e406eda46d77dadf1b879e770c8bc1",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
+                  "graderRunId": "d224ec87-99ef-4283-9f83-30f5bd59dbb0",
                   "callSeq": 7,
-                  "callId": "66a3e0aa-c519-4864-8449-849ec0d2eaf3",
+                  "callId": "b6a563a2-16a7-489c-9769-11ad9f0d9650",
                   "promptSha256": "ea3c139b01cf6bd95ccca147d23a019f2775185adfeb2568395463bdd4317259",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1489,7 +1508,7 @@
             }
           ]
         },
-        "id": "463ac957-0730-42fe-af1a-b9d9ab0bfe47",
+        "id": "e228beb6-7cee-4a55-8b8b-bfaf39d6781c",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -1499,6 +1518,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -1544,6 +1564,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -1644,16 +1665,17 @@
               },
               "metadata": {
                 "graderEvidence": {
-                  "schema": "example.grader-evidence/v7",
+                  "schema": "example.grader-evidence/v8",
+                  "wire": "anthropic-messages/v1",
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
+                    "sha256": "9332e4a126939166f06bc838df330c2ce7e406eda46d77dadf1b879e770c8bc1",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
+                  "graderRunId": "d224ec87-99ef-4283-9f83-30f5bd59dbb0",
                   "callSeq": 8,
-                  "callId": "f2a5506c-30a7-458f-b513-3127da945ab9",
+                  "callId": "e4039511-bffe-49dc-b865-b0afb9c0f83d",
                   "promptSha256": "ea3c139b01cf6bd95ccca147d23a019f2775185adfeb2568395463bdd4317259",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1710,8 +1732,8 @@
             }
           ]
         },
-        "id": "d8b12209-2110-44d3-a615-5fb7781020b8",
-        "latencyMs": 0,
+        "id": "aa919e74-7ef1-4a41-af90-e9fa6d36d9dc",
+        "latencyMs": 1,
         "namedScores": {},
         "prompt": {
           "raw": "Please refund my last order.",
@@ -1720,6 +1742,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -1765,6 +1788,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -1865,16 +1889,17 @@
               },
               "metadata": {
                 "graderEvidence": {
-                  "schema": "example.grader-evidence/v7",
+                  "schema": "example.grader-evidence/v8",
+                  "wire": "anthropic-messages/v1",
                   "grader": {
                     "name": "anchorset-recording-grader",
                     "language": "js",
-                    "sha256": "cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba",
+                    "sha256": "9332e4a126939166f06bc838df330c2ce7e406eda46d77dadf1b879e770c8bc1",
                     "runtime": "node v25.6.1"
                   },
-                  "graderRunId": "64bebab4-be2f-42f8-80db-4a7ada345f0b",
+                  "graderRunId": "d224ec87-99ef-4283-9f83-30f5bd59dbb0",
                   "callSeq": 9,
-                  "callId": "6335db46-34af-4016-80c8-13d9b2596efb",
+                  "callId": "73a2d2d8-db8f-4c72-8dfd-eff3c4a7f6f5",
                   "promptSha256": "ea3c139b01cf6bd95ccca147d23a019f2775185adfeb2568395463bdd4317259",
                   "sent": {
                     "system": "2140c13a639f7b4fbbedc394bb6ecb93bca7b7f10e401ece2d22c2221be9894e",
@@ -1931,7 +1956,7 @@
             }
           ]
         },
-        "id": "803428e1-806e-440e-8b74-4a03d8bf8194",
+        "id": "f061882a-0565-4ef2-a809-85aeede44890",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -1941,6 +1966,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -1986,6 +2012,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -2075,8 +2102,8 @@
           }
         }
       },
-      "durationMs": 92,
-      "evaluationDurationMs": 92
+      "durationMs": 75,
+      "evaluationDurationMs": 75
     }
   },
   "config": {
@@ -2119,6 +2146,7 @@
         "provider": {
           "id": "file://grader-provider.cjs",
           "config": {
+            "wire": "anthropic-messages/v1",
             "model": "fake-judge-old",
             "max_tokens": 256,
             "temperature": 0,
@@ -2151,8 +2179,8 @@
     "nodeVersion": "v25.6.1",
     "platform": "darwin",
     "arch": "arm64",
-    "exportedAt": "2026-10-30T20:33:56.718Z",
-    "evaluationCreatedAt": "2026-10-30T20:33:56.595Z"
+    "exportedAt": "2026-11-07T10:31:07.544Z",
+    "evaluationCreatedAt": "2026-11-07T10:31:07.445Z"
   },
   "vars": [
     "case_id",

@@ -13,9 +13,10 @@ import { promisify } from 'node:util';
 import { GRADER_KEY_ENV_NAME, graderBaseUrlProblem } from '../examples/importers/shared.ts';
 import { callShapeHash, EFFORTS, hashOf, validateCallShape } from '../src/index.ts';
 import { mulberry32, randomInt, seedFromString } from '../src/rng.ts';
-import { GRADER_CONFIG_KEYS, GRADER_DEFAULTS, GRADER_NAME, REASK_CEILING, REASK_REASONS, RECORD_SCHEMA, SENT_EFFORTS, TIMEOUT_MS_CEILING } from '../examples/importers/shared.ts';
-import { startFakeEndpoint } from '../examples/importers/fake-endpoint.ts';
+import { GATEWAY_VARIABLES, GRADER_CONFIG_KEYS, GRADER_DEFAULTS, GRADER_NAME, OPENAI_MIN_OUTPUT_TOKENS, REASK_CEILING, REASK_REASONS, RECORD_SCHEMA, SENT_EFFORTS, TIMEOUT_MS_CEILING } from '../examples/importers/shared.ts';
+import { OPENAI_ROUTE_MODES, startFakeEndpoint } from '../examples/importers/fake-endpoint.ts';
 import type { CallShape } from '../src/index.ts';
+import { scratchEnv, skipOrFail } from './helpers.ts';
 
 // The recording grader and the stored-outputs provider, called the way promptfoo calls a provider:
 // `new Provider(options)`, then `await provider.callApi(prompt, context, callOptions)`. The tool is not run here.
@@ -86,7 +87,7 @@ afterEach(() => {
 });
 
 /** The three settings a grader is never given a default for. A bound of 0 re-asks is one ask per slot. */
-const STATED = { thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0 } as const;
+const STATED = { wire: 'anthropic-messages/v1', thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0 } as const;
 
 const SYSTEM = 'You are grading "output" for a refund bot.\nUse JSON: {"pass": true}  é ✓';
 const USER = 'Output: Refund granted within 30 days.\n\nRubric:\n\tThe reply follows the policy. \\ "quoted"';
@@ -117,7 +118,7 @@ describe('the recording grader: the whole request', () => {
     assert.deepEqual(s.body, { model: 'judge-requested', max_tokens: 256, temperature: 0.7, system: SYSTEM, messages: [{ role: 'user', content: USER }] });
 
     const rec = r.metadata.graderEvidence;
-    assert.equal(rec['schema'], 'example.grader-evidence/v7');
+    assert.equal(rec['schema'], 'example.grader-evidence/v8');
     assert.equal(rec['requestedModel'], s.body.model);
     assert.equal(rec['promptSha256'], sha(PAIR));
     assert.deepEqual(rec['sent'], { system: sha(s.body.system), user: sha(s.body.messages[0]!.content), thinking: 'NOT_SENT', output_config: 'NOT_SENT' });
@@ -133,7 +134,7 @@ describe('the recording grader: the whole request', () => {
     assert.deepEqual(rec['contentTypes'], ['text']);
     assert.equal(rec['stopReason'], 'end_turn');
     assert.equal(rec['responseId'], 'msg_test_1');
-    assert.deepEqual(Object.keys(rec).sort(), ['callId', 'callSeq', 'callShape', 'contentTypes', 'grader', 'graderRunId', 'promptSha256', 'reask', 'reply', 'requestedModel', 'responseId', 'schema', 'sent', 'servedModel', 'stopReason', 'thinkingTokens', 'usage']);
+    assert.deepEqual(Object.keys(rec).sort(), ['callId', 'callSeq', 'callShape', 'contentTypes', 'grader', 'graderRunId', 'promptSha256', 'reask', 'reply', 'requestedModel', 'responseId', 'schema', 'sent', 'servedModel', 'stopReason', 'thinkingTokens', 'usage', 'wire']);
     assert.deepEqual(rec['reask'], { max: 0, earlier: [] });
     assert.equal(rec['usage'], 'ABSENT');
     assert.equal(rec['callSeq'], 1);
@@ -890,14 +891,12 @@ describe('an environment switch that reroutes or weakens the request stops the g
   const run = promisify(execFile);
   const SCRIPT = `
     const G = require(process.env.T_GRADER);
-    const g = new G({ config: { model: 'm', max_tokens: 8, baseUrl: process.env.T_BASE, thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0 } });
+    const g = new G({ config: { model: 'm', max_tokens: 8, baseUrl: process.env.T_BASE, wire: 'anthropic-messages/v1', thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0 } });
     g.callApi(JSON.stringify([{ role: 'user', content: 'x' }])).then((r) => console.log('OK ' + r.output), (e) => console.log('ERR ' + e.message));
   `;
-  const CLEAN = ['HTTP_PROXY', 'http_proxy', 'HTTPS_PROXY', 'https_proxy', 'ALL_PROXY', 'NO_PROXY', 'no_proxy', 'NODE_USE_ENV_PROXY', 'NODE_TLS_REJECT_UNAUTHORIZED', 'NODE_OPTIONS'];
   async function child(env: Record<string, string>, target: string = base, execArgv: string[] = []): Promise<string> {
-    const e: Record<string, string | undefined> = { ...process.env };
-    for (const k of CLEAN) delete e[k];
-    const r = await run(process.execPath, [...execArgv, '-e', SCRIPT], { env: { ...e, ...env, T_GRADER: GRADER_PATH, T_BASE: target, ANTHROPIC_API_KEY: KEY }, encoding: 'utf8' });
+    // An environment built from scratch (the paid-API guard): sentinel keys, no address variable, and nothing of the machine's own.
+    const r = await run(process.execPath, [...execArgv, '-e', SCRIPT], { env: scratchEnv({ ...env, T_GRADER: GRADER_PATH, T_BASE: target, ANTHROPIC_API_KEY: KEY }), encoding: 'utf8' });
     return r.stdout.trim();
   }
 
@@ -970,23 +969,63 @@ describe('the importers\' copies of the grader\'s defaults and settings equal th
   const jsConst = (name: string): string => (js.match(new RegExp(`const ${name} = ([^;]+);`)) ?? [])[1] ?? 'MISSING';
   const pyConst = (name: string): string => (py.match(new RegExp(`^${name} = (.+)$`, 'm')) ?? [])[1] ?? 'MISSING';
   it('the JavaScript grader', () => {
-    assert.equal(jsConst('DEFAULT_BASE_URL'), `'${GRADER_DEFAULTS.baseUrl}'`);
-    assert.equal(jsConst('DEFAULT_API_VERSION'), `'${GRADER_DEFAULTS.apiVersion}'`);
-    assert.equal(jsConst('DEFAULT_TIMEOUT_MS'), String(GRADER_DEFAULTS.timeoutMs));
+    assert.equal(jsConst('DEFAULT_BASE_URL'), `'${GRADER_DEFAULTS['anthropic-messages/v1'].baseUrl}'`);
+    assert.equal(jsConst('DEFAULT_OPENAI_BASE_URL'), `'${GRADER_DEFAULTS['openai-responses/v1'].baseUrl}'`);
+    assert.equal(jsConst('DEFAULT_API_VERSION'), `'${GRADER_DEFAULTS['anthropic-messages/v1'].apiVersion}'`);
+    assert.equal(jsConst('DEFAULT_TIMEOUT_MS'), String(GRADER_DEFAULTS['anthropic-messages/v1'].timeoutMs));
+    assert.equal(GRADER_DEFAULTS['openai-responses/v1'].timeoutMs, GRADER_DEFAULTS['anthropic-messages/v1'].timeoutMs);
     assert.equal(jsConst('GRADER_NAME'), `'${GRADER_NAME}'`);
     const keys = [...jsConst('ALLOWED_CONFIG').matchAll(/'([^']+)'/g)].map((m) => m[1]);
-    assert.deepEqual(keys, [...GRADER_CONFIG_KEYS.promptfoo]);
+    assert.deepEqual(keys, [...GRADER_CONFIG_KEYS.promptfoo['anthropic-messages/v1']]);
+    const openaiKeys = [...jsConst('OPENAI_ALLOWED_CONFIG').matchAll(/'([^']+)'/g)].map((m) => m[1]);
+    assert.deepEqual(openaiKeys, [...GRADER_CONFIG_KEYS.promptfoo['openai-responses/v1']]);
   });
   it('the Python grader', () => {
-    assert.equal(pyConst('DEFAULT_BASE_URL'), `"${GRADER_DEFAULTS.baseUrl}"`);
-    assert.equal(pyConst('DEFAULT_API_VERSION'), `"${GRADER_DEFAULTS.apiVersion}"`);
-    assert.equal(pyConst('DEFAULT_TIMEOUT_MS'), String(GRADER_DEFAULTS.timeoutMs));
+    assert.equal(pyConst('DEFAULT_BASE_URL'), `"${GRADER_DEFAULTS['anthropic-messages/v1'].baseUrl}"`);
+    assert.equal(pyConst('DEFAULT_OPENAI_BASE_URL'), `"${GRADER_DEFAULTS['openai-responses/v1'].baseUrl}"`);
+    assert.equal(pyConst('DEFAULT_API_VERSION'), `"${GRADER_DEFAULTS['anthropic-messages/v1'].apiVersion}"`);
+    assert.equal(pyConst('DEFAULT_TIMEOUT_MS'), String(GRADER_DEFAULTS['anthropic-messages/v1'].timeoutMs));
     assert.equal(pyConst('GRADER_NAME'), `"${GRADER_NAME}"`);
-    const keys = [...pyConst('ALLOWED_MODEL_ARGS').matchAll(/"([^"]+)"/g)].map((m) => m[1]);
-    assert.deepEqual(keys, [...GRADER_CONFIG_KEYS.inspect]);
+    assert.equal(pyConst('POSTED_PATH'), '"/v1/messages"');
+    assert.equal(pyConst('OPENAI_POSTED_PATH'), '"/responses"');
+    assert.equal(pyConst('DEFAULT_KEY_ENV'), '"ANTHROPIC_API_KEY"');
+    assert.equal(pyConst('DEFAULT_OPENAI_KEY_ENV'), '"OPENAI_API_KEY"');
+    assert.equal(pyConst('WIRE_ANTHROPIC'), '"anthropic-messages/v1"');
+    assert.equal(pyConst('WIRE_OPENAI'), '"openai-responses/v1"');
   });
-  it('the record schema string is one value in shared.ts and in both grader files', () => {
+  it('the Python grader: the model arguments of each wire are shared.ts\'s own, and the cap is the tool\'s generation setting max_tokens, sent as max_output_tokens on the OpenAI wire', () => {
+    const keys = (name: string): string[] => [...pyConst(name).matchAll(/"([^"]+)"/g)].map((m) => m[1] as string);
+    assert.deepEqual(keys('ALLOWED_MODEL_ARGS_ANTHROPIC'), [...GRADER_CONFIG_KEYS.inspect['anthropic-messages/v1']]);
+    assert.deepEqual(keys('ALLOWED_MODEL_ARGS_OPENAI'), [...GRADER_CONFIG_KEYS.inspect['openai-responses/v1']]);
+    // The cap is not a model argument in the Python grader: it is the generation setting `max_tokens` of the tool, the only one besides the temperature.
+    assert.deepEqual(keys('SENT_CONFIG_FIELDS'), ['max_tokens', 'temperature']);
+    for (const w of ['anthropic-messages/v1', 'openai-responses/v1'] as const) assert.ok(!GRADER_CONFIG_KEYS.inspect[w].some((k) => /max.*tokens/.test(k)), w);
+    // ...and the two promptfoo lists name the cap for the wire: max_tokens, and max_output_tokens (the name the Python grader sends on the OpenAI wire).
+    assert.ok(GRADER_CONFIG_KEYS.promptfoo['anthropic-messages/v1'].includes('max_tokens'));
+    assert.ok(GRADER_CONFIG_KEYS.promptfoo['openai-responses/v1'].includes('max_output_tokens'));
+    assert.match(py, /"max_output_tokens": self\.max_tokens/);
+    assert.match(py, /"maxOutputTokens": self\.max_tokens/);
+    // The smallest cap of the OpenAI wire, and the bound on both, are the same numbers in shared.ts and in both graders.
+    assert.equal(pyConst('OPENAI_MIN_OUTPUT_TOKENS'), String(OPENAI_MIN_OUTPUT_TOKENS));
+    assert.equal(jsConst('OPENAI_MIN_OUTPUT_TOKENS'), String(OPENAI_MIN_OUTPUT_TOKENS));
+    assert.equal(pyConst('INTEGER_BOUND'), '2**53');
+  });
+  it('the four OpenAI address variables, the efforts and verbosities of the OpenAI wire, and the plain form of a type are one list in shared.ts and both graders', () => {
+    const jsList = (name: string): string[] => [...jsConst(name).matchAll(/'([^']+)'/g)].map((m) => m[1] as string);
+    const pyList = (name: string): string[] => [...pyConst(name).matchAll(/"([^"]+)"/g)].map((m) => m[1] as string);
+    assert.deepEqual(jsList('OPENAI_ADDRESS_VARIABLES'), [...GATEWAY_VARIABLES['openai-responses/v1']]);
+    assert.deepEqual(pyList('OPENAI_ADDRESS_VARIABLES'), [...GATEWAY_VARIABLES['openai-responses/v1']]);
+    assert.deepEqual(jsList('OPENAI_EFFORTS'), [...EFFORTS]);
+    assert.deepEqual(pyList('OPENAI_EFFORTS'), [...EFFORTS]);
+    assert.deepEqual(jsList('VERBOSITIES'), ['low', 'medium', 'high']);
+    assert.deepEqual(pyList('VERBOSITIES'), ['low', 'medium', 'high']);
+    assert.equal(jsConst('TYPE_FORM'), '/^[a-z][a-z0-9_]{0,59}$/');
+    assert.equal(pyConst('TYPE_FORM'), 're.compile(r"[a-z][a-z0-9_]{0,59}")');
+  });
+  it('the record schema string is one value in shared.ts and the JavaScript grader file', () => {
     assert.equal(jsConst('RECORD_SCHEMA'), `'${RECORD_SCHEMA}'`);
+  });
+  it('the record schema string is the Python grader file\'s too', () => {
     assert.equal(pyConst('RECORD_SCHEMA'), `"${RECORD_SCHEMA}"`);
   });
   it('the effort list is equal across shared.ts, the JavaScript grader and the Python grader', () => {
@@ -1083,7 +1122,7 @@ describe('the bound is stated: maxReasks, an integer from 0 to 3, with no defaul
   it('maxReasks is required: a config without it throws before any request', async () => {
     assert.throws(() => make({ maxReasks: undefined }), /grader: config\.maxReasks is required \(no default\)/);
     const Grader = loadGrader();
-    assert.throws(() => new Grader({ config: { model: 'm', max_tokens: 5, baseUrl: base, thinking: 'NOT_SENT', effort: 'NOT_SENT' } }), /maxReasks is required/);
+    assert.throws(() => new Grader({ config: { model: 'm', max_tokens: 5, baseUrl: base, wire: 'anthropic-messages/v1', thinking: 'NOT_SENT', effort: 'NOT_SENT' } }), /maxReasks is required/);
     assert.equal(seen.length, 0);
   });
 
@@ -1329,7 +1368,7 @@ describe('what is never asked again', () => {
       const rec = r.metadata.graderEvidence;
       assert.deepEqual(rec['reask'], { max: 3, earlier: [] }, name);
       assert.equal(rec['stopReason'], over['stop_reason'] ?? 'end_turn', name);
-      assert.equal(rec['schema'], 'example.grader-evidence/v7', name);
+      assert.equal(rec['schema'], 'example.grader-evidence/v8', name);
     }
   });
 
@@ -2101,9 +2140,9 @@ describe('the head of a response: one verdict from both graders for each content
 
   it('the Python grader gives the same verdict for every one of them, with the same number of requests', async (t) => {
     const venv = process.env['ANCHORSET_INSPECT_VENV'];
-    const py = [...(venv === undefined ? [] : [join(venv, 'bin', 'python')]), 'python3.13', 'python3.12', 'python3.11', 'python3.10', 'python3', 'python'].find((p) => spawnSync(p, ['-c', 'import inspect_ai']).status === 0);
+    const py = [...(venv === undefined ? [] : [join(venv, 'bin', 'python')]), 'python3.13', 'python3.12', 'python3.11', 'python3.10', 'python3', 'python'].find((p) => spawnSync(p, ['-c', 'import inspect_ai'], { env: { PATH: process.env['PATH'] ?? '' } }).status === 0);
     if (py === undefined) {
-      t.skip('no Python with inspect_ai on this machine (set ANCHORSET_INSPECT_VENV)');
+      skipOrFail(t, 'no Python with inspect_ai on this machine (set ANCHORSET_INSPECT_VENV)');
       return;
     }
     respond = rawResponder;
@@ -2119,7 +2158,7 @@ rg._wait = no_wait
 out = []
 for i in range(${CASES.length}):
     waits.clear()
-    g = rg.RecordingGrader("judge-requested", base_url=f"${base}/py{i}", config=GenerateConfig(max_tokens=256), thinking="NOT_SENT", effort="NOT_SENT", max_reasks=1)
+    g = rg.RecordingGrader("judge-requested", base_url=f"${base}/py{i}", config=GenerateConfig(max_tokens=256), wire="anthropic-messages/v1", thinking="NOT_SENT", effort="NOT_SENT", max_reasks=1)
     try:
         o = asyncio.run(g.generate([ChatMessageUser(content="q")], [], "none", GenerateConfig(max_tokens=256)))
         got = "record" if o.metadata["graderEvidence"]["reply"] == '{"pass":true,"reason":"ok"}' else "another reply"
@@ -2259,9 +2298,9 @@ describe('the two graders hold a base URL to one rule, and record the same endpo
 
   it('each address is taken by both graders, with one endpoint, or refused by both; the importers refuse what the graders refuse, and nothing else', (t) => {
     const venv = process.env['ANCHORSET_INSPECT_VENV'];
-    const py = [...(venv === undefined ? [] : [join(venv, 'bin', 'python')]), 'python3.13', 'python3.12', 'python3.11', 'python3.10', 'python3', 'python'].find((p) => spawnSync(p, ['-c', 'import inspect_ai']).status === 0);
+    const py = [...(venv === undefined ? [] : [join(venv, 'bin', 'python')]), 'python3.13', 'python3.12', 'python3.11', 'python3.10', 'python3', 'python'].find((p) => spawnSync(p, ['-c', 'import inspect_ai'], { env: { PATH: process.env['PATH'] ?? '' } }).status === 0);
     if (py === undefined) {
-      t.skip('no Python with inspect_ai on this machine (set ANCHORSET_INSPECT_VENV)');
+      skipOrFail(t, 'no Python with inspect_ai on this machine (set ANCHORSET_INSPECT_VENV)');
       return;
     }
     const made = madeAddresses(6000);
@@ -2274,7 +2313,7 @@ import recording_grader as rg
 out = []
 for u in json.loads(sys.stdin.buffer.read().decode("utf-8")):
     try:
-        host, origin, port, secure, prefix, posted = rg.parse_base_url(u)
+        host, origin, port, secure, prefix, posted = rg.parse_base_url(u, rg.POSTED_PATH)
         out.append(origin + posted)
     except ValueError:
         out.append(None)
@@ -2342,3 +2381,965 @@ print(json.dumps(out))
     }
   });
 });
+
+// =====================================================================================================================
+// The OpenAI wire (Responses): openai-responses/v1
+//
+// Every grader here is built with a loopback base URL and a dummy key, and every request goes to the local server above or to the
+// stand-in. The guard below fails any test that lets a request leave 127.0.0.1 or [::1]; nothing here reaches a paid API.
+// =====================================================================================================================
+
+const OAI = 'openai-responses/v1';
+const OAI_KEY = 'test-dummy-openai-credential-9876543210';
+const savedEnv: Record<string, string | undefined> = {};
+const ENV_NAMES = ['OPENAI_API_KEY', 'OPENAI_BASE_URL', 'OPENAI_API_BASE_URL', 'OPENAI_API_HOST', 'OPENAI_HOST', 'ANTHROPIC_BASE_URL'];
+before(() => {
+  for (const n of ENV_NAMES) savedEnv[n] = process.env[n];
+  for (const n of ['OPENAI_BASE_URL', 'OPENAI_API_BASE_URL', 'OPENAI_API_HOST', 'OPENAI_HOST']) delete process.env[n];
+  delete process.env['ANTHROPIC_BASE_URL'];
+  process.env['OPENAI_API_KEY'] = OAI_KEY;
+});
+after(() => {
+  for (const n of ENV_NAMES) {
+    if (savedEnv[n] === undefined) delete process.env[n];
+    else process.env[n] = savedEnv[n];
+  }
+});
+
+// The paid-API guard. A request to any host that is not a literal loopback address is refused here and recorded; the test that made
+// it fails in afterEach. (The guard is the platform `fetch` the grader calls, replaced for this process only.)
+const offLoopback: string[] = [];
+const realFetch = globalThis.fetch;
+(globalThis as { fetch: unknown }).fetch = (async (input: string | URL | Request, init?: RequestInit): Promise<Response> => {
+  const u = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);
+  if (u.hostname !== '127.0.0.1' && u.hostname !== '[::1]') {
+    offLoopback.push(`${u.protocol}//${u.host}`);
+    throw new Error('blocked by the test guard: a request left the loopback addresses');
+  }
+  return realFetch(input, init);
+}) as typeof fetch;
+afterEach(() => {
+  const left = offLoopback.splice(0);
+  assert.deepEqual(left, [], 'a test sent a request to a host that is not 127.0.0.1 or [::1]');
+});
+
+const OSTATED = { wire: OAI, effort: 'NOT_SENT', verbosity: 'NOT_SENT', maxReasks: 0 } as const;
+function makeO(config: Record<string, unknown> = {}): Provider {
+  const Grader = loadGrader();
+  return new Grader({ id: 'file://grader-provider.cjs', config: { model: 'judge-requested', max_output_tokens: 256, baseUrl: `${base}/v1`, ...OSTATED, ...config } });
+}
+const VERDICT = '{"pass":true,"reason":"ok"}';
+const messageItem = (content: unknown[], over: Record<string, unknown> = {}): Record<string, unknown> => ({ type: 'message', id: 'msg_o_1', role: 'assistant', status: 'completed', content, ...over });
+const textPart = (text: string): Record<string, unknown> => ({ type: 'output_text', text, annotations: [] });
+const reasoningItem = { type: 'reasoning', id: 'rs_o_1', summary: [], encrypted_content: 'SECRET-ENCRYPTED-CONTENT', status: 'completed' };
+function bodyO(over: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id: 'resp_o_1', object: 'response', status: 'completed', error: null, incomplete_details: null, model: 'judge-served-2026', truncation: 'disabled', store: false,
+    output: [messageItem([textPart(VERDICT)])], usage: { input_tokens: 31, output_tokens: 12, output_tokens_details: { reasoning_tokens: 0 }, total_tokens: 43 },
+    ...over,
+  };
+}
+const okO = (over: Record<string, unknown> = {}): Respond => (_req, res) => {
+  res.writeHead(200, { 'content-type': 'application/json' });
+  res.end(JSON.stringify(bodyO(over)));
+};
+const firstThenO = (n: number, first: Respond, over: Record<string, unknown> = {}): Respond => (req, res, s) =>
+  seen.length <= n ? first(req, res, s) : okO({ id: `resp_o_${seen.length}`, ...over })(req, res, s);
+const cutO = (over: Record<string, unknown> = {}): Respond => (req, res, s) =>
+  okO({ id: `resp_cut_${seen.length}`, status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' }, output: [reasoningItem, messageItem([textPart('CUT-REPLY-TEXT {"pa')], { status: 'incomplete' })], usage: { input_tokens: 31, output_tokens: 256, output_tokens_details: { reasoning_tokens: 7 } }, ...over })(req, res, s);
+
+describe('the OpenAI wire: the wire is required and every setting is held to the wire, before any request', () => {
+  it('config.wire is required with no default, and must be one of the two names', () => {
+    const Grader = loadGrader();
+    const cfg = { model: 'm', max_output_tokens: 32, baseUrl: `${base}/v1`, effort: 'NOT_SENT', verbosity: 'NOT_SENT', maxReasks: 0 };
+    assert.throws(() => new Grader({ config: cfg }), /grader: config\.wire is required \(no default\)/);
+    for (const bad of ['openai', 'OpenAI-Responses/v1', 'openai-responses/v2', 'anthropic-messages', '', null, 1, ['openai-responses/v1']]) {
+      assert.throws(() => new Grader({ config: { ...cfg, wire: bad } }), /grader: config\.wire must be one of anthropic-messages\/v1, openai-responses\/v1/, String(bad));
+    }
+    assert.doesNotThrow(() => new Grader({ config: { ...cfg, wire: OAI } }));
+    assert.equal(seen.length, 0);
+  });
+
+  it('the Anthropic wire also needs it: a config of version 7 (no wire) is refused', () => {
+    const Grader = loadGrader();
+    assert.throws(() => new Grader({ config: { model: 'm', max_tokens: 5, baseUrl: base, thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0 } }), /config\.wire is required/);
+  });
+
+  it('the OpenAI wire requires its cap, effort, verbosity and maxReasks (no default for any), and refuses a cap below 16', () => {
+    assert.throws(() => makeO({ max_output_tokens: undefined }), /config\.max_output_tokens is required, an integer of at least 16/);
+    assert.throws(() => makeO({ effort: undefined }), /config\.effort is required \(no default\)/);
+    assert.throws(() => makeO({ verbosity: undefined }), /config\.verbosity is required \(no default\)/);
+    assert.throws(() => makeO({ maxReasks: undefined }), /config\.maxReasks is required \(no default\)/);
+    for (const bad of [15, 0, -16, 16.5, '16', null, Number.NaN]) assert.throws(() => makeO({ max_output_tokens: bad }), /max_output_tokens is required/, String(bad));
+    assert.doesNotThrow(() => makeO({ max_output_tokens: 16 }));
+    assert.equal(seen.length, 0);
+  });
+
+  it('the other wire\'s settings are refused: max_tokens, thinking and apiVersion on the OpenAI wire; max_output_tokens and verbosity on the Anthropic wire', () => {
+    for (const [k, v] of [['max_tokens', 256], ['thinking', 'NOT_SENT'], ['apiVersion', '2023-06-01']] as const) {
+      assert.throws(() => makeO({ [k]: v }), new RegExp(`config key "${k}" is not one the grader sends on the openai-responses/v1 wire`), k);
+    }
+    for (const [k, v] of [['max_output_tokens', 256], ['verbosity', 'low']] as const) {
+      assert.throws(() => make({ [k]: v }), new RegExp(`config key "${k}" is not one the grader sends on the anthropic-messages/v1 wire`), k);
+    }
+    assert.equal(seen.length, 0);
+  });
+
+  it('store and truncation are not settings, and no other field of the request is offered: each is refused as a config key', () => {
+    for (const k of ['store', 'truncation', 'top_p', 'seed', 'service_tier', 'reasoning', 'include', 'metadata', 'tools', 'tool_choice', 'parallel_tool_calls', 'previous_response_id', 'conversation', 'background', 'stream', 'text', 'instructions', 'input', 'stop', 'n', 'logprobs', 'max_completion_tokens']) {
+      assert.throws(() => makeO({ [k]: k === 'store' ? false : k === 'truncation' ? 'disabled' : 1 }), new RegExp(`config key "${k}" is not one the grader sends`), k);
+    }
+    assert.equal(seen.length, 0);
+  });
+
+  it('the temperature range is [0, 2] on the OpenAI wire and [0, 1] on the Anthropic wire', () => {
+    for (const t of [0, 1, 1.5, 2]) assert.doesNotThrow(() => makeO({ temperature: t }), String(t));
+    for (const t of [-0.1, 2.1, Number.NaN, Infinity, '1', null]) assert.throws(() => makeO({ temperature: t }), /config\.temperature must be a number in \[0, 2\]/, String(t));
+    assert.doesNotThrow(() => make({ temperature: 1 }));
+    assert.throws(() => make({ temperature: 1.5 }), /config\.temperature must be a number in \[0, 1\]/);
+  });
+
+  it('effort: NOT_SENT or any of the seven words of the OpenAI wire; verbosity: NOT_SENT, low, medium or high', () => {
+    for (const e of ['NOT_SENT', 'none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max']) assert.doesNotThrow(() => makeO({ effort: e }), e);
+    for (const e of ['ultra', 'LOW', '', null, 1, 'not_sent']) assert.throws(() => makeO({ effort: e }), /config\.effort must be "NOT_SENT" or one of none, minimal, low, medium, high, xhigh, max/, String(e));
+    for (const v of ['NOT_SENT', 'low', 'medium', 'high']) assert.doesNotThrow(() => makeO({ verbosity: v }), v);
+    for (const v of ['verbose', 'LOW', '', null, 0]) assert.throws(() => makeO({ verbosity: v }), /config\.verbosity must be "NOT_SENT" or one of low, medium, high/, String(v));
+    // The Anthropic wire keeps its five words.
+    assert.throws(() => make({ effort: 'none' }), /one of low, medium, high, xhigh, max/);
+  });
+
+  it('the same checks as ever hold: a model id that reads as unknown, a timeout over one hour, a key variable that is not a name', () => {
+    assert.throws(() => makeO({ model: 'unknown' }), /config\.model must be one printable line/);
+    assert.throws(() => makeO({ timeoutMs: 3600001 }), /timeoutMs must be a positive integer of at most 3600000/);
+    assert.throws(() => makeO({ apiKeyEnv: 'sk-live-xxxx!' }), /apiKeyEnv must be the name of an environment variable/);
+    assert.throws(() => makeO({ baseUrl: 'http://example.com/v1' }), /baseUrl must be https/);
+    assert.throws(() => makeO({ baseUrl: 'http://localhost:8080/v1' }), /baseUrl must be https/);
+    assert.equal(seen.length, 0);
+  });
+
+  it('the OpenAI wire\'s default address is https://api.openai.com/v1, posted to as <base>/responses (constructor only: no call is made)', () => {
+    const Grader = loadGrader();
+    const g = new Grader({ config: { model: 'm', max_output_tokens: 32, ...OSTATED } }) as unknown as { target: { url: string; origin: string } };
+    assert.equal(g.target.url, 'https://api.openai.com/v1/responses');
+    assert.equal(g.target.origin, 'https://api.openai.com');
+    const a = loadGrader();
+    const d = new a({ config: { model: 'm', max_tokens: 32, wire: 'anthropic-messages/v1', thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0 } }) as unknown as { target: { url: string } };
+    assert.equal(d.target.url, 'https://api.anthropic.com/v1/messages');
+    assert.equal(seen.length, 0);
+  });
+
+  it('the guard on its own: a fetch to a host that is not loopback rejects and is logged (a reserved .invalid name, never resolved)', async () => {
+    await assert.rejects(fetch('https://guard-probe.invalid/'), /blocked by the test guard/);
+    assert.deepEqual(offLoopback.splice(0), ['https://guard-probe.invalid']);
+  });
+
+  it('a cap that is not a safe integer is refused before any call, on both wires (1e21 included)', () => {
+    for (const bad of [1e21, 2 ** 53, Infinity]) {
+      assert.throws(() => makeO({ max_output_tokens: bad }), /max_output_tokens is required/, String(bad));
+      assert.throws(() => make({ max_tokens: bad }), /max_tokens is required/, String(bad));
+    }
+    assert.doesNotThrow(() => makeO({ max_output_tokens: 2 ** 53 - 1 }));
+    assert.doesNotThrow(() => make({ max_tokens: 2 ** 53 - 1 }));
+    assert.equal(seen.length, 0);
+  });
+});
+
+describe('the OpenAI wire: the request, exactly', () => {
+  it('sends the documented body in the documented order, with a system text as `instructions`, and these headers', async () => {
+    respond = okO();
+    const g = makeO({ temperature: 1.5, effort: 'none', verbosity: 'low' });
+    await g.callApi(PAIR, { vars: {} }, {});
+    assert.equal(seen.length, 1);
+    const s = seen[0]!;
+    assert.equal(s.method, 'POST');
+    assert.equal(s.url, '/v1/responses');
+    assert.equal(s.raw, JSON.stringify({
+      model: 'judge-requested', input: [{ role: 'user', content: USER }], instructions: SYSTEM, max_output_tokens: 256, store: false, truncation: 'disabled',
+      temperature: 1.5, reasoning: { effort: 'none' }, text: { verbosity: 'low' },
+    }));
+    assert.equal(s.headers['content-type'], 'application/json');
+    assert.equal(s.headers['authorization'], `Bearer ${OAI_KEY}`);
+    assert.equal(s.headers['accept-encoding'], 'identity');
+    // No header of the call's own other than these (the rest are the platform client's); none of the Anthropic ones, none of OpenAI's account headers.
+    const clientOwn = new Set(['host', 'connection', 'accept', 'accept-language', 'sec-fetch-mode', 'user-agent', 'accept-encoding', 'content-length']);
+    assert.deepEqual(Object.keys(s.headers).filter((h) => !clientOwn.has(h)).sort(), ['authorization', 'content-type']);
+  });
+
+  it('with no system text, no temperature, no effort and no verbosity the body holds the five keys that are always there', async () => {
+    respond = okO();
+    await makeO().callApi(SOLO);
+    assert.deepEqual(seen[0]!.body, { model: 'judge-requested', input: [{ role: 'user', content: USER }], max_output_tokens: 256, store: false, truncation: 'disabled' });
+    assert.deepEqual(Object.keys(seen[0]!.body), ['model', 'input', 'max_output_tokens', 'store', 'truncation']);
+  });
+
+  it('sends a temperature of 0 (a value, not an absence)', async () => {
+    respond = okO();
+    const rec = (await makeO({ temperature: 0 }).callApi(SOLO)).metadata.graderEvidence;
+    assert.equal(seen[0]!.body.temperature, 0);
+    assert.equal(rec['callShape'].temperature, 0);
+  });
+
+  it('sends the handed texts byte for byte', async () => {
+    respond = okO();
+    await makeO().callApi(PAIR);
+    assert.equal(seen[0]!.body.instructions, SYSTEM);
+    assert.equal(seen[0]!.body.input[0].content, USER);
+    assert.deepEqual(seen[0]!.body.input, [{ role: 'user', content: USER }]);
+  });
+
+  it('puts the base URL path before /responses, without a doubled slash', async () => {
+    respond = okO();
+    const rec = (await makeO({ baseUrl: `${base}/proxy/v1/` }).callApi(SOLO)).metadata.graderEvidence;
+    assert.equal(seen[0]!.url, '/proxy/v1/responses');
+    assert.equal(rec['callShape'].endpoint, `${base}/proxy/v1/responses`);
+  });
+
+  it('the key is read from OPENAI_API_KEY by default and from the variable apiKeyEnv names otherwise, and goes in the authorization header only', async () => {
+    respond = okO();
+    process.env['ANTHROPIC_API_KEY'] = KEY; // set, and not the OpenAI wire\'s variable
+    const r = await makeO().callApi(PAIR);
+    assert.equal(seen[0]!.headers['authorization'], `Bearer ${OAI_KEY}`);
+    assert.ok(!JSON.stringify(r).includes(OAI_KEY));
+    assert.ok(!seen[0]!.raw.includes(OAI_KEY));
+    for (const [h, v] of Object.entries(seen[0]!.headers)) if (h !== 'authorization') assert.ok(!String(v).includes(OAI_KEY), h);
+    assert.ok(![...Object.values(seen[0]!.headers)].some((v) => String(v).includes(KEY)), 'the Anthropic key is not sent either');
+    process.env['MY_GATEWAY_KEY'] = 'test-dummy-gateway-credential-1';
+    try {
+      await makeO({ apiKeyEnv: 'MY_GATEWAY_KEY' }).callApi(SOLO);
+      assert.equal(seen[1]!.headers['authorization'], 'Bearer test-dummy-gateway-credential-1');
+    } finally {
+      delete process.env['MY_GATEWAY_KEY'];
+    }
+  });
+
+  it('refuses a call when the key variable is not set, or the key holds a character outside visible ASCII, and sends nothing', async () => {
+    const saved = process.env['OPENAI_API_KEY'];
+    try {
+      delete process.env['OPENAI_API_KEY'];
+      await assert.rejects(makeO().callApi(SOLO), /the key variable named in apiKeyEnv is not set/);
+      process.env['OPENAI_API_KEY'] = 'bad key\nwith line feed';
+      const e = await rejection(makeO().callApi(SOLO));
+      assert.match(e.message, /not visible ASCII/);
+      assert.ok(!e.message.includes('bad key'));
+    } finally {
+      process.env['OPENAI_API_KEY'] = saved;
+    }
+    assert.equal(seen.length, 0);
+  });
+
+  it('every ask of a slot sends the same bytes and the same headers', async () => {
+    respond = firstThenO(2, cutO());
+    const { value: r } = await withShortWaits(() => makeO({ maxReasks: 3, temperature: 0.2, effort: 'low' }).callApi(PAIR));
+    assert.equal(seen.length, 3);
+    assert.equal(seen[0]!.raw, seen[1]!.raw);
+    assert.equal(seen[1]!.raw, seen[2]!.raw);
+    for (const h of ['content-type', 'authorization', 'content-length']) assert.equal(seen[0]!.headers[h], seen[2]!.headers[h], h);
+    assert.equal(r.metadata.graderEvidence['reask'].earlier.length, 2);
+  });
+});
+
+describe('the OpenAI wire: the record, version 8', () => {
+  it('writes the keys, the sent block and the call shape of the OpenAI wire, and no other', async () => {
+    respond = okO({ model: 'judge-served-2026' });
+    const r = await makeO({ temperature: 0.7, effort: 'high', verbosity: 'medium', maxReasks: 2 }).callApi(PAIR);
+    const rec = r.metadata.graderEvidence;
+    assert.deepEqual(Object.keys(rec).sort(), ['callId', 'callSeq', 'callShape', 'contentTypes', 'grader', 'graderRunId', 'incompleteReason', 'promptSha256', 'reask', 'reply', 'requestedModel', 'responseId', 'schema', 'sent', 'servedModel', 'stopReason', 'thinkingTokens', 'usage', 'wire']);
+    assert.equal(rec['schema'], 'example.grader-evidence/v8');
+    assert.equal(rec['wire'], OAI);
+    assert.deepEqual(rec['sent'], { system: sha(SYSTEM), user: sha(USER), reasoning: { effort: 'high' }, text: { verbosity: 'medium' }, store: false, truncation: 'disabled' });
+    assert.deepEqual(Object.keys(rec['sent']), ['system', 'user', 'reasoning', 'text', 'store', 'truncation']);
+    assert.equal(rec['requestedModel'], 'judge-requested');
+    assert.equal(rec['servedModel'], 'judge-served-2026');
+    assert.equal(rec['responseId'], 'resp_o_1');
+    assert.equal(rec['stopReason'], 'completed');
+    assert.equal(rec['incompleteReason'], 'ABSENT');
+    assert.deepEqual(rec['contentTypes'], ['message/output_text']);
+    assert.equal(rec['thinkingTokens'], 0);
+    assert.deepEqual(rec['usage'], { input_tokens: 31, output_tokens: 12 });
+    assert.equal(rec['reply'], VERDICT);
+    assert.equal(r.output, VERDICT);
+    assert.equal(rec['promptSha256'], sha(PAIR));
+    assert.deepEqual(rec['reask'], { max: 2, earlier: [] });
+    assert.equal(rec['callSeq'], 1);
+    assert.deepEqual(Object.keys(rec['grader']).sort(), ['language', 'name', 'runtime', 'sha256']);
+    assert.deepEqual(JSON.parse(JSON.stringify(rec)), rec);
+    assert.ok(!JSON.stringify(rec).includes('null'));
+  });
+
+  it('records NOT_SENT for what was not sent, in `sent` and in the call shape', async () => {
+    respond = okO();
+    const rec = (await makeO().callApi(SOLO)).metadata.graderEvidence;
+    assert.deepEqual(rec['sent'], { system: 'NOT_SENT', user: sha(USER), reasoning: 'NOT_SENT', text: 'NOT_SENT', store: false, truncation: 'disabled' });
+    assert.equal(rec['callShape'].effort, 'NOT_SENT');
+    assert.equal(rec['callShape'].temperature, 'NOT_SENT');
+    assert.deepEqual(rec['callShape'].extras, { 'openai.store': false });
+  });
+
+  it('writes a call shape that validates and hashes to a known value: the route, NOT_SENT for the Anthropic keys, `none` as the context policy, and the extras', async () => {
+    respond = okO();
+    const shape = (await makeO({ temperature: 0.7, effort: 'xhigh', verbosity: 'high' }).callApi(PAIR)).metadata.graderEvidence['callShape'];
+    assert.deepEqual(validateCallShape(shape), []);
+    const expected = {
+      schema: 'anchorset.callshape/v1', endpoint: `${base}/v1/responses`, apiVersion: 'NOT_SENT', betaFlags: 'NOT_SENT', thinkingMode: 'NOT_SENT',
+      thinkingBudgetTokens: 'NOT_SENT', effort: 'xhigh', toolChoice: 'NOT_SENT', toolChoiceName: 'NOT_SENT', strictTools: 'NOT_SENT',
+      parallelToolUse: 'NOT_SENT', temperature: 0.7, topP: 'NOT_SENT', topK: 'NOT_SENT', frequencyPenalty: 'NOT_SENT', presencePenalty: 'NOT_SENT',
+      samplingSeed: 'NOT_SENT', maxOutputTokens: 256, stopSequences: 'NOT_SENT', responseFormat: 'NOT_SENT', contextPolicy: 'none', stream: 'NOT_SENT',
+      timeoutMs: 60000, extras: { 'openai.store': false, 'openai.verbosity': 'high' },
+    };
+    assert.deepEqual(shape, expected);
+    assert.equal(callShapeHash(shape as CallShape), hashOf(expected));
+    // Not a named key's alias: truncation is the context policy above, so the extras never carry it.
+    assert.ok(!('openai.truncation' in (shape as { extras: object }).extras));
+    // The call shape of the same call on the two wires differs by construction.
+    respond = okR_anthropic();
+    const other = (await make({ temperature: 0.7 }).callApi(PAIR)).metadata.graderEvidence['callShape'];
+    assert.notEqual(callShapeHash(other as CallShape), callShapeHash(shape as CallShape));
+  });
+
+  it('the Anthropic wire writes its version 7 keys plus `schema` v8 and `wire`, and its sent block is the old one', async () => {
+    respond = okR_anthropic();
+    const rec = (await make({ thinking: { type: 'adaptive' }, effort: 'low' }).callApi(PAIR)).metadata.graderEvidence;
+    assert.equal(rec['schema'], 'example.grader-evidence/v8');
+    assert.equal(rec['wire'], 'anthropic-messages/v1');
+    assert.deepEqual(rec['sent'], { system: sha(SYSTEM), user: sha(USER), thinking: { type: 'adaptive' }, output_config: { effort: 'low' } });
+    assert.ok(!('incompleteReason' in rec));
+  });
+
+  it('the served model is copied as given, whether or not it equals the requested one; the response id likewise', async () => {
+    respond = okO({ model: 'judge-requested', id: 'resp_same' });
+    const same = (await makeO().callApi(SOLO)).metadata.graderEvidence;
+    assert.deepEqual([same['requestedModel'], same['servedModel'], same['responseId']], ['judge-requested', 'judge-requested', 'resp_same']);
+    respond = okO({ model: 'judge-requested-2026-01-01' });
+    assert.equal((await makeO().callApi(SOLO)).metadata.graderEvidence['servedModel'], 'judge-requested-2026-01-01');
+  });
+
+  it('a reasoning item is listed as "reasoning" and never read: its text, summary and encrypted content are in no record; the counter is reasoning_tokens', async () => {
+    respond = okO({ output: [{ ...reasoningItem, summary: [{ type: 'summary_text', text: 'SECRET-SUMMARY' }], content: [{ type: 'reasoning_text', text: 'SECRET-REASONING' }] }, messageItem([textPart(VERDICT)])], usage: { input_tokens: 3, output_tokens: 20, output_tokens_details: { reasoning_tokens: 12 } } });
+    const r = await makeO().callApi(SOLO);
+    const rec = r.metadata.graderEvidence;
+    assert.deepEqual(rec['contentTypes'], ['reasoning', 'message/output_text']);
+    assert.equal(rec['thinkingTokens'], 12);
+    assert.equal(rec['reply'], VERDICT);
+    for (const secret of ['SECRET-ENCRYPTED-CONTENT', 'SECRET-SUMMARY', 'SECRET-REASONING']) assert.ok(!JSON.stringify(r).includes(secret), secret);
+  });
+
+  it('reasoning_tokens is "ABSENT" when the response has no such counter (no usage, no details, details without the key), and a counter that is there and malformed raises', async () => {
+    for (const usage of [undefined, { input_tokens: 1, output_tokens: 2 }, { input_tokens: 1, output_tokens: 2, output_tokens_details: {} }]) {
+      respond = okO(usage === undefined ? { usage: undefined } : { usage });
+      assert.equal((await makeO().callApi(SOLO)).metadata.graderEvidence['thinkingTokens'], 'ABSENT');
+    }
+    for (const usage of [null, 5, { output_tokens_details: null }, { output_tokens_details: [] }, { output_tokens_details: { reasoning_tokens: -1 } }, { output_tokens_details: { reasoning_tokens: 1.5 } }, { output_tokens_details: { reasoning_tokens: '3' } }, { output_tokens_details: { reasoning_tokens: null } }]) {
+      respond = okO({ usage });
+      await assert.rejects(makeO().callApi(SOLO), /reasoning-token counter/, JSON.stringify(usage));
+    }
+    // The Anthropic key of the same counter is not this wire's counter.
+    respond = okO({ usage: { input_tokens: 1, output_tokens: 2, output_tokens_details: { thinking_tokens: 9 } } });
+    assert.equal((await makeO().callApi(SOLO)).metadata.graderEvidence['thinkingTokens'], 'ABSENT');
+  });
+
+  it('usage is two integers, or "ABSENT"', async () => {
+    respond = okO({ usage: undefined });
+    assert.equal((await makeO().callApi(SOLO)).metadata.graderEvidence['usage'], 'ABSENT');
+    for (const usage of [{ input_tokens: 1 }, { input_tokens: 1, output_tokens: -2 }, { input_tokens: '1', output_tokens: 2 }]) {
+      respond = okO({ usage });
+      await assert.rejects(makeO().callApi(SOLO), /token usage is malformed/, JSON.stringify(usage));
+    }
+  });
+
+  it('lists every output item, in order; a completed message is labelled with its phase when it has one, and the other forms say why', async () => {
+    const cases: Array<[string, unknown[], string[]]> = [
+      ['a plain message', [messageItem([textPart('a')])], ['message/output_text']],
+      ['reasoning, then the message', [reasoningItem, messageItem([textPart('a')])], ['reasoning', 'message/output_text']],
+      ['an incomplete message', [messageItem([textPart('a')], { status: 'incomplete' })], ['message[status=incomplete]/output_text']],
+      ['an in_progress message', [messageItem([textPart('a')], { status: 'in_progress' })], ['message[status=in_progress]/output_text']],
+      ['a message with a phase', [messageItem([textPart('a')], { phase: 'final_answer' })], ['message[phase=final_answer]/output_text']],
+      ['status wins over phase', [messageItem([textPart('a')], { status: 'incomplete', phase: 'commentary' })], ['message[status=incomplete]/output_text']],
+      ['a refusal part', [messageItem([{ type: 'refusal', refusal: 'SECRET-REFUSAL-TEXT' }])], ['message/refusal']],
+      ['a text part then a refusal', [messageItem([textPart('a'), { type: 'refusal', refusal: 'r' }])], ['message/output_text', 'message/refusal']],
+      ['a refusal then a text part', [messageItem([{ type: 'refusal', refusal: 'r' }, textPart('a')])], ['message/refusal', 'message/output_text']],
+      ['a function call', [{ type: 'function_call', id: 'fc_1', call_id: 'c', name: 'f', arguments: 'SECRET-ARGS', status: 'completed' }], ['function_call']],
+      ['two messages', [messageItem([textPart('a')]), messageItem([textPart('b')])], ['message/output_text', 'message/output_text']],
+      ['a message with no parts', [messageItem([])], ['message']],
+      ['an in_progress message with no parts beside a completed verdict message', [messageItem([], { status: 'in_progress' }), messageItem([textPart('a')])], ['message[status=in_progress]', 'message/output_text']],
+      ['a message with a phase and no parts', [messageItem([], { phase: 'commentary' })], ['message[phase=commentary]']],
+      ['no items', [], []],
+    ];
+    for (const [name, output, expected] of cases) {
+      respond = okO({ output });
+      const r = await makeO().callApi(SOLO);
+      assert.deepEqual(r.metadata.graderEvidence['contentTypes'], expected, name);
+      assert.ok(!JSON.stringify(r).includes('SECRET-'), name);
+    }
+  });
+
+  it('the reply is the text of every output_text part, joined, in order, whatever the status of its message; a refusal\'s text is not recorded', async () => {
+    respond = okO({ output: [reasoningItem, messageItem([textPart('one '), { type: 'refusal', refusal: 'SECRET-REFUSAL-TEXT' }, textPart('two')]), messageItem([textPart(' three')], { status: 'incomplete' })] });
+    const r = await makeO().callApi(SOLO);
+    assert.equal(r.metadata.graderEvidence['reply'], 'one two three');
+    assert.equal(r.output, 'one two three');
+    assert.ok(!JSON.stringify(r).includes('SECRET-REFUSAL-TEXT'));
+  });
+
+  it('the grader does not read the reply: an unreadable one, a fenced one and an empty one are recorded as they came', async () => {
+    for (const text of ['', 'not json at all', '```json\n{"pass":true}\n```', 'Here is my verdict: {"pass":false}']) {
+      respond = okO({ output: [messageItem([textPart(text)])] });
+      const r = await makeO().callApi(SOLO);
+      assert.equal(r.output, text);
+      assert.equal(r.metadata.graderEvidence['reply'], text);
+      assert.deepEqual(r.metadata.graderEvidence['contentTypes'], ['message/output_text']);
+    }
+  });
+
+  it('the settings handed are not changed by the grader', async () => {
+    respond = okO();
+    const cfg = { model: 'm', max_output_tokens: 64, baseUrl: `${base}/v1`, ...OSTATED };
+    const before = JSON.stringify(cfg);
+    const Grader = loadGrader();
+    await new Grader({ config: cfg }).callApi(SOLO);
+    assert.equal(JSON.stringify(cfg), before);
+  });
+});
+
+describe('the OpenAI wire: what is checked in a status 200 body, in this order, and a malformed body ends the slot with no record', () => {
+  const malformed: Array<[string, Record<string, unknown>, RegExp]> = [
+    ['an object other than "response"', { object: 'chat.completion' }, /not a Responses object/],
+    ['no object', { object: undefined }, /not a Responses object/],
+    ['an error object', { error: { code: 'x', message: 'SECRET-ERR', param: null, type: 't' } }, /error that is not null/],
+    ['an error that is a string', { error: 'x' }, /error that is not null/],
+    ['an error that is false', { error: false }, /error that is not null/],
+    ['status failed', { status: 'failed' }, /neither "completed" nor "incomplete"/],
+    ['status in_progress', { status: 'in_progress' }, /neither "completed" nor "incomplete"/],
+    ['status cancelled', { status: 'cancelled' }, /neither "completed" nor "incomplete"/],
+    ['status queued', { status: 'queued' }, /neither "completed" nor "incomplete"/],
+    ['an unknown status', { status: 'SECRET-STATUS' }, /neither "completed" nor "incomplete"/],
+    ['no status', { status: undefined }, /neither "completed" nor "incomplete"/],
+    ['a completed response with incomplete_details', { incomplete_details: { reason: 'max_output_tokens' } }, /"completed" and holds incomplete_details/],
+    ['a completed response with empty incomplete_details', { incomplete_details: {} }, /"completed" and holds incomplete_details/],
+    ['an incomplete response with null details', { status: 'incomplete', incomplete_details: null }, /"incomplete" and its incomplete_details hold no printable reason/],
+    ['an incomplete response with no details', { status: 'incomplete', incomplete_details: undefined }, /no printable reason/],
+    ['an incomplete response with empty details', { status: 'incomplete', incomplete_details: {} }, /no printable reason/],
+    ['an incomplete response with an empty reason', { status: 'incomplete', incomplete_details: { reason: '' } }, /no printable reason/],
+    ['an incomplete response whose reason reads as unknown', { status: 'incomplete', incomplete_details: { reason: 'none' } }, /no printable reason/],
+    ['an incomplete response whose reason is the word the record uses for none', { status: 'incomplete', incomplete_details: { reason: 'ABSENT' } }, /no printable reason/],
+    ['an incomplete response whose reason holds a line feed', { status: 'incomplete', incomplete_details: { reason: 'a\nb' } }, /no printable reason/],
+    ['an incomplete response whose reason is a number', { status: 'incomplete', incomplete_details: { reason: 5 } }, /no printable reason/],
+    ['a truncation of auto', { truncation: 'auto' }, /echoes a truncation other than "disabled"/],
+    ['a truncation of null', { truncation: null }, /echoes a truncation other than "disabled"/],
+    ['a truncation in another case', { truncation: 'Disabled' }, /echoes a truncation/],
+    ['a store of true', { store: true }, /echoes a store other than false/],
+    ['a store of null', { store: null }, /echoes a store other than false/],
+    ['a store of "false"', { store: 'false' }, /echoes a store other than false/],
+    ['no id', { id: undefined }, /lacks id, model or output/],
+    ['no model', { model: undefined }, /lacks id, model or output/],
+    ['an output that is not a list', { output: {} }, /lacks id, model or output/],
+    ['no output', { output: undefined }, /lacks id, model or output/],
+    ['an id with a space', { id: 'resp a' }, /response id is not 1 to 200 visible ASCII/],
+    ['an id of 201 characters', { id: 'r'.repeat(201) }, /response id is not 1 to 200/],
+    ['a model with a line feed', { model: 'a\nb' }, /response model is not 1 to 200/],
+    ['an id that reads as unknown', { id: 'unknown' }, /reads as unknown/],
+    ['a model that reads as unknown', { model: 'N/A' }, /reads as unknown/],
+    ['an item that is not an object', { output: ['message'] }, /output item has no type of the plain form/],
+    ['an item with no type', { output: [{ id: 'x' }] }, /output item has no type of the plain form/],
+    ['an item whose type is not a lower-case identifier', { output: [{ type: 'Message' }] }, /output item has no type/],
+    ['an item whose type forges a label', { output: [{ type: 'message/output_text' }] }, /output item has no type/],
+    ['a message with no status', { output: [{ type: 'message', content: [] }] }, /message item has no status of the plain form/],
+    ['a message whose status is not an identifier', { output: [messageItem([], { status: 'in progress' })] }, /message item has no status/],
+    ['a message whose phase is null', { output: [messageItem([], { phase: null })] }, /phase that is not of the plain form/],
+    ['a message whose phase is not an identifier', { output: [messageItem([], { phase: 'Final]' })] }, /phase that is not of the plain form/],
+    ['a message with no content list', { output: [{ type: 'message', status: 'completed', content: 'text' }] }, /no content list/],
+    ['a part with no type', { output: [messageItem([{ text: 'a' }])] }, /content part has no type of the plain form/],
+    ['a part whose type forges a label', { output: [messageItem([{ type: 'output_text/refusal', text: 'a' }])] }, /content part has no type/],
+    ['an output_text part with no text', { output: [messageItem([{ type: 'output_text' }])] }, /output_text part has no text/],
+    ['an output_text part whose text is null', { output: [messageItem([{ type: 'output_text', text: null }])] }, /output_text part has no text/],
+  ];
+
+  it('each malformed body ends the slot after one request, whatever the bound, with no record, and the value is shown nowhere', async () => {
+    for (const [name, over, pattern] of malformed) {
+      seen = [];
+      respond = okO(over);
+      const e = await rejection(makeO({ maxReasks: 3 }).callApi(SOLO));
+      assert.match(e.message, pattern, name);
+      assert.equal(seen.length, 1, name);
+      assert.ok(!/SECRET-/.test(e.message), name);
+    }
+  });
+
+  it('a body that is not JSON, not an object, or has no UTF-8 form is malformed too', async () => {
+    for (const raw of ['not json', '[]', 'null', '"response"', '7']) {
+      seen = [];
+      respond = (_req, res) => { res.writeHead(200, { 'content-type': 'application/json' }); res.end(raw); };
+      await assert.rejects(makeO({ maxReasks: 3 }).callApi(SOLO), raw === 'not json' ? /not JSON/ : /not a Responses object/, raw);
+      assert.equal(seen.length, 1, raw);
+    }
+  });
+
+  it('the checks are made in order: a body that fails two of them is refused for the first', async () => {
+    // [the first check it fails, the second, the order of the message]
+    const pairs: Array<[Record<string, unknown>, RegExp]> = [
+      [{ object: 'x', error: { a: 1 }, status: 'failed', truncation: 'auto', id: undefined, output: [{}] }, /not a Responses object/],
+      [{ error: { a: 1 }, status: 'failed', incomplete_details: {}, truncation: 'auto', id: undefined, output: [{}] }, /error that is not null/],
+      [{ status: 'failed', incomplete_details: {}, truncation: 'auto', id: undefined, output: [{}] }, /neither "completed" nor "incomplete"/],
+      [{ incomplete_details: {}, truncation: 'auto', store: true, id: undefined, output: [{}] }, /holds incomplete_details/],
+      [{ truncation: 'auto', store: true, id: undefined, output: [{}] }, /echoes a truncation/],
+      [{ store: true, id: undefined, output: [{}] }, /echoes a store/],
+      [{ id: undefined, usage: { output_tokens_details: null }, output: [{}] }, /lacks id, model or output/],
+      [{ usage: { output_tokens_details: null }, output: [{}] }, /reasoning-token counter is malformed/],
+      [{ usage: { input_tokens: 1 }, output: [{}] }, /token usage is malformed/],
+      [{ output: [{}] }, /output item has no type/],
+    ];
+    for (const [over, pattern] of pairs) {
+      seen = [];
+      respond = okO(over);
+      await assert.rejects(makeO().callApi(SOLO), pattern, JSON.stringify(Object.keys(over)));
+    }
+  });
+
+  it('a reply is never joined from a body that failed a check: the text of a refused body is in no message', async () => {
+    respond = okO({ status: 'failed', output: [messageItem([textPart('SECRET-TEXT-OF-A-REFUSED-BODY')])] });
+    const e = await rejection(makeO().callApi(SOLO));
+    assert.ok(!e.message.includes('SECRET-TEXT'));
+  });
+
+  it('null is taken in `error` and in `incomplete_details` (completed) and absence is taken in both, and in nothing else', async () => {
+    for (const over of [{ error: null, incomplete_details: null }, { error: undefined, incomplete_details: undefined }, { error: null, incomplete_details: undefined }]) {
+      respond = okO(over);
+      const rec = (await makeO().callApi(SOLO)).metadata.graderEvidence;
+      assert.equal(rec['incompleteReason'], 'ABSENT');
+      assert.equal(rec['stopReason'], 'completed');
+    }
+    // Absent echoes are taken: the grader checks an echo that is there, and records neither.
+    respond = okO({ truncation: undefined, store: undefined });
+    const rec = (await makeO().callApi(SOLO)).metadata.graderEvidence;
+    assert.ok(!('truncation' in rec) && !('store' in rec));
+    assert.equal(rec['sent'].store, false);
+    assert.equal(rec['sent'].truncation, 'disabled');
+  });
+
+  it('fields the grader does not read may hold anything: unknown keys, a reasoning item\'s encrypted content, metadata, a null where the grader reads nothing', async () => {
+    respond = okO({
+      created_at: 1, metadata: { a: null }, previous_response_id: null, tools: [], temperature: null, reasoning: { effort: null, summary: null }, service_tier: 'default', user: null, something_new: { deep: [null] },
+      output: [{ ...reasoningItem, encrypted_content: null, future: null }, messageItem([{ ...textPart(VERDICT), logprobs: null }], { future: null })],
+    });
+    const r = await makeO().callApi(SOLO);
+    assert.equal(r.metadata.graderEvidence['reply'], VERDICT);
+    assert.ok(!JSON.stringify(r.metadata.graderEvidence).includes('null'));
+  });
+});
+
+describe('the OpenAI wire: when a slot is asked again (the five conditions, the cut form of this wire, and nothing else)', () => {
+  it('"incomplete" with max_output_tokens is a cut and is asked again with the same bytes; the cut ask is recorded by its hash and length, never its text', async () => {
+    respond = firstThenO(1, cutO(), { usage: { input_tokens: 31, output_tokens: 12 } });
+    const { value: r, waits } = await withShortWaits(() => makeO({ maxReasks: 2, temperature: 0 }).callApi(PAIR));
+    assert.equal(seen.length, 2);
+    assert.equal(seen[0]!.raw, seen[1]!.raw);
+    assert.deepEqual(waits, [], 'no wait after a cut reply');
+    const rec = r.metadata.graderEvidence;
+    assert.equal(rec['stopReason'], 'completed');
+    assert.equal(rec['responseId'], 'resp_o_2');
+    assert.equal(rec['reask'].earlier.length, 1);
+    const e = rec['reask'].earlier[0];
+    assert.deepEqual(Object.keys(e), ['reason', 'callSeq', 'callId', 'httpStatus', 'responseId', 'servedModel', 'stopReason', 'incompleteReason', 'contentTypes', 'thinkingTokens', 'usage', 'replySha256', 'replyUtf8Bytes']);
+    assert.deepEqual({ ...e, callId: '' }, {
+      reason: 'truncated', callSeq: 1, callId: '', httpStatus: 200, responseId: 'resp_cut_1', servedModel: 'judge-served-2026', stopReason: 'incomplete', incompleteReason: 'max_output_tokens',
+      contentTypes: ['reasoning', 'message[status=incomplete]/output_text'], thinkingTokens: 7, usage: { input_tokens: 31, output_tokens: 256 }, replySha256: sha('CUT-REPLY-TEXT {"pa'), replyUtf8Bytes: 19,
+    });
+    assert.deepEqual([e.callSeq, rec['callSeq']], [1, 2]);
+    assert.ok(!JSON.stringify(r).includes('CUT-REPLY-TEXT'));
+    assert.ok(!JSON.stringify(r).includes('SECRET-ENCRYPTED-CONTENT'));
+  });
+
+  it('a cut whose text is a whole verdict is still a cut: asked again, and never read as a verdict (the status is judged first)', async () => {
+    // Pins an order: the response status decides before any text is looked at. A reading rule that ran first would accept this reply.
+    respond = firstThenO(1, okO({ status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' }, id: 'resp_cut_whole' }));
+    const { value: r } = await withShortWaits(() => makeO({ maxReasks: 1 }).callApi(SOLO));
+    assert.equal(seen.length, 2);
+    assert.equal(r.metadata.graderEvidence['reask'].earlier[0].reason, 'truncated');
+    assert.equal(r.metadata.graderEvidence['reask'].earlier[0].replySha256, sha(VERDICT));
+    assert.ok(!JSON.stringify(r.metadata.graderEvidence['reask']).includes('"pass"'), 'the cut text is not in the record');
+  });
+
+  it('a cut of reasoning only has no text: the hash of the empty text and a length of 0', async () => {
+    respond = firstThenO(1, okO({ status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' }, output: [reasoningItem], usage: { input_tokens: 4, output_tokens: 20, output_tokens_details: { reasoning_tokens: 20 } } }));
+    const { value: r } = await withShortWaits(() => makeO({ maxReasks: 1 }).callApi(SOLO));
+    const e = r.metadata.graderEvidence['reask'].earlier[0];
+    assert.equal(e.replySha256, sha(''));
+    assert.equal(e.replyUtf8Bytes, 0);
+    assert.deepEqual(e.contentTypes, ['reasoning']);
+    assert.equal(e.thinkingTokens, 20);
+    assert.equal(seen[0]!.raw, seen[1]!.raw, 'the same bytes are paid for again');
+  });
+
+  it('a cut with the bound used up is the slot\'s last ask and is recorded whole, with its status and reason', async () => {
+    respond = cutO();
+    const { value: r } = await withShortWaits(() => makeO({ maxReasks: 1 }).callApi(SOLO));
+    assert.equal(seen.length, 2);
+    const rec = r.metadata.graderEvidence;
+    assert.equal(rec['stopReason'], 'incomplete');
+    assert.equal(rec['incompleteReason'], 'max_output_tokens');
+    assert.equal(rec['reply'], 'CUT-REPLY-TEXT {"pa');
+    assert.equal(rec['reask'].earlier.length, 1);
+    // With a bound of 0, the first cut is the last ask.
+    seen = [];
+    const z = (await makeO({ maxReasks: 0 }).callApi(SOLO)).metadata.graderEvidence;
+    assert.equal(seen.length, 1);
+    assert.deepEqual(z['reask'], { max: 0, earlier: [] });
+    assert.equal(z['stopReason'], 'incomplete');
+  });
+
+  it('one more cut than the bound allows is never another request', async () => {
+    respond = cutO();
+    await withShortWaits(() => makeO({ maxReasks: 3 }).callApi(SOLO));
+    assert.equal(seen.length, 4);
+  });
+
+  it('"incomplete" with any other reason (content_filter, max_messages, steered, anything) is recorded and never asked again', async () => {
+    for (const reason of ['content_filter', 'max_messages', 'steered', 'something_new', 'max_output_tokens_exceeded']) {
+      seen = [];
+      respond = okO({ status: 'incomplete', incomplete_details: { reason } });
+      const rec = (await makeO({ maxReasks: 3 }).callApi(SOLO)).metadata.graderEvidence;
+      assert.equal(seen.length, 1, reason);
+      assert.equal(rec['stopReason'], 'incomplete', reason);
+      assert.equal(rec['incompleteReason'], reason, reason);
+      assert.deepEqual(rec['reask'], { max: 3, earlier: [] }, reason);
+      // The text next to the reason is recorded as it came and read by nobody here (pins an order: status first).
+      assert.equal(rec['reply'], VERDICT, reason);
+    }
+  });
+
+  it('a "completed" response is never asked again, whatever it says: no verdict, an empty text, a refusal in either order, a function call, no output at all', async () => {
+    const outputs: Array<[string, unknown[]]> = [
+      ['an empty text', [messageItem([textPart('')])],],
+      ['prose', [messageItem([textPart('Here is my verdict: {"pass":true}')])]],
+      ['a refusal', [messageItem([{ type: 'refusal', refusal: 'r' }])]],
+      ['a text then a refusal', [messageItem([textPart(VERDICT), { type: 'refusal', refusal: 'r' }])]],
+      ['a refusal then a text', [messageItem([{ type: 'refusal', refusal: 'r' }, textPart(VERDICT)])]],
+      ['a function call', [{ type: 'function_call', id: 'f', call_id: 'c', name: 'n', arguments: '{}', status: 'completed' }]],
+      ['a message that is incomplete', [messageItem([textPart(VERDICT)], { status: 'incomplete' })]],
+      ['a message with a phase', [messageItem([textPart(VERDICT)], { phase: 'final_answer' })]],
+      ['no output', []],
+    ];
+    for (const [name, output] of outputs) {
+      seen = [];
+      respond = okO({ output });
+      const rec = (await makeO({ maxReasks: 3 }).callApi(SOLO)).metadata.graderEvidence;
+      assert.equal(seen.length, 1, name);
+      assert.equal(rec['stopReason'], 'completed', name);
+      assert.deepEqual(rec['reask'].earlier, [], name);
+    }
+  });
+
+  it('a 5xx (500, 503, 529, 599) and a 429 are asked again, with the waits 2, 4 and 8 seconds, and a 499 and a 600 are not', async () => {
+    for (const status of [500, 503, 529, 599, 429]) {
+      seen = [];
+      respond = firstThenO(3, statusResponder(status));
+      const { value: r, waits } = await withShortWaits(() => makeO({ maxReasks: 3 }).callApi(SOLO));
+      assert.equal(seen.length, 4, String(status));
+      assert.deepEqual(waits, [2000, 4000, 8000], String(status));
+      const e = r.metadata.graderEvidence['reask'].earlier;
+      assert.deepEqual(e.map((x: any) => x.reason), Array(3).fill(status === 429 ? 'rate-limited' : 'server-error'), String(status));
+      assert.deepEqual(e.map((x: any) => x.httpStatus), [status, status, status], String(status));
+      assert.ok(!JSON.stringify(r).includes('SECRET-BODY-TEXT'));
+    }
+    for (const status of [499, 600]) {
+      seen = [];
+      respond = statusResponder(status);
+      await assert.rejects(makeO({ maxReasks: 3 }).callApi(SOLO), new RegExp(`status ${status}`));
+      assert.equal(seen.length, 1, String(status));
+    }
+  });
+
+  it('the bound holds with no reply: a 503 under a bound of 2 is three requests, and the error lists them', async () => {
+    respond = statusResponder(503);
+    const { waits } = await withShortWaits(async () => {
+      const e = await rejection(makeO({ maxReasks: 2 }).callApi(SOLO));
+      assert.match(e.message, /no reply after 3 asks, the bound of 2 re-ask\(s\) is used up/);
+      assert.ok(!e.message.includes('SECRET-BODY-TEXT'));
+      return null;
+    });
+    assert.equal(seen.length, 3);
+    assert.deepEqual(waits, [2000, 4000]);
+  });
+
+  it('a cut, then a 503, then a finished reply: all three asks, the wait of the second re-ask, and both earlier asks in the record', async () => {
+    respond = (req, res, s) => (seen.length === 1 ? cutO()(req, res, s) : seen.length === 2 ? statusResponder(503)(req, res, s) : okO({ id: 'resp_last' })(req, res, s));
+    const { value: r, waits } = await withShortWaits(() => makeO({ maxReasks: 3 }).callApi(SOLO));
+    assert.equal(seen.length, 3);
+    assert.deepEqual(waits, [4000]);
+    assert.deepEqual(r.metadata.graderEvidence['reask'].earlier.map((e: any) => e.reason), ['truncated', 'server-error']);
+    assert.equal(r.metadata.graderEvidence['callSeq'], 3);
+    assert.equal(r.metadata.graderEvidence['responseId'], 'resp_last');
+  });
+
+  it('any other 4xx (400, 401, 403, 404, 422), a redirect and a body that cannot be taken end the slot after one request, whatever the bound, and the body of an error is never read', async () => {
+    for (const status of [400, 401, 403, 404, 422]) {
+      seen = [];
+      respond = statusResponder(status);
+      const e = await rejection(makeO({ maxReasks: 3 }).callApi(SOLO));
+      assert.match(e.message, new RegExp(`status ${status}`), String(status));
+      assert.ok(!e.message.includes('SECRET-BODY-TEXT'), String(status));
+      assert.equal(seen.length, 1, String(status));
+    }
+    seen = [];
+    respond = (_req, res) => { res.writeHead(307, { location: '/v1/responses' }); res.end(); };
+    await assert.rejects(makeO({ maxReasks: 3 }).callApi(SOLO), /status 307/);
+    assert.equal(seen.length, 1);
+    seen = [];
+    respond = (_req, res) => { res.writeHead(200, { 'content-type': 'application/json', 'content-encoding': 'gzip' }); res.end(JSON.stringify(bodyO())); };
+    await assert.rejects(makeO({ maxReasks: 3 }).callApi(SOLO), /content encoding the request did not ask for/);
+    assert.equal(seen.length, 1);
+  });
+
+  it('a call that fails uses up its call number and records nothing, as on the other wire', async () => {
+    respond = statusResponder(400);
+    const g = makeO();
+    await assert.rejects(g.callApi(SOLO));
+    respond = okO();
+    assert.equal((await g.callApi(SOLO)).metadata.graderEvidence['callSeq'], 2);
+  });
+});
+
+describe('the OpenAI wire: the gateway variable is OPENAI_BASE_URL, and each wire checks its own', () => {
+  const withEnv = async (vars: Record<string, string | undefined>, fn: () => Promise<void> | void): Promise<void> => {
+    const old: Record<string, string | undefined> = {};
+    for (const [k, v] of Object.entries(vars)) {
+      old[k] = process.env[k];
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    try {
+      await fn();
+    } finally {
+      for (const [k, v] of Object.entries(old)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  };
+
+  it('OPENAI_BASE_URL set with no base URL stated, or another one, refuses the grader before any call, names the variable and shows no value', async () => {
+    await withEnv({ OPENAI_BASE_URL: 'https://gateway.example.test/v1' }, () => {
+      const Grader = loadGrader();
+      const cfg = { model: 'm', max_output_tokens: 32, ...OSTATED };
+      for (const stated of [undefined, `${base}/v1`, 'https://api.openai.com/v1']) {
+        const e = (() => { try { new Grader({ config: { ...cfg, ...(stated === undefined ? {} : { baseUrl: stated }) } }); return null; } catch (x) { return x as Error; } })();
+        assert.ok(e !== null, String(stated));
+        assert.match(e.message, /the environment variable OPENAI_BASE_URL is set, and this grader never reads it/);
+        assert.match(e.message, /No call was made\.$/);
+        assert.ok(!e.message.includes('gateway.example.test'));
+      }
+      // The same address stated is taken.
+      assert.doesNotThrow(() => new Grader({ config: { ...cfg, baseUrl: 'https://gateway.example.test/v1' } }));
+      assert.equal(seen.length, 0);
+    });
+  });
+
+  for (const name of ['OPENAI_BASE_URL', 'OPENAI_API_BASE_URL', 'OPENAI_API_HOST', 'OPENAI_HOST']) {
+    it(`${name}: set with no base URL stated, or a different one, refuses before any call and names the variable; the same address is taken; an empty value is not set`, async () => {
+      await withEnv({ [name]: 'https://gateway.example.test/v1' }, () => {
+        const Grader = loadGrader();
+        const cfg = { model: 'm', max_output_tokens: 32, ...OSTATED };
+        for (const stated of [undefined, `${base}/v1`]) {
+          const e = (() => { try { new Grader({ config: { ...cfg, ...(stated === undefined ? {} : { baseUrl: stated }) } }); return null; } catch (x) { return x as Error; } })();
+          assert.ok(e !== null, String(stated));
+          assert.ok(e.message.includes(`the environment variable ${name} is set, and this grader never reads it`), e.message);
+          assert.ok(!e.message.includes('gateway.example.test'));
+          // a bare host can never equal a base URL: for the two HOST variables the one remedy is to unset the variable
+          if (name.endsWith('_HOST')) assert.ok(e.message.endsWith(' Unset the variable. No call was made.') && !e.message.includes('State the same address'), e.message);
+          else assert.ok(e.message.includes('State the same address as `baseUrl` in the grader\'s config, or unset the variable. No call was made.'), e.message);
+        }
+        assert.doesNotThrow(() => new Grader({ config: { ...cfg, baseUrl: 'https://gateway.example.test/v1' } }));
+        assert.equal(seen.length, 0);
+      });
+      await withEnv({ [name]: '' }, () => { assert.doesNotThrow(() => makeO()); });
+      // The Anthropic wire does not look at it.
+      await withEnv({ [name]: 'https://gateway.example.test/v1' }, () => { assert.doesNotThrow(() => make()); });
+    });
+  }
+
+  it('an empty OPENAI_BASE_URL is not set', async () => {
+    await withEnv({ OPENAI_BASE_URL: '' }, () => { assert.doesNotThrow(() => makeO()); });
+  });
+
+  it('the checks are one per wire: OPENAI_BASE_URL does not stop the Anthropic wire, and ANTHROPIC_BASE_URL does not stop the OpenAI wire', async () => {
+    await withEnv({ OPENAI_BASE_URL: 'https://gateway.example.test/v1', ANTHROPIC_BASE_URL: undefined }, () => { assert.doesNotThrow(() => make()); });
+    await withEnv({ ANTHROPIC_BASE_URL: 'https://gateway.example.test', OPENAI_BASE_URL: undefined }, () => {
+      assert.doesNotThrow(() => makeO());
+      assert.throws(() => make(), /the environment variable ANTHROPIC_BASE_URL is set/);
+    });
+  });
+
+  it('the gateway check comes before every other setting is looked at, once the wire is known', async () => {
+    await withEnv({ OPENAI_BASE_URL: 'https://gateway.example.test/v1' }, () => {
+      assert.throws(() => makeO({ model: undefined, max_output_tokens: 1, effort: 'bogus' }), /the environment variable OPENAI_BASE_URL is set/);
+    });
+  });
+});
+
+describe('the OpenAI wire through the stand-in: every mode and marker, as the grader meets it', () => {
+  type Expect = { stop: string; incomplete?: string; types: string[]; requests?: number } | { throws: RegExp; requests?: number };
+  const EXPECTED: Record<string, Expect> = {
+    normal: { stop: 'completed', types: ['message[phase=final_answer]/output_text'] },
+    'no-verdict': { stop: 'completed', types: ['message[phase=final_answer]/output_text'] },
+    prose: { stop: 'completed', types: ['message[phase=final_answer]/output_text'] },
+    empty: { stop: 'completed', types: ['message[phase=final_answer]/output_text'] },
+    'not-json': { stop: 'completed', types: ['message[phase=final_answer]/output_text'] },
+    truncated: { stop: 'incomplete', incomplete: 'max_output_tokens', types: ['message[status=incomplete]/output_text'] },
+    'truncated-verdict-whole': { stop: 'incomplete', incomplete: 'max_output_tokens', types: ['message[phase=final_answer]/output_text'] },
+    'truncated-reasoning': { stop: 'incomplete', incomplete: 'max_output_tokens', types: ['reasoning'] },
+    refusal: { stop: 'completed', types: ['message[phase=final_answer]/refusal'] },
+    'refusal-after-text': { stop: 'completed', types: ['message[phase=final_answer]/output_text', 'message[phase=final_answer]/refusal'] },
+    'refusal-before-text': { stop: 'completed', types: ['message[phase=final_answer]/refusal', 'message[phase=final_answer]/output_text'] },
+    'content-filter': { stop: 'incomplete', incomplete: 'content_filter', types: ['message[phase=final_answer]/output_text'] },
+    'message-incomplete': { stop: 'completed', types: ['message[status=incomplete]/output_text'] },
+    'phase-absent': { stop: 'completed', types: ['message/output_text'] },
+    'phase-commentary': { stop: 'completed', types: ['message[phase=commentary]/output_text'] },
+    'tool-use': { stop: 'completed', types: ['function_call'] },
+    'non-text': { stop: 'completed', types: ['reasoning', 'message[phase=final_answer]/output_text'] },
+    'http-500': { throws: /status 500/ },
+    'http-503': { throws: /status 503/ },
+    'http-429': { throws: /status 429/ },
+    'http-400': { throws: /status 400/ },
+    redirect: { throws: /status 307/ },
+    encoded: { throws: /content encoding the request did not ask for/ },
+    drop: { throws: /fetch failed|transport|terminated|socket/i },
+    'status-failed': { throws: /neither "completed" nor "incomplete"/ },
+    'error-set': { throws: /error that is not null/ },
+    'bad-object': { throws: /not a Responses object/ },
+    'echo-truncation-auto': { throws: /echoes a truncation/ },
+    'echo-store-true': { throws: /echoes a store/ },
+    // No counterpart on this route: answered 400, never as normal.
+    'stop-seq': { throws: /status 400/ },
+    'http-529': { throws: /status 400/ },
+  };
+
+  async function viaStandIn(promptText: string, config: Record<string, unknown> = {}): Promise<{ rec: Record<string, any> | undefined; error: Error | undefined; requests: number }> {
+    const ep = await startFakeEndpoint({ port: 0 });
+    try {
+      const g = makeO({ baseUrl: `http://127.0.0.1:${ep.port}/v1`, ...config });
+      const prompt = JSON.stringify([{ role: 'user', content: promptText }]);
+      try {
+        const r = await withShortWaits(() => g.callApi(prompt));
+        return { rec: r.value.metadata.graderEvidence, error: undefined, requests: -1 };
+      } catch (e) {
+        return { rec: undefined, error: e as Error, requests: -1 };
+      }
+    } finally {
+      await ep.close();
+    }
+  }
+
+  it('every mode of the Responses route is covered here, and the two Messages-only modes are answered 400', () => {
+    assert.deepEqual(Object.keys(EXPECTED).sort(), [...OPENAI_ROUTE_MODES, 'stop-seq', 'http-529'].filter((m) => m !== 'stall').sort());
+  });
+
+  for (const [mode, expected] of Object.entries(EXPECTED)) {
+    it(`[[mode:${mode}]]`, async () => {
+      const { rec, error } = await viaStandIn(`Output: refund granted. [[mode:${mode}]]`, { maxReasks: 0 });
+      if ('throws' in expected) {
+        assert.ok(error !== undefined, `${mode} must end the slot`);
+        assert.match(error.message, expected.throws, mode);
+        assert.ok(!/SECRET|ZmFrZS1lbmNyeXB0ZWQ/.test(error.message), mode);
+      } else {
+        assert.ok(rec !== undefined, `${mode} must give a record: ${error?.message ?? ''}`);
+        assert.equal(rec['stopReason'], expected.stop, mode);
+        assert.equal(rec['incompleteReason'], expected.incomplete ?? 'ABSENT', mode);
+        assert.deepEqual(rec['contentTypes'], expected.types, mode);
+        assert.equal(rec['wire'], OAI);
+        assert.ok(!JSON.stringify(rec).includes('ZmFrZS1lbmNyeXB0ZWQ='), 'the encrypted content is never recorded');
+      }
+    });
+  }
+
+  it('[[redacted-thinking]] has no counterpart on this route: answered 400, the slot ends', async () => {
+    const { error } = await viaStandIn('x [[redacted-thinking]]');
+    assert.match(error?.message ?? '', /status 400/);
+  });
+
+  it('[[thinking]] gives a reasoning item and a counter of 12; [[no-counter]] gives ABSENT; neither changes the reply', async () => {
+    const t = (await viaStandIn('x [[thinking]]')).rec!;
+    assert.deepEqual(t['contentTypes'], ['reasoning', 'message[phase=final_answer]/output_text']);
+    assert.equal(t['thinkingTokens'], 12);
+    const n = (await viaStandIn('x [[thinking]] [[no-counter]]')).rec!;
+    assert.equal(n['thinkingTokens'], 'ABSENT');
+    assert.equal(n['reply'], t['reply']);
+    assert.equal((await viaStandIn('x')).rec!['thinkingTokens'], 0);
+  });
+
+  it('the served model is the requested one by default, and a dated one under [[served:dated]]', async () => {
+    const a = (await viaStandIn('x')).rec!;
+    assert.equal(a['servedModel'], 'judge-requested');
+    assert.equal(a['requestedModel'], 'judge-requested');
+    const b = (await viaStandIn('x [[served:dated]]')).rec!;
+    assert.equal(b['servedModel'], 'judge-requested-served-20260101');
+  });
+
+  it('a cut that comes first and then a finished reply: [[times:1:truncated]] is asked again, with the same bytes, and the record holds both', async () => {
+    const { rec } = await viaStandIn('x [[times:1:truncated]]', { maxReasks: 2 });
+    assert.deepEqual(rec!['reask'].earlier.map((e: any) => [e.reason, e.stopReason, e.incompleteReason]), [['truncated', 'incomplete', 'max_output_tokens']]);
+    assert.equal(rec!['stopReason'], 'completed');
+    assert.equal(rec!['responseId'], 'resp_fake_0002');
+  });
+
+  it('[[times:1:truncated-verdict-whole]] and [[times:1:truncated-reasoning]]: the first ask is a cut and is asked again', async () => {
+    for (const m of ['truncated-verdict-whole', 'truncated-reasoning']) {
+      const { rec } = await viaStandIn(`x [[times:1:${m}]]`, { maxReasks: 1 });
+      assert.equal(rec!['reask'].earlier[0].reason, 'truncated', m);
+      assert.equal(rec!['stopReason'], 'completed', m);
+    }
+  });
+
+  it('[[times:1:http-503]] and [[times:1:http-429]]: the first ask is a server error or a rate limit and is asked again', async () => {
+    const a = (await viaStandIn('x [[times:1:http-503]]', { maxReasks: 1 })).rec!;
+    assert.deepEqual(a['reask'].earlier.map((e: any) => [e.reason, e.httpStatus]), [['server-error', 503]]);
+    const b = (await viaStandIn('x [[times:1:http-429]]', { maxReasks: 1 })).rec!;
+    assert.deepEqual(b['reask'].earlier.map((e: any) => [e.reason, e.httpStatus]), [['rate-limited', 429]]);
+  });
+
+  it('a stall under a deadline of 150 ms is a passed deadline and is asked again; [[times:1:stall]] then gives a record', async () => {
+    const { rec } = await viaStandIn('x [[times:1:stall]]', { maxReasks: 1, timeoutMs: 150 });
+    assert.deepEqual(rec!['reask'].earlier.map((e: any) => [e.reason, e.httpStatus]), [['timeout', 'NO_RESPONSE']]);
+    assert.equal(rec!['callShape'].timeoutMs, 150);
+  });
+
+  it('a dropped connection is a transport error and is asked again', async () => {
+    const { rec } = await viaStandIn('x [[times:1:drop]]', { maxReasks: 1 });
+    assert.deepEqual(rec!['reask'].earlier.map((e: any) => [e.reason, e.httpStatus]), [['transport', 'NO_RESPONSE']]);
+  });
+
+  it('a long reply is recorded whole, and the joined reply is the one text part', async () => {
+    const { rec } = await viaStandIn('x [[long-reply]]');
+    assert.ok((rec!['reply'] as string).startsWith('x'.repeat(20000)));
+    assert.deepEqual(rec!['contentTypes'], ['message[phase=final_answer]/output_text']);
+  });
+});
+
+describe('the OpenAI wire: the grader file still holds to its rules', () => {
+  const js = readFileSync(GRADER_PATH, 'utf8');
+  const code = js.replace(/^\s*\/\/.*$/gm, '');
+  it('holds the wire names, the schema string, both default addresses and both posted paths, as the documentation names them', () => {
+    assert.match(js, /const RECORD_SCHEMA = 'example\.grader-evidence\/v8';/);
+    assert.match(js, /const WIRE_ANTHROPIC = 'anthropic-messages\/v1';/);
+    assert.match(js, /const WIRE_OPENAI = 'openai-responses\/v1';/);
+    assert.match(js, /const DEFAULT_OPENAI_BASE_URL = 'https:\/\/api\.openai\.com\/v1';/);
+    assert.match(js, /const OPENAI_POSTED_PATH = '\/responses';/);
+    assert.match(js, /const POSTED_PATH = '\/v1\/messages';/);
+  });
+  it('the header comment names the wire setting, both wires, the checks of a 200 body and the fixed store and truncation', () => {
+    const header = js.slice(0, js.indexOf("const crypto = require"));
+    for (const phrase of ['openai-responses/v1', 'anthropic-messages/v1', 'example.grader-evidence/v8', 'store: false', 'truncation: "disabled"', 'OPENAI_BASE_URL', 'max_output_tokens', 'is a malformed body']) {
+      assert.ok(header.includes(phrase), phrase);
+    }
+  });
+  it('reads no retry-after header and no verdict, and sends no response format, tool or stop field', () => {
+    assert.doesNotMatch(code, /retry-after/i);
+    for (const k of ['response_format', 'text.format', 'tool_choice', 'parallel_tool_calls', 'previous_response_id', 'stop_sequences', 'service_tier', 'top_p', 'seed']) assert.ok(!code.includes(k), k);
+  });
+  it('the OpenAI cut form is exactly "incomplete" with the reason "max_output_tokens"', () => {
+    assert.match(code, /data\.status === 'incomplete' && incompleteReason === 'max_output_tokens'/);
+  });
+});
+
+/** An Anthropic-wire responder under the name the OpenAI tests use for the comparison. */
+function okR_anthropic(): Respond {
+  return okResponder();
+}

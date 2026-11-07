@@ -13,6 +13,7 @@ The installed package holds these documents, for the version installed, at `node
 - [The ratings format](https://raw.githubusercontent.com/ogous/anchorset/main/docs/RATINGS_FORMAT.md): the files `agree` and `drift` read.
 - [Judge change](https://raw.githubusercontent.com/ogous/anchorset/main/docs/JUDGE_CHANGE.md): the plan, the report and what each number means.
 - [Importers](https://raw.githubusercontent.com/ogous/anchorset/main/docs/IMPORTERS.md): promptfoo, Inspect and the eval-building skill, step by step.
+- [promptfoo](https://raw.githubusercontent.com/ogous/anchorset/main/docs/PROMPTFOO.md): what a change of your `llm-rubric` judge does to your grades, from a promptfoo result file.
 - [Comparison](https://raw.githubusercontent.com/ogous/anchorset/main/docs/COMPARISON.md): anchorset next to promptfoo, DeepEval and Langfuse.
 - [Migrations](https://raw.githubusercontent.com/ogous/anchorset/main/docs/MIGRATIONS.md): the format versions, and how an older file moves.
 

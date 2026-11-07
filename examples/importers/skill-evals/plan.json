@@ -9,7 +9,7 @@
       "judgeModelRequested": "fake-judge-old",
       "judgeModelServed": "fake-judge-old-served-20260101",
       "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
-      "judgeHarnessVersion": "skill-evals skill-evals/1; anchorset-recording-grader js sha256:cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba; node v25.6.1; max-reasks 0; script-files sha256:8fc4f7b4e16061c8c9f28011fc0b2fcc82ff21594412cb8e40c0838c1209322c",
+      "judgeHarnessVersion": "skill-evals skill-evals/1; anchorset-recording-grader js sha256:9332e4a126939166f06bc838df330c2ce7e406eda46d77dadf1b879e770c8bc1; node v25.6.1; max-reasks 0; wire anthropic-messages/v1; script-files sha256:e435758bb08af3d45cfc7f61d95cb355d817ec78880b2bac1fb0f8383436ecb8",
       "rubricHash": "67891b37a9e87086905c0aa9621b995946a58b8a22210614a2304260271ecfc2"
     },
     "new": {
@@ -17,7 +17,7 @@
       "judgeModelRequested": "fake-judge-strict-new",
       "judgeModelServed": "fake-judge-strict-new-served-20260101",
       "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
-      "judgeHarnessVersion": "skill-evals skill-evals/1; anchorset-recording-grader js sha256:cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba; node v25.6.1; max-reasks 0; script-files sha256:8fc4f7b4e16061c8c9f28011fc0b2fcc82ff21594412cb8e40c0838c1209322c",
+      "judgeHarnessVersion": "skill-evals skill-evals/1; anchorset-recording-grader js sha256:9332e4a126939166f06bc838df330c2ce7e406eda46d77dadf1b879e770c8bc1; node v25.6.1; max-reasks 0; wire anthropic-messages/v1; script-files sha256:e435758bb08af3d45cfc7f61d95cb355d817ec78880b2bac1fb0f8383436ecb8",
       "rubricHash": "67891b37a9e87086905c0aa9621b995946a58b8a22210614a2304260271ecfc2"
     }
   },
@@ -27,8 +27,8 @@
   ],
   "systems": {
     "refund-bot": {
-      "old": "044f799af280a72835b67c059968125f56b66eb7a95abe248fc09d6880044fe7",
-      "new": "0065e91e0845513eadc2d9fb8234b74e958b2b9ba07276a3ab676e0f134ad253"
+      "old": "c9fba5ec5775377791ef5e1de9b28f393fc2a634e987174c0cd76f2ef75e8da6",
+      "new": "62af0c30f58533b7f6822d87f752d1cb16ebbaa0424806604109711aa6b457e1"
     }
   },
   "storedOutputs": "system-side-not-compared",

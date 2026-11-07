@@ -1,11 +1,14 @@
 # Re-grade the stored outputs of an Inspect log through the recording grader (anchorset importer example).
 #
 #   python regrade.py --log <system log> --epochs <N> --check
-#   python regrade.py --log <system log> --epochs <N> --judge-model <name> --max-tokens <n> --out-dir <dir>
-#                     --thinking <NOT_SENT | JSON object> --effort <NOT_SENT | low | medium | high | xhigh | max>
+#   python regrade.py --log <system log> --epochs <N> --wire <anthropic-messages/v1 | openai-responses/v1>
+#                     --judge-model <name> --max-tokens <n> --out-dir <dir> --effort <NOT_SENT | a word of the wire>
 #                     --max-reasks <0 | 1 | 2 | 3> --base-url <url>
 #                     [--template-file <file>] [--instructions-file <file>]
-#                     [--temperature <x>] [--timeout-ms <n>] [--api-version <v>] [--api-key-env <NAME>] [--go-on-and-count]
+#                     [--temperature <x>] [--timeout-ms <n>] [--api-key-env <NAME>] [--go-on-and-count]
+#                  and, by wire:
+#                     anthropic-messages/v1:  --thinking <NOT_SENT | JSON object>  [--api-version <v>]
+#                     openai-responses/v1:    --verbosity <NOT_SENT | low | medium | high>
 #
 # It runs ONE eval. The solver replays each sample's stored output and calls no model; the scorer is
 # model_graded_qa(template=<text>, instructions=<text>, model=<the recording grader>), with epochs=N, the log in the
@@ -21,9 +24,16 @@
 # A number is taken only in its plain form, in ASCII digits: `--epochs`, `--max-tokens` and `--timeout-ms` as a positive
 # integer with no sign, no leading zero, no underscore and no space; `--temperature` as a plain decimal such as 0, 0.5 or
 # 1, with no sign and no exponent. Any other spelling is a usage error, never a number Python would make of it.
-# `--thinking` and `--effort` have no default and a run needs both: NOT_SENT sends nothing; otherwise `--thinking` is the
-# JSON text of one of the four request objects ({"type":"adaptive"}, {"type":"between_tools"}, {"type":"disabled"},
-# {"type":"enabled","budget_tokens":<n>}) and `--effort` is one word. The grader refuses every other form before any call.
+# `--wire` has no default and a run needs it: it says how the request is built and how the reply is read, and it selects the
+# set of flags the run needs. A flag of the other wire is a usage error (64): `--thinking` and `--api-version` belong to the
+# Anthropic wire, `--verbosity` to the OpenAI wire. `--max-tokens` keeps its name on both wires and is sent as the wire's
+# output cap (`max_output_tokens` on the OpenAI wire, which takes no less than 16). The gateway variable that is checked is
+# ANTHROPIC_BASE_URL on the first wire and each of OPENAI_BASE_URL, OPENAI_API_BASE_URL, OPENAI_API_HOST and OPENAI_HOST on the
+# second; the key is read from ANTHROPIC_API_KEY or OPENAI_API_KEY unless `--api-key-env` names another variable. `--check` takes
+# no wire: it makes no call and reads the source log only.
+# `--thinking` (Anthropic), `--verbosity` (OpenAI) and `--effort` have no default and a run needs them: NOT_SENT sends nothing; otherwise
+# `--thinking` is the JSON text of one of the four request objects ({"type":"adaptive"}, {"type":"between_tools"},
+# {"type":"disabled"}, {"type":"enabled","budget_tokens":<n>}) and `--effort` is one word. The grader refuses every other form before any call.
 # `--max-reasks` has no default either: it is the bound of re-asks one slot may be given, 0 to 3; 0 asks every slot once.
 # The grader asks a slot again, inside its one call for that slot, only after an ask that got no reply (a passed
 # deadline, a failed connection, a status 5xx, a status 429) or a reply cut at the output cap, and never after a finished
@@ -32,9 +42,10 @@
 # `--base-url` has no default either: the endpoint decides where the key goes, so it is stated, never inherited from the
 # grader's default host.
 #
-# The re-grade stops at the first slot the importer will refuse: a last ask that did not stop with "end_turn", content that
-# is not zero or more thinking blocks and one text block, or a reply whose last non-empty line is not exactly "GRADE: " and
-# one capital letter (the importer's own tests of a finished and readable grade). The slot's grade is then not written to the
+# The re-grade stops at the first slot the importer will refuse: a last ask that did not stop with "end_turn" (on the OpenAI wire
+# "completed"), a refusal part, content that is not zero or more thinking blocks (reasoning items) and one text block (one completed
+# message with one output_text part), or a reply whose last non-empty line is not exactly "GRADE: " and
+# one capital letter (the importer's own tests of a finished and readable grade, in the importer's order: the stop comes before the content). The slot's grade is then not written to the
 # log and no later slot is paid for; the exit is 2. `--go-on-and-count` goes on instead, counts such slots and prints
 # `slots the importer will refuse: <k>`. A label that differs from the tool's own reading is found only at import.
 # A lost slot ends the re-grade as well, and `--go-on-and-count` does not change that: when the grader's call raises (no reply
@@ -255,7 +266,20 @@ def source_problems(log: Any) -> list[str]:
 JS_WHITE_SPACE = " \t\n\v\f\r\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
 DATA_MARKER = re.compile(r"\[(?:begin|end) data\]", re.IGNORECASE)
 TEMPLATE_TOKENS = ("question", "answer", "criterion", "instructions")
+# The four variables the OpenAI wire's gateway check looks at (recording_grader.OPENAI_ADDRESS_VARIABLES; a test compares them).
+OPENAI_ADDRESS_VARIABLES = ("OPENAI_BASE_URL", "OPENAI_API_BASE_URL", "OPENAI_API_HOST", "OPENAI_HOST")
 THINKING_BLOCKS = ("thinking", "redacted_thinking")
+WIRE_ANTHROPIC = "anthropic-messages/v1"
+WIRE_OPENAI = "openai-responses/v1"
+WIRES = (WIRE_ANTHROPIC, WIRE_OPENAI)
+# The importer's stop and content tables (shared.ts: STOP_MAP, OPENAI_INCOMPLETE_MAP, OPENAI_REASONING, OPENAI_ANSWER, OPENAI_ANSWER_FINAL; a test compares them):
+# the one stop of each wire that finishes a reply, what an "incomplete" OpenAI reply maps to by its reason, and the labels of a reasoning item
+# and of the two readable answers (a completed message with no phase, and the same with phase exactly final_answer). Every other word has no mapping.
+STOP_MAP = {WIRE_ANTHROPIC: {"end_turn": "end"}, WIRE_OPENAI: {"completed": "end"}}
+OPENAI_INCOMPLETE_MAP = {"max_output_tokens": "cut", "content_filter": "content-filter"}
+OPENAI_REASONING = "reasoning"
+OPENAI_ANSWER = "message/output_text"
+OPENAI_ANSWER_FINAL = "message[phase=final_answer]/output_text"
 
 
 def strict_grade(reply: str) -> str | None:
@@ -268,13 +292,50 @@ def strict_grade(reply: str) -> str | None:
     return None
 
 
+def judge_stop_of(wire: str, stop_reason: Any, incomplete_reason: Any = None) -> str | None:
+    """The library's judge stop for a recorded stop, or None when it is not one a finished reply has (judgeStopOf in shared.ts):
+    "end" for the one finishing stop of the wire, "content-filter" for an OpenAI "incomplete" with the reason content_filter."""
+    table = STOP_MAP.get(wire, {})
+    if isinstance(stop_reason, str) and stop_reason in table:
+        return table[stop_reason]
+    if wire == WIRE_OPENAI and stop_reason == "incomplete" and isinstance(incomplete_reason, str) and OPENAI_INCOMPLETE_MAP.get(incomplete_reason) == "content-filter":
+        return "content-filter"
+    return None
+
+
+def content_is_readable(wire: str, types: list[str]) -> bool:
+    """Zero or more thinking blocks (reasoning items) and then exactly one text block (one `message/output_text`), last (contentIsReadable
+    in shared.ts). An empty list is never readable."""
+    if not types:
+        return False
+    if wire == WIRE_OPENAI:
+        return types[-1] in (OPENAI_ANSWER, OPENAI_ANSWER_FINAL) and all(t == OPENAI_REASONING for t in types[:-1])
+    return types[-1] == "text" and all(t in THINKING_BLOCKS for t in types[:-1])
+
+
 def importer_refusal(evidence: dict[str, Any]) -> str | None:
-    """Why the importer will refuse the slot this record belongs to, or None: the importer's tests of a finished and readable grade."""
+    """Why the importer will refuse the slot this record belongs to, or None: the importer's tests of a finished and readable grade, in
+    its order. The stop comes first, then a refusal part, then the shape of the content, and the reply's text last: an "incomplete" OpenAI
+    response whose message is completed carries the readable-looking label `message/output_text`, so a content check first would read a cut
+    or filtered reply as a finished one."""
+    wire = evidence.get("wire")
+    if wire not in WIRES:
+        return f"the record names the wire {json.dumps(wire)[:60]}, not one of {', '.join(WIRES)}"
+    openai = wire == WIRE_OPENAI
     stop = evidence.get("stopReason")
-    if stop != "end_turn":
+    incomplete = evidence.get("incompleteReason") if openai else None
+    if judge_stop_of(wire, stop, incomplete) != "end":
+        if openai:
+            return f'the judge stopped with status "{stop}"' + (f" ({incomplete})" if stop == "incomplete" else "") + ', not "completed"'
         return f'the judge stopped with "{stop}", not "end_turn"'
     types = evidence.get("contentTypes")
-    if not (isinstance(types, list) and types and types[-1] == "text" and all(t in THINKING_BLOCKS for t in types[:-1])):
+    if not (isinstance(types, list) and all(isinstance(t, str) for t in types)):
+        return f"the reply holds content of type {json.dumps(types)}, which is not a list of types"
+    if openai and any(t.endswith("/refusal") for t in types):
+        return f"the response holds a refusal part (content types {json.dumps(types)}); a refusal is never graded, whatever text stands beside it"
+    if not content_is_readable(wire, types):
+        if openai:
+            return f"the reply holds content of type {json.dumps(types)}, not zero or more reasoning items followed by exactly one completed message with one output_text part"
         return f"the reply holds content of type {json.dumps(types)}, not zero or more thinking blocks followed by exactly one text block"
     if strict_grade(evidence.get("reply", "")) is None:
         return 'the reply has no strict reading: its last non-empty line is not exactly "GRADE: " and one capital letter'
@@ -495,6 +556,8 @@ def _main(argv: list[str]) -> int:
     p.add_argument("--timeout-ms", action=_Once)
     p.add_argument("--api-version", action=_Once)
     p.add_argument("--api-key-env", action=_Once)
+    p.add_argument("--wire", action=_Once)
+    p.add_argument("--verbosity", action=_Once)
     p.add_argument("--thinking", action=_Once)
     p.add_argument("--effort", action=_Once)
     p.add_argument("--max-reasks", action=_Once)
@@ -514,19 +577,34 @@ def _main(argv: list[str]) -> int:
     # A flag stated with an empty value is not the flag left out: the default is never put in its place. (`--thinking`,
     # `--effort`, `--max-reasks` and `--judge-model` have refusals of their own below.)
     for flag, value in (("--log", a.log), ("--template-file", a.template_file), ("--instructions-file", a.instructions_file), ("--out-dir", a.out_dir),
-                        ("--base-url", a.base_url), ("--api-version", a.api_version), ("--api-key-env", a.api_key_env)):
+                        ("--base-url", a.base_url), ("--api-version", a.api_version), ("--api-key-env", a.api_key_env), ("--wire", a.wire)):
         if value == "":
             print(f"usage error: {flag} was given an empty value; leave the flag out, or state a value", file=sys.stderr)
             return EXIT_USAGE
     run_only = {"--judge-model": a.judge_model, "--out-dir": a.out_dir, "--base-url": a.base_url, "--max-tokens": a.max_tokens,
                 "--temperature": a.temperature, "--timeout-ms": a.timeout_ms, "--api-version": a.api_version, "--api-key-env": a.api_key_env,
+                "--wire": a.wire, "--verbosity": a.verbosity,
                 "--thinking": a.thinking, "--effort": a.effort, "--max-reasks": a.max_reasks, "--go-on-and-count": a.go_on_and_count or None}
     given = [k for k, v in run_only.items() if v is not None]
     if a.check and given:
         print(f"usage error: --check makes no call and takes none of {given}", file=sys.stderr)
         return EXIT_USAGE
     if not a.check:
-        missing = [k for k in ("--judge-model", "--out-dir", "--max-tokens", "--thinking", "--effort", "--max-reasks", "--base-url") if run_only[k] is None]
+        # `--wire` selects the flags a run needs, so it is looked at first: a missing or unknown wire is a usage error.
+        if a.wire is None:
+            print(f"usage error: a run needs ['--wire']: one of {', '.join(WIRES)} (no default); it selects the other flags a run needs", file=sys.stderr)
+            return EXIT_USAGE
+        if a.wire not in WIRES:
+            print(f"usage error: --wire must be one of {', '.join(WIRES)}, found {json.dumps(one_line(a.wire)[:60])}", file=sys.stderr)
+            return EXIT_USAGE
+        openai = a.wire == WIRE_OPENAI
+        # A flag of the other wire is not taken and not ignored: the run would otherwise state a setting the wire does not send.
+        for flag, value, belongs in (("--thinking", a.thinking, WIRE_ANTHROPIC), ("--api-version", a.api_version, WIRE_ANTHROPIC), ("--verbosity", a.verbosity, WIRE_OPENAI)):
+            if value is not None and belongs != a.wire:
+                print(f"usage error: {flag} is a flag of the {belongs} wire only; the wire stated is {a.wire}", file=sys.stderr)
+                return EXIT_USAGE
+        own = "--verbosity" if openai else "--thinking"
+        missing = [k for k in ("--judge-model", "--out-dir", "--max-tokens", own, "--effort", "--max-reasks", "--base-url") if run_only[k] is None]
         if missing:
             print(f"usage error: a run needs {missing}", file=sys.stderr)
             return EXIT_USAGE
@@ -536,19 +614,24 @@ def _main(argv: list[str]) -> int:
         if not re.fullmatch(r"[0-3]", a.max_reasks, flags=re.ASCII):
             print("usage error: --max-reasks must be an integer from 0 to 3 (the re-asks one slot may be given; 0 asks every slot once)", file=sys.stderr)
             return EXIT_USAGE
-        try:
-            thinking = thinking_from_text(a.thinking)
-        except ValueError as e:
-            print(f"usage error: --thinking must be NOT_SENT or the JSON text of one object ({e})", file=sys.stderr)
-            return EXIT_USAGE
+        thinking: Any = None
+        if not openai:
+            try:
+                thinking = thinking_from_text(a.thinking)
+            except ValueError as e:
+                print(f"usage error: --thinking must be NOT_SENT or the JSON text of one object ({e})", file=sys.stderr)
+                return EXIT_USAGE
         # A gateway the user's other tools honour: the grader never reads this variable, so unless the same address is stated
         # the key would go to the address stated here and not to the gateway. The variable is named; its value is never printed.
-        # An empty variable is not set.
-        gateway = os.environ.get("ANTHROPIC_BASE_URL")
-        if gateway and a.base_url != gateway:
-            how = "the base URL stated differs from it"
-            print(f"usage error: the environment variable ANTHROPIC_BASE_URL is set, and this grader never reads it: {how}, and the key would go there instead of to the address your other tools use. State the same address with --base-url, or unset the variable. Nothing was written and no call was made.", file=sys.stderr)
-            return EXIT_USAGE
+        # An empty variable is not set. The wire says which variables are looked at: one for Anthropic, four for OpenAI.
+        for name in OPENAI_ADDRESS_VARIABLES if openai else ("ANTHROPIC_BASE_URL",):
+            gateway = os.environ.get(name)
+            if gateway and a.base_url != gateway:
+                how = "the base URL stated differs from it"
+                # A bare host can never equal a base URL, so for the two HOST variables the one remedy is to unset the variable.
+                hint = "Unset the variable." if name.endswith("_HOST") else "State the same address with --base-url, or unset the variable."
+                print(f"usage error: the environment variable {name} is set, and this grader never reads it: {how}, and the key would go there instead of to the address your other tools use. {hint} Nothing was written and no call was made.", file=sys.stderr)
+                return EXIT_USAGE
 
     # the two texts, always text; refused before anything is built when the tool would read one as a resource
     try:
@@ -620,7 +703,7 @@ def _main(argv: list[str]) -> int:
     except ModuleNotFoundError as e:
         return missing_package(e)
 
-    key_env = recording_grader.DEFAULT_KEY_ENV if a.api_key_env is None else a.api_key_env
+    key_env = (recording_grader.DEFAULT_OPENAI_KEY_ENV if a.wire == WIRE_OPENAI else recording_grader.DEFAULT_KEY_ENV) if a.api_key_env is None else a.api_key_env
     if not recording_grader.KEY_ENV_NAME.fullmatch(key_env):
         print("usage error: --api-key-env must be the name of an environment variable (letters, digits and underscores)", file=sys.stderr)
         return EXIT_USAGE
@@ -645,7 +728,11 @@ def _main(argv: list[str]) -> int:
 
         return solve
 
-    model_args: dict[str, Any] = {"thinking": thinking, "effort": a.effort, "max_reasks": int(a.max_reasks)}
+    model_args: dict[str, Any] = {"wire": a.wire, "effort": a.effort, "max_reasks": int(a.max_reasks)}
+    if a.wire == WIRE_OPENAI:
+        model_args["verbosity"] = a.verbosity
+    else:
+        model_args["thinking"] = thinking
     if timeout_ms is not None:
         model_args["timeout_ms"] = timeout_ms
     if a.api_version is not None:

@@ -8,6 +8,7 @@ import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { ImportUsageError, loadBar, parseCasesFile } from '../examples/importers/shared.ts';
 import { convertRegrade, main, USAGE } from '../examples/importers/skill-evals/import.ts';
+import { scratchEnv } from './helpers.ts';
 
 const dir = join(import.meta.dirname, '..', 'examples', 'importers', 'skill-evals');
 const work = mkdtempSync(join(tmpdir(), 'anchorset-flow-required-'));
@@ -19,7 +20,7 @@ const cases = parseCasesFile(readFileSync(join(dir, 'cases.json'), 'utf8'), bar)
 test('the command without --flow exits 64 naming --flow, writes no file and reads no file of the flow', () => {
   const out = join(work, 'run.json');
   const args = ['--in', join(dir, 'fixtures', 'old-judge.regrade.jsonl'), '--cases', join(dir, 'cases.json'), '--bar', join(dir, 'bar.json'), '--out', out, '--reading', READING];
-  const r = spawnSync(process.execPath, [join(dir, 'import.ts'), ...args], { encoding: 'utf8' });
+  const r = spawnSync(process.execPath, [join(dir, 'import.ts'), ...args], { env: scratchEnv(), encoding: 'utf8' });
   assert.equal(r.status, 64, r.stderr);
   assert.match(r.stderr, /missing --flow/);
   assert.equal(existsSync(out), false);
@@ -33,7 +34,7 @@ test('the command without --flow exits 64 naming --flow, writes no file and read
 
 test('with --flow the command imports, and the run says the flow was read again', () => {
   const out = join(work, 'ok-run.json');
-  const r = spawnSync(process.execPath, [join(dir, 'import.ts'), '--in', join(dir, 'fixtures', 'old-judge.regrade.jsonl'), '--cases', join(dir, 'cases.json'), '--bar', join(dir, 'bar.json'), '--out', out, '--reading', READING, '--flow', join(dir, 'example-flow')], { encoding: 'utf8' });
+  const r = spawnSync(process.execPath, [join(dir, 'import.ts'), '--in', join(dir, 'fixtures', 'old-judge.regrade.jsonl'), '--cases', join(dir, 'cases.json'), '--bar', join(dir, 'bar.json'), '--out', out, '--reading', READING, '--flow', join(dir, 'example-flow')], { env: scratchEnv(), encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   assert.match(readFileSync(out, 'utf8'), /; flow read again: yes\)/);
 });

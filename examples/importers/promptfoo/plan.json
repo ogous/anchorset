@@ -9,7 +9,7 @@
       "judgeModelRequested": "fake-judge-old",
       "judgeModelServed": "fake-judge-old-served-20260101",
       "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
-      "judgeHarnessVersion": "promptfoo 0.123.1; anchorset-recording-grader js sha256:cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba; node v25.6.1; max-reasks 0",
+      "judgeHarnessVersion": "promptfoo 0.123.1; anchorset-recording-grader js sha256:9332e4a126939166f06bc838df330c2ce7e406eda46d77dadf1b879e770c8bc1; node v25.6.1; max-reasks 0; wire anthropic-messages/v1",
       "rubricHash": "a24aaadec6fe7060f791524a929acb7397f238b43eaa9b85a5f8bf58de06254f"
     },
     "new": {
@@ -17,7 +17,7 @@
       "judgeModelRequested": "fake-judge-strict-new",
       "judgeModelServed": "fake-judge-strict-new-served-20260101",
       "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
-      "judgeHarnessVersion": "promptfoo 0.123.1; anchorset-recording-grader js sha256:cb1e4ec8624c817e0bc1a63bd821021575e8a9876336312e5b7f9b702810c7ba; node v25.6.1; max-reasks 0",
+      "judgeHarnessVersion": "promptfoo 0.123.1; anchorset-recording-grader js sha256:9332e4a126939166f06bc838df330c2ce7e406eda46d77dadf1b879e770c8bc1; node v25.6.1; max-reasks 0; wire anthropic-messages/v1",
       "rubricHash": "a24aaadec6fe7060f791524a929acb7397f238b43eaa9b85a5f8bf58de06254f"
     }
   },
@@ -27,8 +27,8 @@
   ],
   "systems": {
     "refund-bot": {
-      "old": "7f26f5234742b774e2054e1a8887f585bc95e2ab8aaea12bf8f3d52d75189fb5",
-      "new": "f58f90625eedb4239613fb27baa0cadceaff31282b7871574d90618ab7a41340"
+      "old": "d6c65b99872403a041366c735113af2738d5cbeb1ebcc5c8797ad1bb5d627c1f",
+      "new": "06e252b5aaf49247ad33e17f0255e887bae5213510cf6825a8e3103a984f9ef1"
     }
   },
   "storedOutputs": "system-side-not-compared",

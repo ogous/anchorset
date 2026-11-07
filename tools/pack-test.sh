@@ -14,11 +14,11 @@ cd "$ROOT"
 npm run --silent build
 TARBALL=$(npm pack --silent --pack-destination "$WORK" | tail -1)
 CONTENTS=$(tar -tzf "$WORK/$TARBALL")
-# The notices, the licence texts and every document package.json ships from docs/: the allow-list further down names the same seven.
+# The notices, the licence texts and every document package.json ships from docs/: the allow-list further down names the same eight.
 for f in LICENSE NOTICE CITATION.cff TRADEMARKS.md AUTHORSHIP.md llms.txt \
   CHANGELOG.md CONTRIBUTING.md SECURITY.md REUSE.toml \
   LICENSES/Apache-2.0.txt LICENSES/CC-BY-4.0.txt LICENSES/CC0-1.0.txt \
-  docs/CLI.md docs/COMPARISON.md docs/IMPORTERS.md docs/JUDGE_CHANGE.md docs/MIGRATIONS.md docs/RATINGS_FORMAT.md docs/RUN_FORMAT.md; do
+  docs/CLI.md docs/COMPARISON.md docs/IMPORTERS.md docs/JUDGE_CHANGE.md docs/MIGRATIONS.md docs/PROMPTFOO.md docs/RATINGS_FORMAT.md docs/RUN_FORMAT.md; do
   grep -qx "package/$f" <<<"$CONTENTS" || { echo "pack-test: $f is missing from the tarball" >&2; exit 1; }
 done
 # Every file the packaged README links to must be in the package, or the link is dead for whoever installed it.
@@ -28,7 +28,7 @@ for f in $LINKS; do
   grep -qx "package/$f" <<<"$CONTENTS" || { echo "pack-test: README.md links to $f, which is missing from the tarball" >&2; exit 1; }
 done
 # Only the documents named in package.json ship from docs/: a file added there is not shipped unless package.json names it.
-EXTRA=$(grep '^package/docs/' <<<"$CONTENTS" | grep -vx -e package/docs/CLI.md -e package/docs/COMPARISON.md -e package/docs/IMPORTERS.md -e package/docs/JUDGE_CHANGE.md -e package/docs/MIGRATIONS.md -e package/docs/RATINGS_FORMAT.md -e package/docs/RUN_FORMAT.md || true)
+EXTRA=$(grep '^package/docs/' <<<"$CONTENTS" | grep -vx -e package/docs/CLI.md -e package/docs/COMPARISON.md -e package/docs/IMPORTERS.md -e package/docs/JUDGE_CHANGE.md -e package/docs/MIGRATIONS.md -e package/docs/PROMPTFOO.md -e package/docs/RATINGS_FORMAT.md -e package/docs/RUN_FORMAT.md || true)
 [[ -z "$EXTRA" ]] || { echo "pack-test: unexpected files under docs/ in the tarball: $EXTRA" >&2; exit 1; }
 # Only the data of the two examples ships (the generators import src/, which the package does not carry).
 for f in examples/refund-bot/README.md examples/refund-bot/baseline.json examples/refund-bot/candidate.json examples/refund-bot/bar.json \

@@ -3,9 +3,10 @@
 # Run it with an ABSOLUTE config path: the tool hands a relative one to the providers as a relative base path, and the
 # stored-outputs provider refuses that rather than read a file against the working folder:
 #   promptfoo eval -c "$PWD/promptfooconfig.yaml" --repeat 3 --no-cache -o out/result.json
-# The grader's config states three settings, with no default: `thinking` and `effort` (NOT_SENT sends nothing; otherwise the
+# The grader's config states `wire` (anthropic-messages/v1 or openai-responses/v1, no default; fixture-inputs/openai-old-judge.yaml
+# is the OpenAI form) and three more settings, with no default: `thinking` and `effort` (NOT_SENT sends nothing; otherwise the
 # request's own `thinking` object and an effort word), and `maxReasks`, the bound of re-asks one slot may be given (0 to 3;
-# 0 asks every slot once). The grader asks a slot again only after an ask that got no reply or a reply cut at the output
+# 0 asks every slot once). On the OpenAI wire the settings are `max_output_tokens`, `effort`, `verbosity` and `maxReasks`. The grader asks a slot again only after an ask that got no reply or a reply cut at the output
 # cap, never after a finished reply. The rule by which replies are read is not in the config: the importer is told it,
 # with `--reading`.
 # See fixture-inputs/thinking.yaml, fixture-inputs/fenced.yaml and fixture-inputs/reask.yaml for the other forms.
@@ -17,7 +18,7 @@ defaultTest:
   options:
     provider:
       id: 'file://grader-provider.cjs'
-      config: { model: fake-judge-old, max_tokens: 256, temperature: 0, baseUrl: 'http://127.0.0.1:18765', thinking: NOT_SENT, effort: NOT_SENT, maxReasks: 0 }
+      config: { wire: anthropic-messages/v1, model: fake-judge-old, max_tokens: 256, temperature: 0, baseUrl: 'http://127.0.0.1:18765', thinking: NOT_SENT, effort: NOT_SENT, maxReasks: 0 }
   assert:
     - type: llm-rubric
       value: The reply follows the refund policy (within 30 days or damaged goods, never more than once).

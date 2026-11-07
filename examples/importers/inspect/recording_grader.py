@@ -1,18 +1,46 @@
 # The recording grader for inspect_ai (anchorset importer example).
 #
-# It is an inspect_ai model provider, registered as "recording". It makes the judge's call itself over the
-# Anthropic Messages wire format: one blocking HTTP request per ask, no redirect, one deadline per ask
+# It is an inspect_ai model provider, registered as "recording". It makes the judge's call itself: one blocking HTTP
+# request per ask, no redirect, one deadline per ask
 # from the moment a socket exists (each connection attempt and the handshake run under a per-operation timeout; a name
 # lookup is not interrupted, and a deadline that passed during one is seen when it returns). It returns
-# the reply with a record of the slot (schema example.grader-evidence/v7) in
+# the reply with a record of the slot (schema example.grader-evidence/v8) in
 # ModelOutput.metadata and in the assistant message's metadata. The record is the grader's own declaration of what
 # it sent and what came back; it is not independent evidence.
 #
+# THE WIRE. The model argument `wire` is required and has no default. It is one of two names:
+#   anthropic-messages/v1   Anthropic's Messages API:  POST <base>/v1/messages
+#   openai-responses/v1     OpenAI's Responses API:    POST <base>/responses
+# A wire name versions two things together: how the request is built and how the reply is taken from the response. The
+# settings, the request, the checks of a 200 body, the record's keys and the gateway variable are each fixed by the
+# wire (the JavaScript grader, promptfoo/grader-provider.cjs, holds the same rules, and a test compares the records the
+# two write over the same exchanges); a setting of the other wire is refused when the grader is built, before any call.
+# The Anthropic record is the version 7 record plus `schema` v8 and `wire`. The output cap is the generation setting
+# `max_tokens` on both wires (the tool's own name for it); it is sent as `max_tokens` on the first and as
+# `max_output_tokens` on the second, where it is an integer of at least 16. Both caps are integers below 2^53.
+# The OpenAI request always sends `store: false` and `truncation: "disabled"`; neither is a setting, and both are
+# recorded (`sent.store`, `sent.truncation`). This grader hands the tool one user message and no system text, so the
+# OpenAI request holds no `instructions`. A 200 body is held to these checks, in this order, before any text is joined: it
+# is a JSON object whose `object` is "response"; `error` is absent or null; `status` is "completed" or "incomplete";
+# `incomplete_details` is absent or null with "completed" and an object with a printable `reason` with "incomplete"; an
+# echoed `truncation` is "disabled" and an echoed `store` is false; `id`, `model` and `usage` follow the form rules below;
+# `output` is a list of items that each have a plain `type`. Anything else is a malformed body: the slot ends with no
+# record and is never asked again. The reply is the text of the `output_text` parts of the `message` items, joined; a
+# reasoning item is never read. The record lists the output items in `contentTypes`: a reasoning item as "reasoning", a
+# message item's parts as "message/<part type>" when the item's status is "completed" and it holds no `phase`, otherwise as
+# "message[status=<s>]/<part type>" or "message[phase=<p>]/<part type>" (the label is written as it is; the importers read
+# a completed message with `phase` absent or exactly "final_answer", and any other phase stays unreadable). Whether a reply is read at all is the importer's
+# rule, never the grader's: this file reads no verdict. An `output` list may be empty on this wire (a "completed" reply
+# with it is unreadable at import, and an "incomplete" one with the reason "max_output_tokens" is a cut); on the other
+# wire an empty `content` list is a malformed body.
+#
 # One call of the tool is one slot. A slot is asked once, and asked again, at most `max_reasks` times (a stated model
 # argument, 0 to 3, no default), only when an ask ended in one of five things the grader sees without reading the
-# reply's text: the deadline passed, the connection failed, a status 5xx, a status 429, or a status 200 whose
-# stop_reason is exactly "max_tokens". Every ask of a slot sends the same bytes. A finished reply is never asked
-# again, whatever it says; nor is any other 4xx, a redirect, a malformed body or a response in a content encoding. A
+# reply's text: the deadline passed, the connection failed, a status 5xx, a status 429, or a status 200 that is a cut
+# (on the Anthropic wire a stop_reason of exactly "max_tokens"; on the OpenAI wire a status of "incomplete" with the
+# reason "max_output_tokens", and no other reason). Every ask of a slot sends the same bytes. A finished reply is never asked
+# again, whatever it says (on the OpenAI wire an "incomplete" reply of any other reason is recorded, not asked again);
+# nor is any other 4xx, a redirect, a malformed body or a response in a content encoding. A
 # status other than 200 is judged by the status alone: its body is never read.
 #
 # An ask is in the record only when its slot ends with a record: the record then holds every ask of the slot. A slot
@@ -30,6 +58,11 @@
 # it always equals `sent.user`. The promptfoo grader writes the same field over what promptfoo hands it, which is the
 # JSON text of a message list, so the two values are not comparable across tools. `sent.system` and `sent.user` are the
 # hashes of the texts sent, on both.
+#
+# The key goes in the `x-api-key` header on the Anthropic wire and in `authorization: Bearer <key>` on the OpenAI wire. The
+# gateway variable that is checked before any call is ANTHROPIC_BASE_URL on the first; on the second it is each of
+# OPENAI_BASE_URL, OPENAI_API_BASE_URL, OPENAI_API_HOST and OPENAI_HOST, by the same rule: any one set (non-empty) and not
+# equal to the stated base URL, or set with no base URL stated, refuses the grader before any call, naming the variable.
 #
 # The base URL is taken only in its plain form, the one a URL parser leaves as written: "https://", or "http://" for
 # the two literal addresses 127.0.0.1 and [::1] and for no name (not "localhost": a name is whatever the machine's
@@ -72,18 +105,26 @@ from inspect_ai.model import (
 from inspect_ai.model._model_output import ChatCompletionChoice
 from inspect_ai.tool import ToolChoice, ToolInfo
 
-RECORD_SCHEMA = "example.grader-evidence/v7"
+RECORD_SCHEMA = "example.grader-evidence/v8"
+WIRE_ANTHROPIC = "anthropic-messages/v1"
+WIRE_OPENAI = "openai-responses/v1"
+WIRES = (WIRE_ANTHROPIC, WIRE_OPENAI)
 CALL_SHAPE_SCHEMA = "anchorset.callshape/v1"
 NOT_SENT = "NOT_SENT"
 GRADER_NAME = "anchorset-recording-grader"
 DEFAULT_BASE_URL = "https://api.anthropic.com"
+DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_API_VERSION = "2023-06-01"
 DEFAULT_TIMEOUT_MS = 60000
 # the longest deadline an ask may be given: one hour; a larger value is refused when the grader is built, before any
 # call, as the JavaScript grader refuses it (a timer there takes no more than 2147483647 ms)
 MAX_TIMEOUT_MS = 3600000
 DEFAULT_KEY_ENV = "ANTHROPIC_API_KEY"
+DEFAULT_OPENAI_KEY_ENV = "OPENAI_API_KEY"
 POSTED_PATH = "/v1/messages"
+OPENAI_POSTED_PATH = "/responses"
+# The three variables promptfoo 0.125.1 reads for an OpenAI address, and OPENAI_HOST as well (the JavaScript grader holds the same list). Each is checked by the one rule.
+OPENAI_ADDRESS_VARIABLES = ("OPENAI_BASE_URL", "OPENAI_API_BASE_URL", "OPENAI_API_HOST", "OPENAI_HOST")
 MAX_RESPONSE_BYTES = 32 * 1024 * 1024
 KEY_ENV_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 # A key is visible ASCII with no space. Any other character (a line feed, a control character, a letter outside ASCII)
@@ -119,8 +160,13 @@ GAP_SPELLINGS = {"unknown", "na", "none", "null", "nil", "undefined", "notsent"}
 JS_TRIM = " \t\n\v\f\r\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
 # A control character in a header's name or value: any but the tab. A head that holds one is not well-formed.
 HEAD_CONTROL = re.compile(r"[\x00-\x08\x0a-\x1f\x7f]")
-# model_args the provider takes; anything else raises (it never drops a setting silently)
-ALLOWED_MODEL_ARGS = {"timeout_ms", "api_version", "api_key_env", "thinking", "effort", "max_reasks"}
+# model_args the provider takes on each wire (`wire` itself is looked at apart); anything else raises (it never drops a setting silently)
+ALLOWED_MODEL_ARGS_ANTHROPIC = {"timeout_ms", "api_version", "api_key_env", "thinking", "effort", "max_reasks"}
+ALLOWED_MODEL_ARGS_OPENAI = {"timeout_ms", "api_key_env", "effort", "verbosity", "max_reasks"}
+# the smallest output cap OpenAI's Responses API accepts
+OPENAI_MIN_OUTPUT_TOKENS = 16
+# a cap is an integer below this (the largest integer the JavaScript grader holds exactly, plus one)
+INTEGER_BOUND = 2**53
 # the most re-asks a slot may be given: the stated bound is an integer from 0 to this
 MAX_REASKS_CEILING = 3
 # the closed list of what an earlier ask of a slot can have ended in; nothing else is ever asked again
@@ -131,8 +177,14 @@ REASK_REASONS = ("timeout", "transport", "server-error", "rate-limited", "trunca
 # retry-after header is read: the server does not steer the grader
 REASK_WAITS_S = (2, 4, 8)
 NO_RESPONSE = "NO_RESPONSE"
-# the efforts the grader sends
+# the efforts the grader sends on the Anthropic wire
 EFFORTS = ("low", "medium", "high", "xhigh", "max")
+# the efforts OpenAI's pages list; no table of what a model accepts: a word the model refuses is a 4xx on the first ask
+OPENAI_EFFORTS = ("none", "minimal", "low", "medium", "high", "xhigh", "max")
+VERBOSITIES = ("low", "medium", "high")
+# a type, a status or a phase that is copied into the record: a plain lower-case identifier, so a value can never forge the "/" and
+# "[...]" of a label made from it
+TYPE_FORM = re.compile(r"[a-z][a-z0-9_]{0,59}")
 # the only generation settings the request carries
 SENT_CONFIG_FIELDS = {"max_tokens", "temperature"}
 # the tool's word for each raw Messages stop reason; anything else is "unknown"
@@ -143,6 +195,19 @@ STOP_WORDS = {
     "tool_use": "tool_calls",
     "refusal": "content_filter",
 }
+# the tool's word for a Responses status, and for the reason of an "incomplete" one; anything else is "unknown"
+OPENAI_STOP_WORDS = {"completed": "stop"}
+OPENAI_INCOMPLETE_WORDS = {"max_output_tokens": "max_tokens", "content_filter": "content_filter"}
+
+
+def stop_word(wire: str, stop_reason: str, incomplete_reason: str | None) -> str:
+    """The tool's word for a recorded stop: for a Messages stop_reason, the table above; for a Responses status, "stop" for
+    "completed" and, for "incomplete", the word of its reason. Anything else is "unknown"."""
+    if wire != WIRE_OPENAI:
+        return STOP_WORDS.get(stop_reason, "unknown")
+    if stop_reason == "incomplete":
+        return OPENAI_INCOMPLETE_WORDS.get(incomplete_reason or "", "unknown")
+    return OPENAI_STOP_WORDS.get(stop_reason, "unknown")
 
 
 def sha256_hex(text: str) -> str:
@@ -193,7 +258,7 @@ def _plain_host(host: str) -> bool:
     return all(HOST_LABEL.fullmatch(x) and x[2:4] != "--" for x in labels) and re.fullmatch(r"[a-z].*", labels[-1]) is not None
 
 
-def parse_base_url(raw: Any) -> tuple[str, str, int, bool, str, str]:
+def parse_base_url(raw: Any, posted_path: str) -> tuple[str, str, int, bool, str, str]:
     """The base URL, taken only when it is written in the form a URL parser leaves as written, and refused before any
     call otherwise. The rule, which the promptfoo grader (`parseBaseUrl`) holds too, so that both record one endpoint:
 
@@ -208,7 +273,9 @@ def parse_base_url(raw: Any) -> tuple[str, str, int, bool, str, str]:
     The address is read by this rule alone, with no URL library, and the endpoint is built from it as written. No
     refusal shows the URL: it may hold a credential.
 
-    Returns (the host to connect to, origin, port, secure, path_prefix, posted_path).
+    `posted_path` is the wire's route, added after the path ("/v1/messages", or "/responses"); it has no default.
+
+    Returns (the host to connect to, origin, port, secure, path_prefix, the whole path posted to).
     """
     if not _non_empty_str(raw):
         raise ValueError("grader: base_url must be a non-empty string")
@@ -243,7 +310,7 @@ def parse_base_url(raw: Any) -> tuple[str, str, int, bool, str, str]:
         raise ValueError("grader: base_url path must hold plain segments only")
     if not re.fullmatch(r"[\x21-\x7e]+", raw):
         raise ValueError(PLAIN_FORM_WORDS)
-    return ("::1" if host == "[::1]" else host), f"{scheme}://{authority}", use_port, secure, path, path + POSTED_PATH
+    return ("::1" if host == "[::1]" else host), f"{scheme}://{authority}", use_port, secure, path, path + posted_path
 
 
 def parse_thinking(v: Any) -> tuple[dict[str, Any] | None, str, Any]:
@@ -274,31 +341,39 @@ def parse_thinking(v: Any) -> tuple[dict[str, Any] | None, str, Any]:
     raise refusal
 
 
-def parse_effort(v: Any) -> str:
-    """The `effort` model argument: NOT_SENT or one of the closed words."""
-    if isinstance(v, str) and (v == NOT_SENT or v in EFFORTS):
+def parse_effort(v: Any, words: tuple[str, ...]) -> str:
+    """The `effort` model argument: NOT_SENT or one of the closed words of the wire."""
+    if isinstance(v, str) and (v == NOT_SENT or v in words):
         return v
-    raise ValueError(f'grader: effort must be "NOT_SENT" or one of {", ".join(EFFORTS)}')
+    raise ValueError(f'grader: effort must be "NOT_SENT" or one of {", ".join(words)}')
 
 
-def thinking_tokens_of(data: dict[str, Any]) -> Any:
-    """The thinking-token counter of a response body, or "ABSENT" when the body has none. A counter that is there and is
-    not a non-negative integer stops the call, and a null or a non-object at any level on the way to it is "there"."""
+def parse_verbosity(v: Any) -> str:
+    """The `verbosity` model argument (the OpenAI wire): NOT_SENT or one of the closed words."""
+    if isinstance(v, str) and (v == NOT_SENT or v in VERBOSITIES):
+        return v
+    raise ValueError(f'grader: verbosity must be "NOT_SENT" or one of {", ".join(VERBOSITIES)}')
+
+
+def thinking_tokens_of(data: dict[str, Any], key: str = "thinking_tokens", name: str = "thinking-token") -> Any:
+    """The thinking-token counter of a response body (the Anthropic wire: `thinking_tokens`; the OpenAI wire: `reasoning_tokens`), or
+    "ABSENT" when the body has none. A counter that is there and is not a non-negative integer stops the call, and a null or a
+    non-object at any level on the way to it is "there"."""
     if "usage" not in data:
         return "ABSENT"
     usage = data["usage"]
     if not isinstance(usage, dict):
-        raise ValueError("grader: the thinking-token counter is malformed (usage is not an object)")
+        raise ValueError(f"grader: the {name} counter is malformed (usage is not an object)")
     if "output_tokens_details" not in usage:
         return "ABSENT"
     details = usage["output_tokens_details"]
     if not isinstance(details, dict):
-        raise ValueError("grader: the thinking-token counter is malformed (usage.output_tokens_details is not an object)")
-    if "thinking_tokens" not in details:
+        raise ValueError(f"grader: the {name} counter is malformed (usage.output_tokens_details is not an object)")
+    if key not in details:
         return "ABSENT"
-    n = details["thinking_tokens"]
-    if not isinstance(n, int) or isinstance(n, bool) or n < 0 or n >= 2**53:
-        raise ValueError("grader: the thinking-token counter is not a non-negative integer")
+    n = details[key]
+    if not isinstance(n, int) or isinstance(n, bool) or n < 0 or n >= INTEGER_BOUND:
+        raise ValueError(f"grader: the {name} counter is not a non-negative integer")
     return n
 
 
@@ -318,6 +393,129 @@ def usage_of(data: dict[str, Any]) -> Any:
     if not counter(usage.get("input_tokens")) or not counter(usage.get("output_tokens")):
         raise ValueError("grader: the token usage is malformed (input_tokens and output_tokens must both be non-negative integers)")
     return {"input_tokens": usage["input_tokens"], "output_tokens": usage["output_tokens"]}
+
+
+def parse_messages(data: Any) -> dict[str, Any]:
+    """The checks of a status 200 body on the Anthropic wire (unchanged since version 7) and the reply taken from it. `cut` is a
+    stop_reason of exactly "max_tokens"."""
+    if (
+        not isinstance(data, dict)
+        or not _non_empty_str(data.get("id"))
+        or not _non_empty_str(data.get("model"))
+        or not _non_empty_str(data.get("stop_reason"))
+        or not isinstance(data.get("content"), list)
+        or len(data["content"]) == 0
+    ):
+        raise ValueError("grader: the response lacks id, model, stop_reason or content")
+    # The id is not shown: it is the part of the response that is not of the form a record and a terminal can hold.
+    if not RESPONSE_ID_FORM.fullmatch(data["id"]):
+        raise ValueError("grader: the response id is not 1 to 200 visible ASCII characters with no space; it is not shown")
+    # The served model is copied into the record and the run's identity, as the id is: the same form, and not shown.
+    if not RESPONSE_ID_FORM.fullmatch(data["model"]):
+        raise ValueError("grader: the response model is not 1 to 200 visible ASCII characters with no space; it is not shown")
+    # The stop reason is copied into the record and printed by the importer: one printable line, and not shown.
+    if not is_printable_line(data["stop_reason"]):
+        raise ValueError("grader: the response stop_reason is not one printable line (visible ASCII, single spaces, at most 200 characters); it is not shown")
+    # A value the importers read as a gap is refused at import: so it is here, with nothing shown.
+    if reads_as_gap(data["id"]) or reads_as_gap(data["model"]) or reads_as_gap(data["stop_reason"]):
+        raise ValueError("grader: the response id, model or stop_reason reads as unknown; it is not shown")
+    thinking_tokens = thinking_tokens_of(data)
+    usage = usage_of(data)
+    # The reply is the text of the response's text blocks, joined (one block in every reply the importer accepts). A thinking block's text, signature or data is never read or recorded. A reply
+    # with other shapes of content (two text blocks, a tool block) is recorded as it came and refused at import.
+    content_types: list[str] = []
+    reply = ""
+    for block in data["content"]:
+        if not isinstance(block, dict) or not _non_empty_str(block.get("type")):
+            raise ValueError("grader: a content block has no type")
+        content_types.append(block["type"])
+        if block["type"] == "text":
+            if not isinstance(block.get("text"), str):
+                raise ValueError("grader: a text block has no text")
+            reply += block["text"]
+    return {
+        "servedModel": data["model"], "responseId": data["id"], "stopReason": data["stop_reason"], "contentTypes": content_types,
+        "thinkingTokens": thinking_tokens, "usage": usage, "text": reply, "cut": data["stop_reason"] == "max_tokens",
+    }
+
+
+def parse_responses(data: Any) -> dict[str, Any]:
+    """The checks of a status 200 body on the OpenAI wire, in this order, all of them before any text is joined, and the reply taken
+    from it. Every failure is a malformed body: the slot ends, with no record, and is not asked again. No value of the body is shown in
+    a message. Fields the grader does not read may hold anything (`encrypted_content` of a reasoning item included); none is read or
+    recorded."""
+    # 1. A JSON object whose `object` is "response".
+    if not isinstance(data, dict) or data.get("object") != "response":
+        raise ValueError('grader: the response is not a Responses object (its object is not "response")')
+    # 2. `error` is absent or null. (null is taken in this field and in incomplete_details, and nowhere else.)
+    if "error" in data and data["error"] is not None:
+        raise ValueError("grader: the response holds an error that is not null on a status 200")
+    # 3. `status` is completed or incomplete: failed, in_progress, cancelled, queued and anything else are malformed.
+    status = data.get("status")
+    if not isinstance(status, str) or status not in ("completed", "incomplete"):
+        raise ValueError('grader: the response status is neither "completed" nor "incomplete"; the value is not shown')
+    # 4. incomplete_details fits the status.
+    incomplete_reason = "ABSENT"
+    details = data.get("incomplete_details")
+    if status == "completed":
+        if details is not None:
+            raise ValueError('grader: the response is "completed" and holds incomplete_details')
+    else:
+        reason = details.get("reason") if isinstance(details, dict) else None
+        if not isinstance(details, dict) or not is_printable_line(reason) or reads_as_gap(reason) or reason == "ABSENT":
+            raise ValueError('grader: the response is "incomplete" and its incomplete_details hold no printable reason; the value is not shown')
+        incomplete_reason = reason
+    # 5. Echoes: the truncation and the store that were sent. A key that is there and holds anything else, null included, is malformed.
+    if "truncation" in data and not (isinstance(data["truncation"], str) and data["truncation"] == "disabled"):
+        raise ValueError('grader: the response echoes a truncation other than "disabled"')
+    if "store" in data and data["store"] is not False:
+        raise ValueError("grader: the response echoes a store other than false")
+    # 6. id, model, usage and output.
+    if not _non_empty_str(data.get("id")) or not _non_empty_str(data.get("model")) or not isinstance(data.get("output"), list):
+        raise ValueError("grader: the response lacks id, model or output")
+    if not RESPONSE_ID_FORM.fullmatch(data["id"]):
+        raise ValueError("grader: the response id is not 1 to 200 visible ASCII characters with no space; it is not shown")
+    if not RESPONSE_ID_FORM.fullmatch(data["model"]):
+        raise ValueError("grader: the response model is not 1 to 200 visible ASCII characters with no space; it is not shown")
+    if reads_as_gap(data["id"]) or reads_as_gap(data["model"]):
+        raise ValueError("grader: the response id or model reads as unknown; it is not shown")
+    thinking_tokens = thinking_tokens_of(data, "reasoning_tokens", "reasoning-token")
+    usage = usage_of(data)
+    content_types: list[str] = []
+    reply = ""
+    for item in data["output"]:
+        if not isinstance(item, dict) or not isinstance(item.get("type"), str) or not TYPE_FORM.fullmatch(item["type"]):
+            raise ValueError("grader: an output item has no type of the plain form (a lower-case identifier); it is not shown")
+        if item["type"] == "reasoning":
+            content_types.append("reasoning")
+            continue
+        if item["type"] != "message":
+            content_types.append(item["type"])
+            continue
+        if not isinstance(item.get("status"), str) or not TYPE_FORM.fullmatch(item["status"]):
+            raise ValueError("grader: a message item has no status of the plain form; it is not shown")
+        if "phase" in item and (not isinstance(item["phase"], str) or not TYPE_FORM.fullmatch(item["phase"])):
+            raise ValueError("grader: a message item holds a phase that is not of the plain form; it is not shown")
+        if not isinstance(item.get("content"), list):
+            raise ValueError("grader: a message item has no content list")
+        # The label is written as it is. The importers read a completed message with phase absent or exactly "final_answer"; the other forms say in the record why a message is not taken as the answer.
+        label = f"message[status={item['status']}]" if item["status"] != "completed" else (f"message[phase={item['phase']}]" if "phase" in item else "message")
+        # A message with no parts still shows in the list, by its bare label: it must not vanish beside a message that is complete.
+        if len(item["content"]) == 0:
+            content_types.append(label)
+        for part in item["content"]:
+            if not isinstance(part, dict) or not isinstance(part.get("type"), str) or not TYPE_FORM.fullmatch(part["type"]):
+                raise ValueError("grader: a content part has no type of the plain form; it is not shown")
+            content_types.append(f"{label}/{part['type']}")
+            if part["type"] == "output_text":
+                if not isinstance(part.get("text"), str):
+                    raise ValueError("grader: an output_text part has no text")
+                reply += part["text"]
+    return {
+        "servedModel": data["model"], "responseId": data["id"], "stopReason": status, "incompleteReason": incomplete_reason,
+        "contentTypes": content_types, "thinkingTokens": thinking_tokens, "usage": usage, "text": reply,
+        "cut": status == "incomplete" and incomplete_reason == "max_output_tokens",
+    }
 
 
 async def _wait(seconds: float) -> None:
@@ -468,26 +666,38 @@ class RecordingGrader(ModelAPI):
         **model_args: Any,
     ) -> None:
         super().__init__(model_name, base_url, None, [], config)
-        # A gateway the user's other tools honour: the environment variable ANTHROPIC_BASE_URL. This grader never reads it as an
-        # address, so with no base URL stated, or another one, the key in the key variable (which may be the gateway's credential)
-        # would go to the public host. Refused when the grader is built, before any call. The variable is named and its value is
-        # never printed. An empty variable is not set. The address to state is the base URL the model is built with
-        # (`--base-url` when regrade.py builds it).
-        gateway = os.environ.get("ANTHROPIC_BASE_URL")
-        if gateway and base_url != gateway:
-            how = "no base URL was stated, so the grader would use its default" if base_url is None else "the base URL stated differs from it"
-            raise ValueError(f"grader: the environment variable ANTHROPIC_BASE_URL is set, and this grader never reads it: {how}, and the key would go there instead of to the address your other tools use. State the same address as the grader's base URL, or unset the variable. No call was made.")
+        # The wire first: it fixes every other setting and the gateway variable that is checked. It has no default.
+        if "wire" not in model_args:
+            raise ValueError(f'grader: model arg "wire" is required (no default): one of {", ".join(WIRES)}')
+        wire = model_args["wire"]
+        if not isinstance(wire, str) or wire not in WIRES:
+            raise ValueError(f'grader: model arg "wire" must be one of {", ".join(WIRES)}')
+        openai = wire == WIRE_OPENAI
+        # A gateway the user's other tools honour: the environment variable ANTHROPIC_BASE_URL on the Anthropic wire, and each of the four
+        # OPENAI_* address variables on the OpenAI wire. This grader never reads one as an address, so with no base URL stated, or another
+        # one, the key in the key variable (which may be the gateway's credential) would go to the public host. Refused when the grader is
+        # built, before any call, and before any other setting is looked at. The variable is named and its value is never printed. An empty
+        # variable is not set. The address to state is the base URL the model is built with (`--base-url` when regrade.py builds it).
+        for name in OPENAI_ADDRESS_VARIABLES if openai else ("ANTHROPIC_BASE_URL",):
+            gateway = os.environ.get(name)
+            if gateway and base_url != gateway:
+                how = "no base URL was stated, so the grader would use its default" if base_url is None else "the base URL stated differs from it"
+                # A bare host can never equal a base URL, so for the two HOST variables the one remedy is to unset the variable.
+                hint = "Unset the variable." if name.endswith("_HOST") else "State the same address as the grader's base URL, or unset the variable."
+                raise ValueError(f"grader: the environment variable {name} is set, and this grader never reads it: {how}, and the key would go there instead of to the address your other tools use. {hint} No call was made.")
         if api_key is not None:
             raise ValueError("grader: the key is read from the environment, never passed")
+        allowed = ALLOWED_MODEL_ARGS_OPENAI if openai else ALLOWED_MODEL_ARGS_ANTHROPIC
         for k in model_args:
-            if k not in ALLOWED_MODEL_ARGS:
-                raise ValueError(f'grader: model arg "{k}" is not one the grader sends; it never drops a setting silently')
-        # No default for either: a judge's settings are stated, never inherited from the provider.
-        for k in ("thinking", "effort"):
+            if k != "wire" and k not in allowed:
+                raise ValueError(f'grader: model arg "{k}" is not one the grader sends on the {wire} wire; it never drops a setting silently')
+        # No default for these: a judge's settings are stated, never inherited from the provider.
+        for k in ("effort", "verbosity") if openai else ("thinking", "effort"):
             if k not in model_args:
                 raise ValueError(f'grader: model arg "{k}" is required (no default); "{NOT_SENT}" sends nothing')
-        thinking_body, thinking_mode, thinking_budget = parse_thinking(model_args["thinking"])
-        effort = parse_effort(model_args["effort"])
+        thinking_body, thinking_mode, thinking_budget = (None, NOT_SENT, NOT_SENT) if openai else parse_thinking(model_args["thinking"])
+        effort = parse_effort(model_args["effort"], OPENAI_EFFORTS if openai else EFFORTS)
+        verbosity = parse_verbosity(model_args["verbosity"]) if openai else NOT_SENT
         # No default here either: every re-ask is a paid call, so how many a slot may get is stated. 0 asks once.
         if "max_reasks" not in model_args:
             raise ValueError(f'grader: model arg "max_reasks" is required (no default): an integer from 0 to {MAX_REASKS_CEILING}; 0 asks every slot once')
@@ -502,29 +712,38 @@ class RecordingGrader(ModelAPI):
         # Before any call: a model id the importer would refuse (one that reads as a gap, or is not one printable line) is refused here, not after the bill.
         if not is_printable_line(model_name) or reads_as_gap(model_name):
             raise ValueError("grader: the model name must be one printable line (visible ASCII, single spaces, at most 200 characters) that does not read as unknown; the value is not shown")
+        # The cap is the tool's `max_tokens`; the OpenAI wire sends it as `max_output_tokens`, an integer of at least 16. Both are held below 2^53.
         mt = config.max_tokens
-        if not isinstance(mt, int) or isinstance(mt, bool) or mt <= 0:
+        if openai:
+            if not isinstance(mt, int) or isinstance(mt, bool) or not OPENAI_MIN_OUTPUT_TOKENS <= mt < INTEGER_BOUND:
+                raise ValueError(f"grader: max_tokens is required on the {wire} wire, an integer of at least {OPENAI_MIN_OUTPUT_TOKENS} (it is sent as max_output_tokens)")
+        elif not isinstance(mt, int) or isinstance(mt, bool) or not 0 < mt < INTEGER_BOUND:
             raise ValueError("grader: max_tokens is required, a positive integer")
         temp = config.temperature
-        if temp is not None and not (_number(temp) and 0 <= temp <= 1):
-            raise ValueError("grader: temperature must be a number in [0, 1]")
+        temperature_max = 2 if openai else 1
+        if temp is not None and not (_number(temp) and 0 <= temp <= temperature_max):
+            raise ValueError(f"grader: temperature must be a number in [0, {temperature_max}]")
         timeout_ms = model_args.get("timeout_ms", DEFAULT_TIMEOUT_MS)
         if not isinstance(timeout_ms, int) or isinstance(timeout_ms, bool) or not 0 < timeout_ms <= MAX_TIMEOUT_MS:
             raise ValueError(f"grader: timeout_ms must be a positive integer of at most {MAX_TIMEOUT_MS} (one hour)")
-        api_version = model_args.get("api_version", DEFAULT_API_VERSION)
-        if not _non_empty_str(api_version):
-            raise ValueError("grader: api_version must be a non-empty string")
-        # The same: an API version that is not 1 to 200 visible ASCII characters, or reads as a gap, is refused here, as the importer refuses it.
-        if not RESPONSE_ID_FORM.fullmatch(api_version) or reads_as_gap(api_version):
-            raise ValueError("grader: api_version must be 1 to 200 visible ASCII characters with no space that do not read as unknown; the value is not shown")
-        key_env = model_args.get("api_key_env", DEFAULT_KEY_ENV)
+        # The API version is the Anthropic wire's header; the OpenAI wire has none (the argument is refused above).
+        api_version = NOT_SENT if openai else model_args.get("api_version", DEFAULT_API_VERSION)
+        if not openai:
+            if not _non_empty_str(api_version):
+                raise ValueError("grader: api_version must be a non-empty string")
+            # The same: an API version that is not 1 to 200 visible ASCII characters, or reads as a gap, is refused here, as the importer refuses it.
+            if not RESPONSE_ID_FORM.fullmatch(api_version) or reads_as_gap(api_version):
+                raise ValueError("grader: api_version must be 1 to 200 visible ASCII characters with no space that do not read as unknown; the value is not shown")
+        key_env = model_args.get("api_key_env", DEFAULT_OPENAI_KEY_ENV if openai else DEFAULT_KEY_ENV)
         if not isinstance(key_env, str) or not KEY_ENV_NAME.fullmatch(key_env):
             # the value is not echoed: a key put here by mistake must not reach an error message
             raise ValueError("grader: api_key_env must be the name of an environment variable (letters, digits and underscores)")
+        self.wire = wire
         self.thinking_body = thinking_body
         self.thinking_mode = thinking_mode
         self.thinking_budget = thinking_budget
         self.effort = effort
+        self.verbosity = verbosity
         self.max_reasks = max_reasks
         self.requested_model = model_name
         self.max_tokens = mt
@@ -534,7 +753,8 @@ class RecordingGrader(ModelAPI):
         self.api_version = api_version
         self.key_env = key_env
         self.host, self.origin, self.port, self.secure, _prefix, self.path = parse_base_url(
-            DEFAULT_BASE_URL if base_url is None else base_url
+            (DEFAULT_OPENAI_BASE_URL if openai else DEFAULT_BASE_URL) if base_url is None else base_url,
+            OPENAI_POSTED_PATH if openai else POSTED_PATH,
         )
         self.url = self.origin + self.path
 
@@ -568,50 +788,7 @@ class RecordingGrader(ModelAPI):
             data = json.loads(raw.decode("utf-8"), parse_constant=_reject_constant)
         except (ValueError, UnicodeDecodeError):
             raise ValueError("grader: the response is not JSON") from None
-        if (
-            not isinstance(data, dict)
-            or not _non_empty_str(data.get("id"))
-            or not _non_empty_str(data.get("model"))
-            or not _non_empty_str(data.get("stop_reason"))
-            or not isinstance(data.get("content"), list)
-            or len(data["content"]) == 0
-        ):
-            raise ValueError("grader: the response lacks id, model, stop_reason or content")
-        # The id is not shown: it is the part of the response that is not of the form a record and a terminal can hold.
-        if not RESPONSE_ID_FORM.fullmatch(data["id"]):
-            raise ValueError("grader: the response id is not 1 to 200 visible ASCII characters with no space; it is not shown")
-        # The served model is copied into the record and the run's identity, as the id is: the same form, and not shown.
-        if not RESPONSE_ID_FORM.fullmatch(data["model"]):
-            raise ValueError("grader: the response model is not 1 to 200 visible ASCII characters with no space; it is not shown")
-        # The stop reason is copied into the record and printed by the importer: one printable line, and not shown.
-        if not is_printable_line(data["stop_reason"]):
-            raise ValueError("grader: the response stop_reason is not one printable line (visible ASCII, single spaces, at most 200 characters); it is not shown")
-        # A value the importers read as a gap is refused at import: so it is here, with nothing shown.
-        if reads_as_gap(data["id"]) or reads_as_gap(data["model"]) or reads_as_gap(data["stop_reason"]):
-            raise ValueError("grader: the response id, model or stop_reason reads as unknown; it is not shown")
-        thinking_tokens = thinking_tokens_of(data)
-        usage = usage_of(data)
-        # The reply is the text of the response's text blocks, joined (one block in every reply the importer accepts). A thinking block's text, signature or data is never read or recorded. A reply
-        # with other shapes of content (two text blocks, a tool block) is recorded as it came and refused at import.
-        content_types: list[str] = []
-        reply = ""
-        for block in data["content"]:
-            if not isinstance(block, dict) or not _non_empty_str(block.get("type")):
-                raise ValueError("grader: a content block has no type")
-            content_types.append(block["type"])
-            if block["type"] == "text":
-                if not isinstance(block.get("text"), str):
-                    raise ValueError("grader: a text block has no text")
-                reply += block["text"]
-        return None, {
-            "servedModel": data["model"],
-            "responseId": data["id"],
-            "stopReason": data["stop_reason"],
-            "contentTypes": content_types,
-            "thinkingTokens": thinking_tokens,
-            "usage": usage,
-            "text": reply,
-        }, None
+        return None, (parse_responses(data) if self.wire == WIRE_OPENAI else parse_messages(data)), None
 
     async def generate(self, input: list[ChatMessage], tools: list[ToolInfo], tool_choice: ToolChoice, config: GenerateConfig):
         seq = _next_seq()
@@ -637,20 +814,33 @@ class RecordingGrader(ModelAPI):
             )
 
         # The request and the call shape are built here from the same variables.
-        body: dict[str, Any] = {"model": self.requested_model, "max_tokens": self.max_tokens, "messages": [{"role": "user", "content": user}]}
-        if self.temperature is not None:
-            body["temperature"] = self.temperature
-        if self.thinking_body is not None:
-            body["thinking"] = dict(self.thinking_body)
-        if self.effort != NOT_SENT:
-            body["output_config"] = {"effort": self.effort}
+        openai = self.wire == WIRE_OPENAI
+        body: dict[str, Any]
+        if openai:
+            # Key order is the documented order; store and truncation are always sent and are not settings. One user message and no system
+            # text is handed to this grader, so there is no `instructions`.
+            body = {"model": self.requested_model, "input": [{"role": "user", "content": user}], "max_output_tokens": self.max_tokens, "store": False, "truncation": "disabled"}
+            if self.temperature is not None:
+                body["temperature"] = self.temperature
+            if self.effort != NOT_SENT:
+                body["reasoning"] = {"effort": self.effort}
+            if self.verbosity != NOT_SENT:
+                body["text"] = {"verbosity": self.verbosity}
+        else:
+            body = {"model": self.requested_model, "max_tokens": self.max_tokens, "messages": [{"role": "user", "content": user}]}
+            if self.temperature is not None:
+                body["temperature"] = self.temperature
+            if self.thinking_body is not None:
+                body["thinking"] = dict(self.thinking_body)
+            if self.effort != NOT_SENT:
+                body["output_config"] = {"effort": self.effort}
         call_shape: dict[str, Any] = {
             "schema": CALL_SHAPE_SCHEMA,
             "endpoint": self.url,
-            "apiVersion": self.api_version,
+            "apiVersion": NOT_SENT if openai else self.api_version,
             "betaFlags": NOT_SENT,
-            "thinkingMode": self.thinking_mode,
-            "thinkingBudgetTokens": self.thinking_budget,
+            "thinkingMode": NOT_SENT if openai else self.thinking_mode,
+            "thinkingBudgetTokens": NOT_SENT if openai else self.thinking_budget,
             "effort": self.effort,
             "toolChoice": NOT_SENT,
             "toolChoiceName": NOT_SENT,
@@ -668,11 +858,16 @@ class RecordingGrader(ModelAPI):
             "contextPolicy": "none",
             "stream": NOT_SENT,
             "timeoutMs": self.timeout_ms,
-            "extras": {},
+            # `store` and `verbosity` are not named keys of the call shape. (`truncation` is: it is the context policy above.)
+            "extras": {"openai.store": False, **({} if self.verbosity == NOT_SENT else {"openai.verbosity": self.verbosity})} if openai else {},
         }
         # Serialised once: every ask of this slot sends these bytes and these headers.
         payload = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-        headers = {"content-type": "application/json", "anthropic-version": self.api_version, "x-api-key": api_key}
+        headers = (
+            {"content-type": "application/json", "authorization": f"Bearer {api_key}"}
+            if openai
+            else {"content-type": "application/json", "anthropic-version": self.api_version, "x-api-key": api_key}
+        )
 
         # The asks of this slot before the last, in the order made. Each ask has its own call number and call id.
         earlier: list[dict[str, Any]] = []
@@ -700,7 +895,7 @@ class RecordingGrader(ModelAPI):
                 if ended is e:
                     raise
                 raise ended from e
-            if got is not None and not (got["stopReason"] == "max_tokens" and len(earlier) < self.max_reasks):
+            if got is not None and not (got["cut"] and len(earlier) < self.max_reasks):
                 # The slot's last ask: a reply that is not cut, whatever it says, or a cut reply with the bound used up.
                 last = got
                 break
@@ -714,8 +909,10 @@ class RecordingGrader(ModelAPI):
                     raise ends_slot(ValueError("grader: the cut reply holds an unpaired surrogate; it has no UTF-8 bytes of its own")) from None
                 earlier.append({
                     "reason": "truncated", "callSeq": seq, "callId": call_id, "httpStatus": 200, "responseId": got["responseId"],
-                    "servedModel": got["servedModel"], "stopReason": got["stopReason"], "contentTypes": got["contentTypes"],
-                    "thinkingTokens": got["thinkingTokens"], "usage": got["usage"],
+                    "servedModel": got["servedModel"], "stopReason": got["stopReason"],
+                    # the OpenAI wire's earlier cut asks also state why the response was incomplete
+                    **({"incompleteReason": got["incompleteReason"]} if openai else {}),
+                    "contentTypes": got["contentTypes"], "thinkingTokens": got["thinkingTokens"], "usage": got["usage"],
                     "replySha256": hashlib.sha256(cut_bytes).hexdigest(), "replyUtf8Bytes": len(cut_bytes),
                 })
             else:
@@ -741,23 +938,37 @@ class RecordingGrader(ModelAPI):
             call_id = str(uuid.uuid4())
 
         reply = last["text"]
+        sent: dict[str, Any] = (
+            {
+                "system": NOT_SENT,
+                "user": sha256_hex(user),
+                "reasoning": NOT_SENT if self.effort == NOT_SENT else {"effort": self.effort},
+                "text": NOT_SENT if self.verbosity == NOT_SENT else {"verbosity": self.verbosity},
+                "store": False,
+                "truncation": "disabled",
+            }
+            if openai
+            else {
+                "system": NOT_SENT,
+                "user": sha256_hex(user),
+                "thinking": NOT_SENT if self.thinking_body is None else dict(self.thinking_body),
+                "output_config": NOT_SENT if self.effort == NOT_SENT else {"effort": self.effort},
+            }
+        )
         evidence: dict[str, Any] = {
             "schema": RECORD_SCHEMA,
+            "wire": self.wire,
             "grader": {"name": GRADER_NAME, "language": "python", "sha256": GRADER_SHA256, "runtime": RUNTIME},
             "graderRunId": GRADER_RUN_ID,
             "callSeq": seq,
             "callId": call_id,
             "promptSha256": sha256_hex(user),
-            "sent": {
-                "system": NOT_SENT,
-                "user": sha256_hex(user),
-                "thinking": NOT_SENT if self.thinking_body is None else dict(self.thinking_body),
-                "output_config": NOT_SENT if self.effort == NOT_SENT else {"effort": self.effort},
-            },
+            "sent": sent,
             "requestedModel": self.requested_model,
             "servedModel": last["servedModel"],
             "responseId": last["responseId"],
             "stopReason": last["stopReason"],
+            **({"incompleteReason": last["incompleteReason"]} if openai else {}),
             "contentTypes": last["contentTypes"],
             "thinkingTokens": last["thinkingTokens"],
             "usage": last["usage"],
@@ -777,7 +988,7 @@ class RecordingGrader(ModelAPI):
             )
         return ModelOutput(
             model=last["servedModel"],
-            choices=[ChatCompletionChoice(message=message, stop_reason=STOP_WORDS.get(last["stopReason"], "unknown"))],
+            choices=[ChatCompletionChoice(message=message, stop_reason=stop_word(self.wire, last["stopReason"], last.get("incompleteReason")))],
             usage=model_usage,
             metadata={"graderEvidence": evidence},
         )

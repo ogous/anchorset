@@ -100,7 +100,8 @@ function stubGrader(o: StubOptions = {}): Stub {
         const user = list[list.length - 1]?.content ?? '';
         const reply = o.reply === undefined ? '{"pass": true, "reason": "The reply follows the rules."}' : o.reply(seq);
         const types = o.contentTypes === undefined ? ['text'] : o.contentTypes(seq);
-        const thinking = config.thinking;
+        const openai = config.wire === 'openai-responses/v1';
+        const thinking = config.thinking ?? NOT_SENT;
         const mode = thinking === NOT_SENT ? NOT_SENT : (THINKING_MODES[String((thinking as Obj)['type'])] ?? 'adaptive');
         const budget = thinking !== NOT_SENT && (thinking as Obj)['type'] === 'enabled' ? (thinking as Obj)['budget_tokens'] : NOT_SENT;
         const cuts = o.earlier === undefined ? 0 : o.earlier(seq);
@@ -108,33 +109,42 @@ function stubGrader(o: StubOptions = {}): Stub {
           ask += 1;
           return {
             reason: 'truncated', callSeq: ask, callId: `00000000-0000-4000-8000-${String(ask).padStart(12, '0')}`, httpStatus: 200, responseId: `msg_cut_${ask}`, servedModel: config.model,
-            stopReason: 'max_tokens', contentTypes: ['text'], thinkingTokens: 'ABSENT', usage: 'ABSENT', replySha256: sha256Hex(`cut ${ask}`), replyUtf8Bytes: 7,
+            ...(openai ? { stopReason: 'incomplete', incompleteReason: 'max_output_tokens', contentTypes: ['reasoning'] } : { stopReason: 'max_tokens', contentTypes: ['text'] }),
+            thinkingTokens: 'ABSENT', usage: 'ABSENT', replySha256: sha256Hex(`cut ${ask}`), replyUtf8Bytes: 7,
           };
         });
         ask += 1;
         const graderEvidence: Obj = {
-          schema: 'example.grader-evidence/v7',
+          schema: 'example.grader-evidence/v8',
+          wire: config.wire,
           grader: { name: 'anchorset-recording-grader', language: 'js', sha256: 'a'.repeat(64), runtime: 'node v0.0.0' },
           graderRunId: '00000000-0000-4000-8000-00000000aaaa',
           callSeq: ask,
           callId: `00000000-0000-4000-8000-${String(ask).padStart(12, '0')}`,
           promptSha256: sha256Hex(prompt),
-          sent: { system: list.length === 2 ? sha256Hex(list[0]?.content ?? '') : 'NOT_SENT', user: sha256Hex(user), thinking, output_config: config.effort === NOT_SENT ? NOT_SENT : { effort: config.effort } },
+          sent: {
+            system: list.length === 2 ? sha256Hex(list[0]?.content ?? '') : 'NOT_SENT',
+            user: sha256Hex(user),
+            ...(openai
+              ? { reasoning: config.effort === NOT_SENT ? NOT_SENT : { effort: config.effort }, text: config.verbosity === NOT_SENT || config.verbosity === undefined ? NOT_SENT : { verbosity: config.verbosity }, store: false, truncation: 'disabled' }
+              : { thinking, output_config: config.effort === NOT_SENT ? NOT_SENT : { effort: config.effort } }),
+          },
           requestedModel: config.model,
           servedModel: config.model,
           responseId: `msg_${seq}`,
-          stopReason: o.stopReason === undefined ? 'end_turn' : o.stopReason(seq),
-          contentTypes: types ?? [],
+          stopReason: o.stopReason === undefined ? (openai ? 'completed' : 'end_turn') : o.stopReason(seq),
+          ...(openai ? { incompleteReason: o.stopReason === undefined || o.stopReason(seq) === 'completed' ? 'ABSENT' : 'max_output_tokens' } : {}),
+          contentTypes: types === undefined ? [] : openai ? types.map((t) => (t === 'text' ? 'message/output_text' : t === 'thinking' ? 'reasoning' : t)) : types,
           thinkingTokens: 'ABSENT',
           usage: 'ABSENT',
           reply,
           callShape: {
             schema: 'anchorset.callshape/v1',
-            endpoint: `${config.baseUrl.replace(/\/+$/, '')}/v1/messages`,
-            apiVersion: config.apiVersion ?? '2023-06-01',
+            endpoint: `${config.baseUrl.replace(/\/+$/, '')}${openai ? '/responses' : '/v1/messages'}`,
+            apiVersion: openai ? NOT_SENT : (config.apiVersion ?? '2023-06-01'),
             betaFlags: NOT_SENT,
-            thinkingMode: mode,
-            thinkingBudgetTokens: budget,
+            thinkingMode: openai ? NOT_SENT : mode,
+            thinkingBudgetTokens: openai ? NOT_SENT : budget,
             effort: config.effort,
             toolChoice: NOT_SENT,
             toolChoiceName: NOT_SENT,
@@ -146,13 +156,13 @@ function stubGrader(o: StubOptions = {}): Stub {
             frequencyPenalty: NOT_SENT,
             presencePenalty: NOT_SENT,
             samplingSeed: NOT_SENT,
-            maxOutputTokens: config.max_tokens,
+            maxOutputTokens: openai ? config.max_output_tokens : config.max_tokens,
             stopSequences: NOT_SENT,
             responseFormat: NOT_SENT,
             contextPolicy: 'none',
             stream: NOT_SENT,
             timeoutMs: config.timeoutMs ?? 60000,
-            extras: {},
+            extras: openai ? { 'openai.store': false, ...(config.verbosity === undefined || config.verbosity === NOT_SENT ? {} : { 'openai.verbosity': config.verbosity }) } : {},
           },
           reask: { max: config.maxReasks, earlier },
         };
@@ -175,6 +185,7 @@ function argvOf(flags: Record<string, string | undefined>): string[] {
 }
 function baseFlags(outPath: string): Record<string, string | undefined> {
   return {
+    '--wire': 'anthropic-messages/v1',
     '--flow': exampleFlow,
     '--variant': 'baseline',
     '--cases': casesPath,
@@ -276,7 +287,7 @@ test('on the example flow the re-grade writes a header and six rows, in the fixe
   assert.deepEqual(header['criterion'], { text: text(criterionPath), sha256: sha256Hex(readFileSync(criterionPath)) });
   assert.deepEqual(header['system'], { text: text(systemPath), sha256: sha256Hex(readFileSync(systemPath)) });
   assert.equal(header['selector'], 'NOT_SENT');
-  assert.deepEqual(header['graderConfig'], { model: 'example-judge-old', max_tokens: 256, thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0, baseUrl: BASE_URL });
+  assert.deepEqual(header['graderConfig'], { wire: 'anthropic-messages/v1', model: 'example-judge-old', max_tokens: 256, thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0, baseUrl: BASE_URL });
 
   assert.deepEqual(r.out.split('\n'), [
     `wrote: ${r.outPath}`,
@@ -287,7 +298,7 @@ test('on the example flow the re-grade writes a header and six rows, in the fixe
     'slots the importer will refuse: 0; every reply of a finished, well-formed record was read under the reading rule one-json-object-boolean-pass/v1',
     'excluded cases (in the flow, not in the cases file; not graded): 0',
     'reps of the flow that are whole: 2 of 2 (0, 1); only rep 0 was required to be, and check.ts lists what is wrong with any other',
-    'replies with a thinking block: 0 of 6',
+    'replies with reasoning: 0 of 6',
   ]);
 });
 
@@ -340,7 +351,7 @@ test('the record is written unchanged, key for key', async () => {
   const r = await run();
   const rows = linesOf(r.outPath).slice(1);
   const again = stubGrader();
-  const grader = again.factory({ model: 'example-judge-old', max_tokens: 256, thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0, baseUrl: BASE_URL });
+  const grader = again.factory({ wire: 'anthropic-messages/v1', model: 'example-judge-old', max_tokens: 256, thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0, baseUrl: BASE_URL });
   for (const row of rows) {
     const res = await grader.callApi(row['promptSent'] as string);
     assert.deepEqual(row['graderEvidence'], (res.metadata as { graderEvidence: unknown }).graderEvidence);
@@ -419,11 +430,11 @@ test('a selected text with an unpaired surrogate, spelled by an escape inside a 
 // ---- the flags ---------------------------------------------------------------------------------------------------------
 
 test('every flag with no default is required: leaving any one out is a usage error, with no grader built and no file', async () => {
-  assert.deepEqual([...REQUIRED_FLAGS], ['--flow', '--variant', '--cases', '--reps', '--rep', '--draws', '--template', '--criterion', '--model', '--max-tokens', '--thinking', '--effort', '--max-reasks', '--base-url', '--reading', '--out']);
-  for (const flag of REQUIRED_FLAGS) {
+  assert.deepEqual([...REQUIRED_FLAGS['anthropic-messages/v1']], ['--wire', '--flow', '--variant', '--cases', '--reps', '--rep', '--draws', '--template', '--criterion', '--model', '--max-tokens', '--effort', '--max-reasks', '--base-url', '--reading', '--out', '--thinking']);
+  for (const flag of REQUIRED_FLAGS['anthropic-messages/v1']) {
     const r = await run({ flags: { [flag]: undefined } });
     assert.equal(r.code, IMPORT_EXIT.usage, flag);
-    assert.match(r.err, new RegExp(`^USAGE: missing ${flag}\\. usage: `), flag);
+    assert.match(r.err, flag === '--wire' ? /^USAGE: --wire is required and must be one of anthropic-messages\/v1, openai-responses\/v1\. usage: / : new RegExp(`^USAGE: missing ${flag}\\. usage: `), flag);
     assert.equal(r.out, '');
     assert.equal(r.stub.configs.length, 0, flag);
     if (flag !== '--out') assert.equal(existsSync(r.outPath), false, flag);
@@ -439,7 +450,7 @@ test('an unknown flag, a flag given twice and a flag with no value are usage err
   assert.throws(() => parseRegradeFlags([...ok, '--system', '--select']), /USAGE: --system needs a value/);
   assert.throws(() => parseRegradeFlags([...ok.slice(0, -1), '']), /USAGE: --out needs a value/);
   assert.match(USAGE, /^usage: node examples\/importers\/skill-evals\/regrade\.ts /);
-  for (const flag of REQUIRED_FLAGS) assert.ok(USAGE.includes(flag), flag);
+  for (const flag of [...REQUIRED_FLAGS['anthropic-messages/v1'], ...REQUIRED_FLAGS['openai-responses/v1'], ...OPTIONAL_FLAGS['anthropic-messages/v1']]) assert.ok(USAGE.includes(flag), flag);
 });
 
 test('--reps, --max-tokens, --timeout-ms and --temperature are read strictly', async () => {
@@ -504,7 +515,7 @@ test('--api-key-env is the name of a variable, never a key', async () => {
 
 test('the grader is handed the stated settings and nothing else; a flag left out is a key left out', async () => {
   const plain = await run();
-  assert.deepEqual(plain.stub.configs, [{ model: 'example-judge-old', max_tokens: 256, thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0, baseUrl: BASE_URL }]);
+  assert.deepEqual(plain.stub.configs, [{ wire: 'anthropic-messages/v1', model: 'example-judge-old', max_tokens: 256, thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0, baseUrl: BASE_URL }]);
 
   const full = await run({
     flags: {
@@ -520,6 +531,7 @@ test('the grader is handed the stated settings and nothing else; a flag left out
   });
   assert.equal(full.code, 0, full.err);
   const expected = {
+    wire: 'anthropic-messages/v1',
     model: 'example-judge-old',
     max_tokens: 256,
     thinking: { type: 'enabled', budget_tokens: 1024 },
@@ -1007,13 +1019,13 @@ test('an input that holds the text of the key is refused before any call, and no
 test('the count of replies that thought is read from the records, a redacted block included', async () => {
   const r = await run({ stub: { contentTypes: (call) => (call === 2 ? ['thinking', 'text'] : call === 5 ? ['redacted_thinking', 'text'] : ['text']) } });
   assert.equal(r.code, 0, r.err);
-  assert.match(r.out, /^replies with a thinking block: 2 of 6$/m);
+  assert.match(r.out, /^replies with reasoning: 2 of 6$/m);
 });
 
 test('records that hold no contentTypes are not counted as replies that did not think (a record the importer refuses is counted with --go-on-and-count)', async () => {
   const r = await run({ flags: { '--go-on-and-count': SWITCH }, stub: { contentTypes: (call) => (call === 4 ? undefined : ['thinking', 'text']) } });
   assert.equal(r.code, 0, r.err);
-  assert.match(r.out, /^replies with a thinking block: not stated \(1 of 6 record\(s\) hold no contentTypes list\)$/m);
+  assert.match(r.out, /^replies with reasoning: not stated \(1 of 6 record\(s\) hold no contentTypes list\)$/m);
   assert.match(r.out, /^slots the importer will refuse: 1 \(the importer will refuse this file: clearance-organiser#1\); every reply of a finished, well-formed record was read under the reading rule one-json-object-boolean-pass\/v1$/m);
 });
 
@@ -1068,7 +1080,7 @@ test('the command itself runs from a shell and stops at its flags, with no key i
   const none = spawnSync(process.execPath, [join(dir, 'regrade.ts')], { encoding: 'utf8', env: { PATH: process.env['PATH'] ?? '' } });
   assert.equal(none.status, IMPORT_EXIT.usage, none.stderr);
   assert.equal(none.stdout, '');
-  assert.match(none.stderr, /^USAGE: missing --flow, --variant, /);
+  assert.match(none.stderr, /^USAGE: --wire is required and must be one of anthropic-messages\/v1, openai-responses\/v1\. usage: /);
   // A flow that is refused: exit 2 before the grader is built, so no key is asked for and no call is made.
   const outPath = freshOut();
   const refused = spawnSync(process.execPath, [join(dir, 'regrade.ts'), ...argvOf({ ...baseFlags(outPath), '--reps': '3' })], { encoding: 'utf8', env: { PATH: process.env['PATH'] ?? '' } });
@@ -1367,7 +1379,7 @@ test('the re-grade says how many slots hold no finished reply, with a zero too; 
   const lines = good.out.split('\n');
   assert.equal(lines.findIndex((l) => l.startsWith('slots with no finished reply: ')), lines.findIndex((l) => l.startsWith('slots graded: ')) + 1);
   // A record whose last ask was cut, or stopped in any other way but "end_turn", is a slot with no finished reply.
-  const stopOf = (stop: unknown) => ({ output: 'x', metadata: { graderEvidence: { schema: 'example.grader-evidence/v7', stopReason: stop, contentTypes: ['text'], reask: { max: 0, earlier: [] } } } });
+  const stopOf = (stop: unknown) => ({ output: 'x', metadata: { graderEvidence: { schema: 'example.grader-evidence/v8', wire: 'anthropic-messages/v1', stopReason: stop, contentTypes: ['text'], reask: { max: 0, earlier: [] } } } });
   for (const stop of ['max_tokens', 'refusal', 'stop_sequence', 'tool_use', 'END_TURN', 'end_turn ', '', 7]) {
     const r = await run({ flags: { '--go-on-and-count': SWITCH }, stub: { resultOn: { call: 3, result: stopOf(stop) } } });
     assert.equal(r.code, 0, String(stop));
@@ -1396,7 +1408,7 @@ test('the re-grade stops at the first slot the importer will refuse: the row is 
   assert.equal(r.out, '', 'nothing is reported as written');
   // the same on the real shape of a cut reply: a bound used up on cut asks
   // a record of the wrong form (a model id that is not one printable line) is refused at its slot too, with the importer's own words
-  const formWrong = await run({ stub: { resultOn: { call: 2, result: { output: 'x', metadata: { graderEvidence: { schema: 'example.grader-evidence/v7' } } } } } });
+  const formWrong = await run({ stub: { resultOn: { call: 2, result: { output: 'x', metadata: { graderEvidence: { schema: 'example.grader-evidence/v8', wire: 'anthropic-messages/v1' } } } } } });
   assert.equal(formWrong.code, IMPORT_EXIT.refused);
   assert.equal(formWrong.stub.prompts.length, 2);
   assert.match(formWrong.err, /^REFUSED the re-grade stopped at slot bank-dispute#1 \(slot 2 of 6\): the importer will refuse it: IMPORT_EVIDENCE: graderEvidence\.grader: missing/m);
@@ -1518,7 +1530,7 @@ test('a cut reply is asked again', async () => {
   assert.match(imported.out, /^re-asks: 3 on 3 of 9 slots \(truncated 3, timeout 0, transport 0, server-error 0, rate-limited 0\); at most 2 per slot$/m);
   const run = JSON.parse(readFileSync(imported.runPath, 'utf8')) as { draws: { attempts: { kind: string }[] }[]; identity: { judgeHarnessVersion: string } };
   assert.deepEqual(run.draws.map((d) => d.attempts.map((a) => a.kind).join('+')), ['unmeasured+graded', 'graded', 'graded', 'unmeasured+graded', 'graded', 'graded', 'unmeasured+graded', 'graded', 'graded']);
-  assert.match(run.identity.judgeHarnessVersion, /; max-reasks 2; script-files sha256:[0-9a-f]{64}$/);
+  assert.match(run.identity.judgeHarnessVersion, /; max-reasks 2; wire anthropic-messages\/v1; script-files sha256:[0-9a-f]{64}$/);
 });
 
 test('a bound used up with no reply ends the re-grade', async () => {
@@ -1582,7 +1594,7 @@ test('--timeout-ms is at most 3600000 (one hour), in the words of the grader, re
   assert.equal(most.stub.configs[0]?.timeoutMs, 3600000);
   // The grader itself refuses the same value in the same words, should it be handed one by another caller.
   const Grader = loadGraderClass();
-  const config = { model: 'm', max_tokens: 8, thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0, timeoutMs: 3600001 } as GraderConfig;
+  const config = { wire: 'anthropic-messages/v1', model: 'm', max_tokens: 8, thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0, timeoutMs: 3600001 } as GraderConfig;
   assert.throws(() => new Grader({ config }), (e: Error) => e.message === 'grader: config.timeoutMs must be a positive integer of at most 3600000 (one hour)');
 });
 
@@ -1639,7 +1651,7 @@ test('--base-url is required: leaving it out is a usage error naming it, with no
   assert.match(r.err, /^USAGE: missing --base-url\. usage: .*--base-url <url> --reading <[^>]+> --out <file>/);
   assert.equal(r.stub.configs.length, 0);
   assert.equal(existsSync(r.outPath), false);
-  assert.ok(!(OPTIONAL_FLAGS as readonly string[]).includes('--base-url'));
+  assert.ok(!OPTIONAL_FLAGS['anthropic-messages/v1'].includes('--base-url') && !OPTIONAL_FLAGS['openai-responses/v1'].includes('--base-url'));
   // the address stated is in the configuration handed to the grader and in the header, as it was typed
   const ok = await run({ flags: { '--base-url': 'http://127.0.0.1:19999/prefix' } });
   assert.equal(ok.stub.configs[0]?.baseUrl, 'http://127.0.0.1:19999/prefix');
@@ -1794,4 +1806,103 @@ test('--max-reasks is compared with the bound as a number: 00, 3.0, 1e0 and 03 a
   }
   // No character class is built from the bound: a bound of two digits would break one.
   assert.doesNotMatch(readFileSync(join(root, SCRIPT), 'utf8'), /new RegExp\(/);
+});
+
+// ---- the OpenAI Responses wire ---------------------------------------------------------------------------------------------------
+
+const OPENAI_FLAGS: Record<string, string | undefined> = { '--wire': 'openai-responses/v1', '--thinking': undefined, '--verbosity': 'NOT_SENT', '--base-url': 'http://127.0.0.1:18765/v1' };
+const OPENAI_ENV = { OPENAI_API_KEY: KEY };
+
+test('--wire selects the flags: the OpenAI wire states --verbosity and takes no --thinking or --api-version; the Anthropic wire the reverse; a flag of the other wire is a usage error (64)', async () => {
+  const ok = await run({ flags: OPENAI_FLAGS, env: OPENAI_ENV });
+  assert.equal(ok.code, 0, ok.err);
+  // required on the OpenAI wire: --verbosity; and --wire itself, with no default
+  for (const [flag, words] of [['--verbosity', /^USAGE: missing --verbosity\. usage: /], ['--wire', /^USAGE: --wire is required and must be one of /]] as const) {
+    const r = await run({ flags: { ...OPENAI_FLAGS, [flag]: undefined }, env: OPENAI_ENV });
+    assert.equal(r.code, IMPORT_EXIT.usage, flag);
+    assert.match(r.err, words, flag);
+    assert.equal(r.stub.configs.length, 0, flag);
+    assert.equal(existsSync(r.outPath), false, flag);
+  }
+  // flags of the other wire: --thinking and --api-version on the OpenAI wire; --verbosity on the Anthropic wire
+  for (const extra of [{ '--thinking': 'NOT_SENT' }, { '--api-version': '2023-06-01' }]) {
+    const r = await run({ flags: { ...OPENAI_FLAGS, ...extra }, env: OPENAI_ENV });
+    assert.equal(r.code, IMPORT_EXIT.usage, JSON.stringify(extra));
+    // the wire the flag belongs to is named, as regrade.py names it
+    assert.match(r.err, /^USAGE: --(thinking|api-version) is a flag of the anthropic-messages\/v1 wire only; the wire stated is openai-responses\/v1\. usage: /, JSON.stringify(extra));
+    assert.equal(r.stub.configs.length, 0);
+  }
+  const wrong = await run({ flags: { '--verbosity': 'NOT_SENT' } });
+  assert.equal(wrong.code, IMPORT_EXIT.usage);
+  assert.match(wrong.err, /^USAGE: --verbosity is a flag of the openai-responses\/v1 wire only; the wire stated is anthropic-messages\/v1\. usage: /);
+  // an unknown wire name, and one with a different case
+  for (const name of ['openai-chat/v1', 'OPENAI-RESPONSES/V1', '']) {
+    const r = await run({ flags: { '--wire': name === '' ? SWITCH : name } });
+    assert.equal(r.code, IMPORT_EXIT.usage, name);
+    assert.match(r.err, /^USAGE: --wire is required and must be one of anthropic-messages\/v1, openai-responses\/v1/);
+  }
+  assert.deepEqual([...REQUIRED_FLAGS['openai-responses/v1']].filter((f) => !REQUIRED_FLAGS['anthropic-messages/v1'].includes(f)), ['--verbosity']);
+  assert.deepEqual([...REQUIRED_FLAGS['anthropic-messages/v1']].filter((f) => !REQUIRED_FLAGS['openai-responses/v1'].includes(f)), ['--thinking']);
+});
+
+test('the OpenAI grader is handed the wire, the cap as max_output_tokens, effort, verbosity and the bound; the header holds the same; the default key variable is OPENAI_API_KEY', async () => {
+  const r = await run({ flags: { ...OPENAI_FLAGS, '--effort': 'low', '--verbosity': 'high', '--max-tokens': '300' }, env: OPENAI_ENV });
+  assert.equal(r.code, 0, r.err);
+  const expected = { wire: 'openai-responses/v1', model: 'example-judge-old', effort: 'low', maxReasks: 0, baseUrl: 'http://127.0.0.1:18765/v1', max_output_tokens: 300, verbosity: 'high' };
+  assert.deepEqual(r.stub.configs, [expected]);
+  assert.deepEqual(linesOf(r.outPath)[0]?.['graderConfig'], expected);
+  // the records the stub wrote carry the wire, and the cap is not also given as max_tokens
+  for (const row of linesOf(r.outPath).slice(1)) assert.equal((row['graderEvidence'] as Obj)['wire'], 'openai-responses/v1');
+  // the Anthropic key does not stand in for the OpenAI one
+  const noKey = await run({ flags: OPENAI_FLAGS, env: { ANTHROPIC_API_KEY: KEY } });
+  assert.equal(noKey.code, IMPORT_EXIT.usage);
+  assert.match(noKey.err, /the environment variable OPENAI_API_KEY is not set/);
+  assert.equal(noKey.stub.configs.length, 0);
+  assert.equal(existsSync(noKey.outPath), false);
+  // a named key variable is the one read
+  const named = await run({ flags: { ...OPENAI_FLAGS, '--api-key-env': 'EXAMPLE_OPENAI_KEY' }, env: { EXAMPLE_OPENAI_KEY: KEY } });
+  assert.equal(named.code, 0, named.err);
+  assert.equal(named.stub.configs[0]?.apiKeyEnv, 'EXAMPLE_OPENAI_KEY');
+});
+
+test('each of the four OpenAI address variables, set and different from --base-url (or with none stated), is refused before any file or call, naming the variable and never its value', async () => {
+  for (const name of ['OPENAI_BASE_URL', 'OPENAI_API_BASE_URL', 'OPENAI_API_HOST', 'OPENAI_HOST']) {
+    const gateway = 'https://gateway.example.test/v1';
+    const r = await run({ flags: OPENAI_FLAGS, env: { ...OPENAI_ENV, [name]: gateway } });
+    assert.equal(r.code, IMPORT_EXIT.usage, name);
+    assert.match(r.err, new RegExp(`the environment variable ${name} is set, and this grader never reads it`));
+    assert.ok(!r.err.includes(gateway), 'the value is never printed');
+    // a bare host can never equal a base URL: for the two HOST variables the one remedy is to unset the variable
+    if (name.endsWith('_HOST')) assert.ok(r.err.includes(' Unset the variable. Nothing was written') && !r.err.includes('State the same address'), r.err);
+    else assert.ok(r.err.includes('State the same address with --base-url, or unset the variable. Nothing was written'), r.err);
+    assert.equal(r.stub.configs.length, 0);
+    assert.equal(existsSync(r.outPath), false);
+    // stated alike, or empty: not refused
+    const alike = await run({ flags: { ...OPENAI_FLAGS, '--base-url': gateway }, env: { ...OPENAI_ENV, [name]: gateway } });
+    assert.equal(alike.code, 0, alike.err);
+    const empty = await run({ flags: OPENAI_FLAGS, env: { ...OPENAI_ENV, [name]: '' } });
+    assert.equal(empty.code, 0, empty.err);
+  }
+  // the Anthropic wire's variable is not the OpenAI wire's, and the reverse
+  const crossed = await run({ flags: OPENAI_FLAGS, env: { ...OPENAI_ENV, ANTHROPIC_BASE_URL: 'https://gateway.example.test' } });
+  assert.equal(crossed.code, 0, crossed.err);
+  const crossed2 = await run({ env: { ANTHROPIC_API_KEY: KEY, OPENAI_BASE_URL: 'https://gateway.example.test/v1' } });
+  assert.equal(crossed2.code, 0, crossed2.err);
+});
+
+test('on the OpenAI wire the re-grade stops at a slot that was cut or filtered, and counts reasoning items', async () => {
+  // a cut (incomplete, max_output_tokens) at the last ask, a bound of 0: the importer will refuse it
+  const cut = await run({ flags: OPENAI_FLAGS, env: OPENAI_ENV, stub: { stopReason: (call) => (call === 3 ? 'incomplete' : 'completed') } });
+  assert.equal(cut.code, IMPORT_EXIT.refused, cut.err);
+  assert.match(cut.err, /the importer will refuse it: the judge stopped with status "incomplete" \(max_output_tokens\), not "completed"/);
+  assert.equal(cut.stub.prompts.length, 3);
+  // with --go-on-and-count the count of such slots is printed and the file is not importable
+  const counted = await run({ flags: { ...OPENAI_FLAGS, '--go-on-and-count': SWITCH }, env: OPENAI_ENV, stub: { stopReason: (call) => (call === 3 ? 'incomplete' : 'completed') } });
+  assert.equal(counted.code, 0, counted.err);
+  assert.match(counted.out, /^slots with no finished reply: 1 \(the importer will refuse this file\)$/m);
+  // a reasoning item counts as reasoning
+  const thought = await run({ flags: OPENAI_FLAGS, env: OPENAI_ENV, stub: { contentTypes: (call) => (call === 2 ? ['thinking', 'text'] : ['text']) } });
+  assert.equal(thought.code, 0, thought.err);
+  assert.match(thought.out, /^replies with reasoning: 1 of 6$/m);
+  // a response with no `wire` of the right kind never gets here: a record of the other wire is refused by the importer's own check
 });

@@ -9,7 +9,7 @@ import { parseRunArtifact } from '../src/artifact.ts';
 import { ImportRefusal, loadBar, NEXT_STEP_LINE, parseCasesFile } from '../examples/importers/shared.ts';
 import type { ImportRefusalCode } from '../examples/importers/shared.ts';
 import { buildInspectRun, main, MODEL_ARG_KEYS, strictGrade } from '../examples/importers/inspect/import.ts';
-import { ownStderr } from './helpers.ts';
+import { ownStderr, scratchEnv, skipOrFail } from './helpers.ts';
 
 // ---- fixtures: written by the real tool; never edited, only copied in memory --------------------------------------
 
@@ -115,12 +115,12 @@ test('old and new judge fixtures import into a run the library parses; what is r
     assert.equal(id.judgeModelRequested, g.requestedModel);
     assert.equal(id.judgeModelServed, g.servedModel);
     assert.equal(id.judgeCallShapeHash, callShapeHash(g.callShape));
-    assert.equal(id.judgeHarnessVersion, `inspect_ai 0.3.275; ${g.grader.name} python sha256:${g.grader.sha256}; ${g.grader.runtime}; max-reasks 0`);
+    assert.equal(id.judgeHarnessVersion, `inspect_ai 0.3.275; ${g.grader.name} python sha256:${g.grader.sha256}; ${g.grader.runtime}; max-reasks 0; wire anthropic-messages/v1`);
     const o = l.eval.scorers[0].options;
     assert.equal(id.rubricHash, hashOf({ tool: 'inspect_ai', scorer: SC, instructions: o.instructions }));
     assert.equal(id.judgeDefinitionHash, hashOf({ tool: 'inspect_ai', version: '0.3.275', scorer: SC, template: o.template, tools: [], reading: 'last-line-grade-letter/v1', maxReasks: 0 }));
     assert.equal(parsed.packetBasis, 'declared');
-    assert.match(parsed.packetSource ?? '', /^computed at import from inspect_ai 0\.3\.275 log sha256:[0-9a-f]{64}: the question, answer and criterion slots of the grader's message; system log UNKNOWN$/);
+    assert.match(parsed.packetSource ?? '', /^computed at import from inspect_ai 0\.3\.275 log sha256:[0-9a-f]{64}: the question, answer and criterion slots of the grader's message; system log sha256:[0-9a-f]{64}, stated version inspect_ai 0\.3\.275$/);
     assert.equal(parsed.draws.length, 9);
     for (const d of parsed.draws) {
       const a = d.attempts[0] as J;
@@ -214,7 +214,7 @@ test('the two logs the tool really wrote for a cut reply and for a reply with no
     assert.ok(r.fields.length > 0 && r.fields.every((f) => /^c\d#\d$/.test(f)), r.fields.join(', '));
     assert.match(r.message, /the log holds a bare NaN as the score of this sample/);
     const out = join(tmpdir(), `inspect-bad-${name}-${process.pid}.json`);
-    const res = spawnSync(process.execPath, [join(dirOf, 'import.ts'), '--in', join(dirOf, 'bad-fixtures', `${name}.json`), '--cases', join(dirOf, 'cases.json'), '--bar', join(dirOf, 'bar.json'), '--out', out], { encoding: 'utf8' });
+    const res = spawnSync(process.execPath, [join(dirOf, 'import.ts'), '--in', join(dirOf, 'bad-fixtures', `${name}.json`), '--cases', join(dirOf, 'cases.json'), '--bar', join(dirOf, 'bar.json'), '--out', out], { env: scratchEnv(), encoding: 'utf8' });
     assert.equal(res.status, 2, res.stderr);
     assert.match(ownStderr(res.stderr), /^REFUSED IMPORT_UNGRADED: /);
     assert.equal(existsSync(out), false);
@@ -290,7 +290,7 @@ test('the plain fixture (the built-in grader) is refused with a message that nam
 test('IMPORT_NO_RECORD: a record of another schema on every sample', () => {
   const l = log('old-judge');
   l.samples.forEach((s: J) => {
-    score(s).metadata.grading[1].metadata.graderEvidence.schema = 'example.grader-evidence/v8';
+    score(s).metadata.grading[1].metadata.graderEvidence.schema = 'example.grader-evidence/v9';
   });
   refusal('IMPORT_NO_RECORD', () => imp(l));
 });
@@ -794,12 +794,14 @@ test('a source that is [] or null refuses with the root path "/" as its field', 
 
 // ---- the grader's allowed model arguments are the importer's --------------------------------------------------
 
-test('the importer\'s list of the grader\'s model arguments is the grader file\'s own', () => {
+test('the importer\'s list of the grader\'s model arguments, for each wire, is the grader file\'s own', () => {
   const py = readFileSync(join(dirOf, 'recording_grader.py'), 'utf8');
-  const m = /^ALLOWED_MODEL_ARGS = \{([^}]*)\}/m.exec(py);
-  assert.ok(m, 'the grader holds ALLOWED_MODEL_ARGS');
-  const inGrader = [...(m[1] as string).matchAll(/"([a-z_]+)"/g)].map((x) => x[1] as string).sort();
-  assert.deepEqual([...MODEL_ARG_KEYS].sort(), inGrader);
+  for (const [name, wire] of [['ALLOWED_MODEL_ARGS_ANTHROPIC', 'anthropic-messages/v1'], ['ALLOWED_MODEL_ARGS_OPENAI', 'openai-responses/v1']] as const) {
+    const m = new RegExp(`^${name} = \\{([^}]*)\\}`, 'm').exec(py);
+    assert.ok(m, `the grader holds ${name}`);
+    const inGrader = [...(m[1] as string).matchAll(/"([a-z_]+)"/g)].map((x) => x[1] as string);
+    assert.deepEqual([...MODEL_ARG_KEYS[wire]], inGrader, wire);
+  }
 });
 
 // ---- the grader's deadline wording -----------------------------------------------------------------------------
@@ -840,7 +842,7 @@ test('an attachment reference inside a score refuses, even with its entry presen
 const work = mkdtempSync(join(tmpdir(), 'inspect-import-'));
 after(() => rmSync(work, { recursive: true, force: true }));
 const cli = (...args: string[]) => {
-  const r = spawnSync(process.execPath, [join(dirOf, 'import.ts'), ...args], { encoding: 'utf8' });
+  const r = spawnSync(process.execPath, [join(dirOf, 'import.ts'), ...args], { env: scratchEnv(), encoding: 'utf8' });
   return { ...r, stderr: ownStderr(r.stderr) };
 };
 const flags = (name: string, out: string) => ['--in', fx(name), '--cases', join(dirOf, 'cases.json'), '--bar', join(dirOf, 'bar.json'), '--out', out];
@@ -979,7 +981,10 @@ test('a refusal prints text of the file on one line each: a carriage return, an 
 // ---- thinking blocks, stated thinking and effort ----------------------------------------------------------------
 
 const modelArgs = (l: J): J => l.eval.scorers[0].options.model.model_args;
-const countLine = (out: string): string => out.split('\n').find((x) => x.startsWith('replies with a thinking block: ')) ?? 'NO LINE';
+/** The reasoning line the importer prints, whole. */
+const reasoningLineOf = (out: string): string => out.split('\n').find((x) => x.startsWith('replies with reasoning: ')) ?? 'NO LINE';
+/** Its count only: `replies with reasoning: <k> of <n> asks`, before the provider's counter. */
+const countLine = (out: string): string => reasoningLineOf(out).replace(/; .*$/, '');
 
 function viaMain(l: J): { code: number; out: string; err: string } {
   const dir = mkdtempSync(join(tmpdir(), 'anchorset-in-think-'));
@@ -1001,7 +1006,7 @@ test('thinking fixture: some replies thought and some did not; it imports, the g
   assert.ok(k > 0 && k < types.length, types.join(' '));
   const r = viaMain(l);
   assert.equal(r.code, 0, r.err);
-  assert.equal(countLine(r.out), `replies with a thinking block: ${k} of ${types.length}`);
+  assert.equal(countLine(r.out), `replies with reasoning: ${k} of ${types.length} asks`);
   // the log's grading message stays a string: the text block's text
   for (const s of l.samples) assert.equal(typeof score(s).metadata.grading[1].content, 'string');
   assert.ok(!text('thinking').includes('fake-signature'));
@@ -1030,8 +1035,11 @@ test('the count line counts the blocks, in any number, and not the counter; the 
   eachRecord(l.samples[2], (r) => { r.thinkingTokens = 77; });
   const r = viaMain(l);
   assert.equal(r.code, 0, r.err);
-  assert.equal(countLine(r.out), `replies with a thinking block: 2 of ${l.samples.length}`);
-  assert.equal(countLine(viaMain(log('old-judge')).out), `replies with a thinking block: 0 of ${l.samples.length}`);
+  // A hand-worked fixture. Nine asks got a reply; two hold a block (the first, and the second, which holds two kinds); the third holds the counter 77 and
+  // no block, which is not counted as reasoning. The counters: the second slot has none (ABSENT), the third 77, the other seven 0, so eight counters are
+  // present, sorted 0 0 0 0 0 0 0 77: total 77; the lower median is the element at index floor((8 - 1) / 2) = 3, which is 0; max 77; absent on 1.
+  assert.equal(reasoningLineOf(r.out), "replies with reasoning: 2 of 9 asks; reasoning tokens (the provider's own count): total 77, median 0, max 77; counter absent on 1");
+  assert.equal(reasoningLineOf(viaMain(log('old-judge')).out), "replies with reasoning: 0 of 9 asks; reasoning tokens (the provider's own count): total 0, median 0, max 0; counter absent on 0");
 });
 
 test('a thinking block does not carry the grade: only the text block is read, and a reply with no grade line in it still refuses', () => {
@@ -1070,8 +1078,8 @@ test('a record of the version before (v6), its cut ask without the sha256 and th
     }
   }));
   const e = refusal('IMPORT_EVIDENCE', () => imp(l));
-  assert.match(e.message, /this record is of version example\.grader-evidence\/v6, an earlier version than example\.grader-evidence\/v7; re-grade with the current grader \(examples\/importers\/inspect\/recording_grader\.py, schema example\.grader-evidence\/v7\)/);
-  l.samples.forEach((s: J) => eachRecord(s, (r) => { r.schema = 'example.grader-evidence/v7'; }));
+  assert.match(e.message, /this record is of version example\.grader-evidence\/v6, an earlier version than example\.grader-evidence\/v8; re-grade with the current grader \(examples\/importers\/inspect\/recording_grader\.py, schema example\.grader-evidence\/v8\)/);
+  l.samples.forEach((s: J) => eachRecord(s, (r) => { r.schema = 'example.grader-evidence/v8'; }));
   assert.match(refusal('IMPORT_REASK', () => imp(l)).message, /not the form of a "truncated" ask; it lacks replySha256, replyUtf8Bytes/);
 });
 
@@ -1255,7 +1263,7 @@ function cliOn(l: J | Buffer): { status: number | null; stdout: string; stderr: 
   const inPath = join(folder, 'log.json');
   const outPath = join(folder, 'run.json');
   writeFileSync(inPath, Buffer.isBuffer(l) ? l : JSON.stringify(l));
-  const res = spawnSync(process.execPath, [join(dirOf, 'import.ts'), '--in', inPath, '--cases', join(dirOf, 'cases.json'), '--bar', join(dirOf, 'bar.json'), '--out', outPath], { encoding: 'utf8' });
+  const res = spawnSync(process.execPath, [join(dirOf, 'import.ts'), '--in', inPath, '--cases', join(dirOf, 'cases.json'), '--bar', join(dirOf, 'bar.json'), '--out', outPath], { env: scratchEnv(), encoding: 'utf8' });
   return { status: res.status, stdout: res.stdout, stderr: ownStderr(res.stderr), outPath };
 }
 
@@ -1264,7 +1272,7 @@ test('fixtures/reask.json imports', () => {
   // What the tool wrote under a bound of 2: one slot of case 1 was cut once and one slot of case 2 got a 529 once.
   const asked = reaskedSamples(l).map((s: J) => [String(s.id), recordOf(s).reask.earlier.map((a: J) => a.reason)]).sort();
   assert.deepEqual(asked, [['c1', ['truncated']], ['c2', ['server-error']]]);
-  assert.ok(l.samples.every((s: J) => recordOf(s).reask.max === 2 && recordOf(s).schema === 'example.grader-evidence/v7'));
+  assert.ok(l.samples.every((s: J) => recordOf(s).reask.max === 2 && recordOf(s).schema === 'example.grader-evidence/v8'));
   assert.equal(l.eval.scorers[0].options.model.model_args.max_reasks, 2);
   // One model event per slot, whatever the number of asks, and no retry of the tool's own.
   for (const s of l.samples) {
@@ -1286,12 +1294,12 @@ test('fixtures/reask.json imports', () => {
     assert.ok(last !== undefined && last.kind === 'graded');
     for (const a of d.attempts.slice(0, -1)) assert.ok(a.kind === 'unmeasured' && a.role === 'judge' && a.outputHash === last.outputHash && a.packetHash === last.packetHash && a.systemStop === 'UNKNOWN');
   }
-  assert.match(parsedRun.identity.judgeHarnessVersion, /; python 3\.\d+\.\d+; max-reasks 2$/);
+  assert.match(parsedRun.identity.judgeHarnessVersion, /; python 3\.\d+\.\d+; max-reasks 2; wire anthropic-messages\/v1$/);
   // The command prints the two count lines, then the sha256 line and the next-step line, and the same bytes import to the same run bytes.
   const a = cliOn(readFileSync(join(dirOf, 'fixtures', 'reask.json')));
   const b = cliOn(readFileSync(join(dirOf, 'fixtures', 'reask.json')));
   assert.equal(a.status, 0, a.stderr);
-  assert.deepEqual(a.stdout.trimEnd().split('\n').slice(-4, -2), ['replies with a thinking block: 0 of 9', REASK_LINE]);
+  assert.deepEqual(a.stdout.trimEnd().split('\n').slice(-4, -2).map((l) => l.replace(/^(replies with reasoning: .* asks); .*$/, '$1')), ['replies with reasoning: 0 of 10 asks', REASK_LINE]);
   assert.equal(readFileSync(a.outPath, 'utf8'), readFileSync(b.outPath, 'utf8'));
 });
 
@@ -1338,8 +1346,8 @@ test('the bound enters the judge definition hash: two bounds give two definition
   };
   const [two, three] = [at(2), at(3)];
   assert.notEqual(two.judge.judgeDefinitionHash, three.judge.judgeDefinitionHash);
-  assert.match(two.judge.judgeHarnessVersion, /; max-reasks 2$/);
-  assert.match(three.judge.judgeHarnessVersion, /; max-reasks 3$/);
+  assert.match(two.judge.judgeHarnessVersion, /; max-reasks 2; wire anthropic-messages\/v1$/);
+  assert.match(three.judge.judgeHarnessVersion, /; max-reasks 3; wire anthropic-messages\/v1$/);
   // Nothing else of the judge moved: the rubric, the models and the call shape are one.
   for (const f of ['judgeModelRequested', 'judgeModelServed', 'judgeCallShapeHash', 'rubricHash'] as const) assert.equal(two.judge[f], three.judge[f], f);
 });
@@ -1377,7 +1385,7 @@ test('a model event that shows retries is still IMPORT_DUPLICATE_CALL; a sample 
 /** The first Python of 3.10 or later on this machine (regrade.py's annotations need it), or undefined. */
 function pythonForRegrade(): string | undefined {
   return ['python3.13', 'python3.12', 'python3.11', 'python3.10', 'python3', 'python'].find((p) => {
-    const v = spawnSync(p, ['-c', 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)']);
+    const v = spawnSync(p, ['-c', 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)'], { env: { PATH: process.env['PATH'] ?? '' } });
     return v.status === 0;
   });
 }
@@ -1385,14 +1393,14 @@ function pythonForRegrade(): string | undefined {
 test('regrade.py: ANTHROPIC_BASE_URL set with a --base-url that differs from it is a usage error before any file or call, naming the variable and never its value; the same address stated, an empty variable and --check are not', (t) => {
   const py = pythonForRegrade();
   if (py === undefined) {
-    t.skip('no Python 3.10 or later on this machine');
+    skipOrFail(t, 'no Python 3.10 or later on this machine');
     return;
   }
   const driver = 'import runpy, sys; sys.modules["inspect_ai"] = None; sys.exit(runpy.run_path(%PATH%, run_name="not_main")["main"](sys.argv[1:]))';
   const script = join(dirOf, 'regrade.py');
   const gateway = 'https://gateway.invalid/private-path';
   const runWith = (args: string[], value: string) => spawnSync(py, ['-c', driver.replace('%PATH%', JSON.stringify(script)), ...args], { encoding: 'utf8', env: { PATH: process.env['PATH'] ?? '', ANTHROPIC_BASE_URL: value } });
-  const run = ['--log', 'no-such-log.json', '--epochs', '1', '--judge-model', 'm', '--max-tokens', '16', '--out-dir', 'o', '--thinking', 'NOT_SENT', '--effort', 'NOT_SENT', '--max-reasks', '0'];
+  const run = ['--log', 'no-such-log.json', '--epochs', '1', '--judge-model', 'm', '--max-tokens', '16', '--out-dir', 'o', '--wire', 'anthropic-messages/v1', '--thinking', 'NOT_SENT', '--effort', 'NOT_SENT', '--max-reasks', '0'];
   // --base-url is required, so a run without it is a usage error of its own, whatever the variable says
   const unstated = runWith(run, gateway);
   assert.equal(unstated.status, 64, unstated.stderr);
@@ -1413,12 +1421,12 @@ test('regrade.py: ANTHROPIC_BASE_URL set with a --base-url that differs from it 
 });
 
 test('regrade.py on a Python older than 3.10: exit 64 and a line naming the version needed, never a traceback', (t) => {
-  const old = ['python3.9', 'python3.8', 'python3'].find((p) => spawnSync(p, ['-c', 'import sys; sys.exit(0 if sys.version_info < (3, 10) else 1)']).status === 0);
+  const old = ['python3.9', 'python3.8', 'python3'].find((p) => spawnSync(p, ['-c', 'import sys; sys.exit(0 if sys.version_info < (3, 10) else 1)'], { env: { PATH: process.env['PATH'] ?? '' } }).status === 0);
   if (old === undefined) {
     t.skip('no Python older than 3.10 on this machine');
     return;
   }
-  const r = spawnSync(old, [join(dirOf, 'regrade.py'), '--log', 'no-such-log.json', '--epochs', '1', '--check'], { encoding: 'utf8' });
+  const r = spawnSync(old, [join(dirOf, 'regrade.py'), '--log', 'no-such-log.json', '--epochs', '1', '--check'], { encoding: 'utf8', env: scratchEnv() });
   assert.equal(r.status, 64, r.stderr);
   assert.match(r.stderr, /Python 3\.10 or later/);
   assert.doesNotMatch(r.stderr, /Traceback/);
@@ -1427,16 +1435,16 @@ test('regrade.py on a Python older than 3.10: exit 64 and a line naming the vers
 test('regrade.py with inspect_ai missing: exit 64 and the install line, never a traceback (--check and a run alike)', (t) => {
   const py = pythonForRegrade();
   if (py === undefined) {
-    t.skip('no Python 3.10 or later on this machine');
+    skipOrFail(t, 'no Python 3.10 or later on this machine');
     return;
   }
   // `sys.modules[name] = None` makes `import inspect_ai` raise ModuleNotFoundError whether or not the package is installed.
   const driver = 'import runpy, sys; sys.modules["inspect_ai"] = None; sys.exit(runpy.run_path(%PATH%, run_name="not_main")["main"](sys.argv[1:]))';
   const script = join(dirOf, 'regrade.py');
-  const run = (args: string[]) => spawnSync(py, ['-c', driver.replace('%PATH%', JSON.stringify(script)), ...args], { encoding: 'utf8' });
+  const run = (args: string[]) => spawnSync(py, ['-c', driver.replace('%PATH%', JSON.stringify(script)), ...args], { env: scratchEnv(), encoding: 'utf8' });
   for (const args of [
     ['--log', 'no-such-log.json', '--epochs', '1', '--check'],
-    ['--log', 'no-such-log.json', '--epochs', '1', '--judge-model', 'm', '--max-tokens', '16', '--out-dir', 'o', '--thinking', 'NOT_SENT', '--effort', 'NOT_SENT', '--max-reasks', '0', '--base-url', 'http://127.0.0.1:18765'],
+    ['--log', 'no-such-log.json', '--epochs', '1', '--judge-model', 'm', '--max-tokens', '16', '--out-dir', 'o', '--wire', 'anthropic-messages/v1', '--thinking', 'NOT_SENT', '--effort', 'NOT_SENT', '--max-reasks', '0', '--base-url', 'http://127.0.0.1:18765'],
   ]) {
     const r = run(args);
     assert.equal(r.status, 64, r.stderr);

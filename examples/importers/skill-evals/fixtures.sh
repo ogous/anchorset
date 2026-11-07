@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regenerates the fixtures of the third importer (five good re-grade files and three a re-grade wrote in a bad state) from
+# Regenerates the fixtures of the third importer (seven good re-grade files and three a re-grade wrote in a bad state) from
 # scratch, at zero spend: the real re-grade script and the real recording grader run against the local fake endpoint,
 # and no provider is reached. It then imports the two judges' fixtures and writes the example plan (plan.json) from the
 # importer's printed fragments. It is not part of `npm test`; a test compares what it wrote with the files in the tree,
@@ -35,7 +35,10 @@
 # given body are cut at the output cap, and every later one is answered whole. The draws of a case share one body, so
 # the first draw of each of the three cases is asked again.
 #
-# Exit codes: 0 all eight fixtures and the plan made; 2 refused or a step failed; any other code is a step that failed under `set -e`.
+# Two fixtures are graded on the OpenAI Responses wire (`--wire openai-responses/v1`, the key in OPENAI_API_KEY, the base URL
+# with /v1): the two judges' files on the stored outputs of rep 0. The others are graded on the Anthropic wire.
+#
+# Exit codes: 0 all ten fixtures and the plan made; 2 refused or a step failed; any other code is a step that failed under `set -e`.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -78,7 +81,7 @@ for f in criterion-reask.txt criterion-reask-exhausted.txt; do cp "$HERE/fixture
 RUN_ENV=(PATH="$NODE_BIN:/usr/bin:/bin" HOME="$S/home" TMPDIR="$S/tmp" LANG=en_US.UTF-8
   NODE_USE_ENV_PROXY=1 HTTPS_PROXY=http://127.0.0.1:9 HTTP_PROXY=http://127.0.0.1:9 https_proxy=http://127.0.0.1:9 http_proxy=http://127.0.0.1:9
   ALL_PROXY=http://127.0.0.1:9 NO_PROXY=127.0.0.1,localhost no_proxy=127.0.0.1,localhost
-  ANTHROPIC_API_KEY=dummy-key-for-local-fake-endpoint)
+  ANTHROPIC_API_KEY=dummy-key-for-local-fake-endpoint OPENAI_API_KEY=dummy-key-for-local-fake-endpoint)
 
 # ---- the fake endpoint: started and stopped for each fixture, so every fixture sees response ids from 0001
 start_ep() { # <name> [endpoint flags]
@@ -98,15 +101,20 @@ stop_ep() { kill "$EP_PID" 2>/dev/null || true; wait "$EP_PID" 2>/dev/null || tr
 CRITERION=criterion.txt   # the criterion text of the next re-grades
 MAX_REASKS=0              # the bound of re-asks per slot of the next re-grades, stated for every one (no default)
 READING=one-json-object-boolean-pass/v1   # the reading rule of every re-grade and of every import below (no default)
+WIRE=anthropic-messages/v1   # the wire of the next re-grades (--wire, no default): anthropic-messages/v1 or openai-responses/v1
 GO_ON=()                  # --go-on-and-count for the next re-grades: without it a re-grade stops at the first slot the importer will refuse
 regrade() { # <fixture name> <judge model> <source rep> <expected exit code> <expected requests> [endpoint flags]
   local name=$1 model=$2 rep=$3 want=$4 n=$5; shift 5
   start_ep "$name" "$@"
+  # The flags that differ by wire: the Anthropic wire states --thinking and takes the base URL as it is; the OpenAI wire states --verbosity and its base URL ends in /v1.
+  local wire_flags base_url
+  if [ "$WIRE" = openai-responses/v1 ]; then wire_flags=(--wire "$WIRE" --verbosity NOT_SENT); base_url="http://127.0.0.1:$PORT/v1"
+  else wire_flags=(--wire "$WIRE" --thinking NOT_SENT); base_url="http://127.0.0.1:$PORT"; fi
   local rc=0
   (cd "$S/work" && env -i "${RUN_ENV[@]}" node "$HERE/regrade.ts" --flow flow --variant baseline --cases cases.json --reps "$REPS" --rep "$rep" --draws "$DRAWS" \
     --template template.txt --criterion "$CRITERION" --system system.txt --select /reply \
-    --model "$model" --max-tokens 256 --temperature 0 --thinking NOT_SENT --effort NOT_SENT --max-reasks "$MAX_REASKS" \
-    --base-url "http://127.0.0.1:$PORT" --reading "$READING" ${GO_ON[@]+"${GO_ON[@]}"} --out "out/$name.regrade.jsonl" > "$S/logs/$name.stdout" 2> "$S/logs/$name.stderr") || rc=$?
+    --model "$model" --max-tokens 256 --temperature 0 "${wire_flags[@]}" --effort NOT_SENT --max-reasks "$MAX_REASKS" \
+    --base-url "$base_url" --reading "$READING" ${GO_ON[@]+"${GO_ON[@]}"} --out "out/$name.regrade.jsonl" > "$S/logs/$name.stdout" 2> "$S/logs/$name.stderr") || rc=$?
   stop_ep
   if [ "$rc" != "$want" ]; then cat "$S/logs/$name.stdout" "$S/logs/$name.stderr" >&2; die "re-grade $name exited $rc, expected $want"; fi
   local got; got="$(wc -l < "$S/logs/$name.requests.jsonl" | tr -d ' ')"
@@ -117,6 +125,11 @@ regrade() { # <fixture name> <judge model> <source rep> <expected exit code> <ex
 # Two judges on the same stored outputs, those of source rep 0: three cases x three draws = nine calls each.
 regrade old-judge fake-judge-old 0 0 9
 regrade new-judge fake-judge-strict-new 0 0 9
+# The same two judges on the OpenAI Responses wire, on the same stored outputs.
+WIRE=openai-responses/v1
+regrade openai-old-judge fake-judge-old 0 0 9
+regrade openai-new-judge fake-judge-strict-new 0 0 9
+WIRE=anthropic-messages/v1
 # The new judge on the OTHER source rep: another measurement. Nothing in the importer keeps it apart from a run made
 # from rep 0; the end-to-end test hands the two to `judge-change` to show that it refuses them, since their stored
 # outputs differ.
@@ -149,6 +162,7 @@ done
 # ---- place the fixtures, then record the hashes
 mkdir -p "${OUT_ROOT:?}/fixtures" "${OUT_ROOT:?}/bad-fixtures"
 FIXTURES=(fixtures/old-judge.regrade.jsonl fixtures/new-judge.regrade.jsonl fixtures/new-judge-rep1.regrade.jsonl fixtures/reask.regrade.jsonl fixtures/reask-new-judge.regrade.jsonl
+  fixtures/openai-old-judge.regrade.jsonl fixtures/openai-new-judge.regrade.jsonl
   bad-fixtures/failed-slot.regrade.jsonl bad-fixtures/unreadable-reply.regrade.jsonl bad-fixtures/reask-exhausted.regrade.jsonl)
 for f in "${FIXTURES[@]}"; do
   rm -f "${OUT_ROOT:?}/${f:?}"

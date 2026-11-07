@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { GAP, NO_SEED, parseRunArtifact } from '../src/index.ts';
 import { READINGS } from '../examples/importers/shared.ts';
+import { scratchEnv } from './helpers.ts';
 
 const root = join(import.meta.dirname, '..');
 const importers = join(root, 'examples', 'importers');
@@ -27,7 +28,7 @@ function importAll(tool: string, flagSets: readonly (readonly string[])[]): Impo
   for (const fixture of readdirSync(join(dir, 'fixtures')).sort()) {
     for (const [i, flags] of flagSets.entries()) {
       const out = join(work, `${tool}-${fixture}-${i}.json`);
-      const r = spawnSync(process.execPath, [join(dir, 'import.ts'), '--in', join(dir, 'fixtures', fixture), '--cases', join(dir, 'cases.json'), '--bar', join(dir, 'bar.json'), '--out', out, ...flags], { encoding: 'utf8' });
+      const r = spawnSync(process.execPath, [join(dir, 'import.ts'), '--in', join(dir, 'fixtures', fixture), '--cases', join(dir, 'cases.json'), '--bar', join(dir, 'bar.json'), '--out', out, ...flags], { env: scratchEnv(), encoding: 'utf8' });
       // A refused import writes nothing, so there is no output that could hold the marker.
       if (r.status !== 0) {
         assert.equal(existsSync(out), false, `${tool}/${fixture}: exit ${String(r.status)} and yet a file was written`);
@@ -56,18 +57,18 @@ test('the marker is the text this test searches for, and the gap is another text
 
 test('promptfoo: no imported run holds NO_SEED; the seed is UNKNOWN in every one', () => {
   const written = importAll('promptfoo', READINGS.map((reading) => ['--reading', reading]));
-  assertNoMarker('promptfoo', written, ['fenced.json', 'new-judge.json', 'old-judge.json', 'reask-new-judge.json', 'reask.json', 'short-outputs.json', 'thinking.json']);
+  assertNoMarker('promptfoo', written, ['fenced.json', 'new-judge.json', 'old-judge.json', 'openai-new-judge.json', 'openai-old-judge.json', 'openai-reask.json', 'reask-new-judge.json', 'reask.json', 'short-outputs.json', 'thinking.json']);
 });
 
 test('Inspect: no imported run holds NO_SEED; the seed is UNKNOWN in every one', () => {
   const written = importAll('inspect', [[]]);
-  assertNoMarker('inspect', written, ['long-reply.json', 'new-judge.json', 'old-judge.json', 'reask-new-judge.json', 'reask.json', 'short-targets.json', 'thinking.json']);
+  assertNoMarker('inspect', written, ['long-reply.json', 'new-judge.json', 'old-judge.json', 'openai-new-judge.json', 'openai-old-judge.json', 'reask-new-judge.json', 'reask.json', 'short-targets.json', 'thinking.json']);
 });
 
 test('skill-evals: no imported run holds NO_SEED; the seed is UNKNOWN in every one', () => {
   const flow = join(importers, 'skill-evals', 'example-flow');
   const written = importAll('skill-evals', READINGS.map((reading) => ['--reading', reading, '--flow', flow]));
-  assertNoMarker('skill-evals', written, ['new-judge-rep1.regrade.jsonl', 'new-judge.regrade.jsonl', 'old-judge.regrade.jsonl', 'reask-new-judge.regrade.jsonl', 'reask.regrade.jsonl']);
+  assertNoMarker('skill-evals', written, ['new-judge-rep1.regrade.jsonl', 'new-judge.regrade.jsonl', 'old-judge.regrade.jsonl', 'openai-new-judge.regrade.jsonl', 'openai-old-judge.regrade.jsonl', 'reask-new-judge.regrade.jsonl', 'reask.regrade.jsonl']);
 });
 
 test('no committed example run under examples/importers holds NO_SEED', () => {

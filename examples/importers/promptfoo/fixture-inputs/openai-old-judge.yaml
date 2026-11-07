@@ -1,0 +1,20 @@
+# Re-grade the stored outputs of a refund bot with a grader on the OpenAI Responses wire (example input of fixtures.sh).
+# The recording grader's base URL is the local fake endpoint (examples/importers/fake-endpoint.ts), its one fixed default port,
+# with /v1 as the OpenAI base URL has it: the grader posts to <base>/responses.
+# The grader states `wire`, `max_output_tokens` (at least 16), `effort`, `verbosity` and `maxReasks`, each with no default.
+# The marker [[strict:fail]] in a stored output is read by the fake endpoint only: a judge whose model name holds
+# "strict" fails that output, any other judge passes it.
+prompts: ['{{question}}']
+providers: ['file://stored-outputs-provider.cjs']
+defaultTest:
+  options:
+    provider:
+      id: 'file://grader-provider.cjs'
+      config: { wire: openai-responses/v1, model: fake-judge-old, max_output_tokens: 256, temperature: 0, baseUrl: 'http://127.0.0.1:18765/v1', effort: NOT_SENT, verbosity: NOT_SENT, maxReasks: 0 }
+  assert:
+    - type: llm-rubric
+      value: The reply follows the refund policy (within 30 days or damaged goods, never more than once).
+tests:
+  - vars: { case_id: c1, question: 'My blender arrived broken. Can I get my money back?' }
+  - vars: { case_id: c2, question: 'I bought shoes 45 days ago and want a refund.' }
+  - vars: { case_id: c3, question: 'Please refund my last order.' }

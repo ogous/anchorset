@@ -9,7 +9,7 @@
       "judgeModelRequested": "fake-judge-old",
       "judgeModelServed": "fake-judge-old-served-20260101",
       "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
-      "judgeHarnessVersion": "inspect_ai 0.3.275; anchorset-recording-grader python sha256:344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694; python 3.13.1; max-reasks 0",
+      "judgeHarnessVersion": "inspect_ai 0.3.275; anchorset-recording-grader python sha256:532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b; python 3.13.1; max-reasks 0; wire anthropic-messages/v1",
       "rubricHash": "44e2a3d180162d04d6a52c5dd059c2bb61a6866dc3a591fd244e8af733fe48c4"
     },
     "new": {
@@ -17,7 +17,7 @@
       "judgeModelRequested": "fake-judge-strict-new",
       "judgeModelServed": "fake-judge-strict-new-served-20260101",
       "judgeCallShapeHash": "9f9bf05675d026492fd24ebfa971ffdbf89d48e2c3d001cc2bc7fd9719a9c285",
-      "judgeHarnessVersion": "inspect_ai 0.3.275; anchorset-recording-grader python sha256:344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694; python 3.13.1; max-reasks 0",
+      "judgeHarnessVersion": "inspect_ai 0.3.275; anchorset-recording-grader python sha256:532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b; python 3.13.1; max-reasks 0; wire anthropic-messages/v1",
       "rubricHash": "44e2a3d180162d04d6a52c5dd059c2bb61a6866dc3a591fd244e8af733fe48c4"
     }
   },
@@ -27,8 +27,8 @@
   ],
   "systems": {
     "refund-bot": {
-      "old": "9d48a7a5900124f5a8676b8c4813da9c0606b63e0611fcb204df2a4640561f52",
-      "new": "ffc67f2f08a59dc335f190903d7423e11211aa0871a31e3de731d587c4addf88"
+      "old": "a0f9119c4d2bcea45994ab138bde80613698e60edd3702a267f67b6fffabe5b5",
+      "new": "3a7d25f6c5895125c23d93170822b72ebccae4b8c08183b4da9daec3e8e3f00d"
     }
   },
   "storedOutputs": "system-side-not-compared",

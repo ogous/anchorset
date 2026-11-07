@@ -1,8 +1,8 @@
 {
-  "evalId": "eval-vFG-2026-10-30T20:33:57",
+  "evalId": "eval-xwW-2026-11-07T10:31:08",
   "results": {
     "version": 3,
-    "timestamp": "2026-10-30T20:33:57.952Z",
+    "timestamp": "2026-11-07T10:31:08.605Z",
     "prompts": [
       {
         "id": "d3bcaf71c11c2678899be04d872718325f0916b3b0705e805ee29930663a42e2",
@@ -16,7 +16,7 @@
           "testErrorCount": 0,
           "assertPassCount": 0,
           "assertFailCount": 9,
-          "totalLatencyMs": 12,
+          "totalLatencyMs": 8,
           "tokenUsage": {
             "prompt": 0,
             "completion": 0,
@@ -102,7 +102,7 @@
             }
           ]
         },
-        "id": "58873c08-90dd-4daf-9f53-8b5aeb9d55df",
+        "id": "221db9cf-2152-42aa-8af1-401cef57042d",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -112,6 +112,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -157,6 +158,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -262,8 +264,8 @@
             }
           ]
         },
-        "id": "832534b8-8908-46bf-9782-09307a3c26a1",
-        "latencyMs": 3,
+        "id": "440d9623-6551-4015-af7f-145fe89c7374",
+        "latencyMs": 1,
         "namedScores": {},
         "prompt": {
           "raw": "My blender arrived broken. Can I get my money back?",
@@ -272,6 +274,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -317,6 +320,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -422,7 +426,7 @@
             }
           ]
         },
-        "id": "d9fd79ce-93dc-4482-8f70-8a27178bf1db",
+        "id": "4defd046-13db-4a35-9256-8d89de564255",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -432,6 +436,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -477,6 +482,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -582,8 +588,8 @@
             }
           ]
         },
-        "id": "182307a3-1434-442b-9309-b1eb192d520a",
-        "latencyMs": 1,
+        "id": "a8733693-b202-460d-b285-31833e263f69",
+        "latencyMs": 0,
         "namedScores": {},
         "prompt": {
           "raw": "I bought shoes 45 days ago and want a refund.",
@@ -592,6 +598,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -637,6 +644,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -742,7 +750,7 @@
             }
           ]
         },
-        "id": "8d9fcfd5-683e-4e9d-8e9d-1b0d0d14954f",
+        "id": "4c8c3488-ab0a-4905-af53-33c20835cb5c",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -752,6 +760,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -797,6 +806,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -902,7 +912,7 @@
             }
           ]
         },
-        "id": "20ad30f7-2433-45cb-842b-45b3f32a3140",
+        "id": "db1ac978-f98d-4e26-bda8-6cd4d86173ac",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -912,6 +922,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -957,6 +968,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -1062,7 +1074,7 @@
             }
           ]
         },
-        "id": "0c310085-eb9b-4059-ad72-929d9afc37ca",
+        "id": "59b93da1-934c-48fb-9a02-bda86736a541",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -1072,6 +1084,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -1117,6 +1130,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -1222,8 +1236,8 @@
             }
           ]
         },
-        "id": "0a59ed84-761d-4475-bdea-2ce50d5271ce",
-        "latencyMs": 2,
+        "id": "b77b5192-1d5b-469f-ab09-c8da5644b29f",
+        "latencyMs": 1,
         "namedScores": {},
         "prompt": {
           "raw": "Please refund my last order.",
@@ -1232,6 +1246,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -1277,6 +1292,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -1382,7 +1398,7 @@
             }
           ]
         },
-        "id": "3d2d160c-bd78-4d11-92c3-38cfaab3ca5d",
+        "id": "871b3624-f73e-46e3-9c0a-55cfb1b5c19e",
         "latencyMs": 1,
         "namedScores": {},
         "prompt": {
@@ -1392,6 +1408,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -1437,6 +1454,7 @@
             "provider": {
               "id": "file://grader-provider.cjs",
               "config": {
+                "wire": "anthropic-messages/v1",
                 "model": "fake-judge-old",
                 "max_tokens": 256,
                 "temperature": 0,
@@ -1565,6 +1583,7 @@
         "provider": {
           "id": "file://grader-provider.cjs",
           "config": {
+            "wire": "anthropic-messages/v1",
             "model": "fake-judge-old",
             "max_tokens": 256,
             "temperature": 0,
@@ -1597,8 +1616,8 @@
     "nodeVersion": "v25.6.1",
     "platform": "darwin",
     "arch": "arm64",
-    "exportedAt": "2026-10-30T20:33:58.083Z",
-    "evaluationCreatedAt": "2026-10-30T20:33:57.952Z"
+    "exportedAt": "2026-11-07T10:31:08.733Z",
+    "evaluationCreatedAt": "2026-11-07T10:31:08.605Z"
   },
   "vars": [
     "case_id",

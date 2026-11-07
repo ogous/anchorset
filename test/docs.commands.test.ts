@@ -2,11 +2,13 @@
 // at zero spend, so a change to the tool that breaks a printed command fails a test. Nothing here pins the wording of a
 // page: only what stands inside a `sh` or `bash` block is read. Synthetic example data only.
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
+import { REQUIRE_INSPECT, scratchEnv } from './helpers.ts';
 
 const root = join(import.meta.dirname, '..');
 const read = (rel: string): string => readFileSync(join(root, rel), 'utf8');
@@ -144,5 +146,97 @@ test('docs/CLI.md, "In CI": the code-fence recipe runs as printed on the demo fi
     const text = readFileSync(summary, 'utf8');
     assert.ok(text.startsWith('```text\n') && text.endsWith('\n```\n'), text);
     assert.match(text, refused ? /\nREFUSED IDENTITY_MISMATCH\n/ : /\nverdict: REGRESSION \(exit 1\)\n/);
+  }
+});
+
+// ---- the grading blocks of the importers guide, run against the local stand-in (zero spend, loopback only) ----------------
+
+/** The stand-in, started as the page says to start it (on its default port), and ready when it has said where it listens. */
+async function standIn(...flags: string[]): Promise<ChildProcess> {
+  const child = spawn(process.execPath, [join(root, 'examples', 'importers', 'fake-endpoint.ts'), ...flags], { cwd: root, env: scratchEnv(), stdio: ['ignore', 'ignore', 'pipe'] });
+  let stderr = '';
+  await new Promise<void>((resolve, reject) => {
+    child.stderr?.on('data', (d: Buffer) => {
+      stderr += d.toString();
+      if (stderr.includes('listening on')) resolve();
+    });
+    child.once('exit', () => reject(new Error(`the stand-in did not start: ${stderr}`)));
+  });
+  return child;
+}
+
+const stop = async (child: ChildProcess): Promise<void> => {
+  const gone = new Promise<void>((resolve) => child.once('exit', () => resolve()));
+  child.kill();
+  await gone;
+};
+
+/** The lines of the blocks under one heading of the importers guide, in order. */
+const under = (heading: string): string[] => commandLines('docs/IMPORTERS.md').filter((c) => c.heading === heading).map((c) => c.line);
+
+/** A printed line run as printed, under a scratch environment (a dummy key is set by the line itself). */
+function printed(line: string, out: string, path: string): { status: number | null; stdout: string; stderr: string } {
+  const r = spawnSync('bash', ['-c', line], { cwd: root, encoding: 'utf8', env: scratchEnv({ OUT: out, PATH: path, PYTHONDONTWRITEBYTECODE: '1' }) });
+  return { status: r.status, stdout: r.stdout, stderr: r.stderr };
+}
+
+/** Runs the lines in order, each expected to exit 0 (a line that starts the stand-in is not run: the test starts it); returns the last one's output. */
+function runBlock(lines: string[], out: string, path: string): { stdout: string; stderr: string } {
+  let last = { stdout: '', stderr: '' };
+  let ran = 0;
+  for (const line of lines) {
+    if (line.startsWith('node examples/importers/fake-endpoint.ts')) continue;
+    const r = printed(line, out, path);
+    assert.equal(r.status, 0, `${line}\n${r.stderr}`);
+    last = r;
+    ran++;
+  }
+  assert.ok(ran >= 3, `expected a block of several lines, ran ${ran}`);
+  return last;
+}
+
+const TWO_APIS = 'Two APIs, and a switch between them';
+/** The two printed switch blocks, split where the Inspect block starts. */
+function switchBlocks(): { skill: string[]; inspect: string[] } {
+  const lines = under(TWO_APIS);
+  const at = lines.findIndex((l) => l.startsWith('mkdir "$OUT/in-x-runs"'));
+  assert.ok(at > 0, 'the two-API block for Inspect is missing');
+  return { skill: lines.slice(0, at), inspect: lines.slice(at) };
+}
+
+test('docs/IMPORTERS.md, the skill section and its OpenAI switch: every printed line runs against the stand-in, and judge-change lists the model and the wire as the moves', async () => {
+  const { skill } = switchBlocks();
+  assert.ok(skill.length >= 5, 'the two-API block for the skill is missing');
+  const out = mkdtempSync(join(work, 'skill-'));
+  const ep = await standIn();
+  try {
+    runBlock(under('The eval-building skill'), out, process.env['PATH'] ?? '');
+    const last = runBlock(skill, out, process.env['PATH'] ?? '');
+    assert.match(last.stdout, /judgeModelRequested {1,}fake-judge-old -> fake-judge-strict-new/);
+    assert.match(last.stdout, /judgeHarnessVersion/);
+  } finally {
+    await stop(ep);
+  }
+});
+
+test('docs/IMPORTERS.md, the Inspect section and its OpenAI switch: every printed line runs under the Inspect venv against the stand-in (a skip fails under ANCHORSET_REQUIRE_INSPECT=1)', async (t) => {
+  const venv = process.env['ANCHORSET_INSPECT_VENV'];
+  const path = `${venv === undefined ? '' : `${join(venv, 'bin')}:`}${process.env['PATH'] ?? ''}`;
+  const probe = spawnSync('python', ['-c', 'import inspect_ai'], { env: { PATH: path } });
+  if (probe.status !== 0) {
+    if (REQUIRE_INSPECT) assert.fail('no `python` with inspect_ai on PATH or in ANCHORSET_INSPECT_VENV (ANCHORSET_REQUIRE_INSPECT=1: a skip is a failure)');
+    t.skip('no `python` with inspect_ai');
+    return;
+  }
+  const { inspect } = switchBlocks();
+  assert.ok(inspect.length >= 5, 'the two-API block for Inspect is missing');
+  const out = mkdtempSync(join(work, 'inspect-'));
+  const ep = await standIn('--reply-format', 'grade');
+  try {
+    runBlock(under('Inspect'), out, path);
+    const last = runBlock(inspect, out, path);
+    assert.match(last.stdout, /judgeModelRequested {1,}fake-judge-old -> fake-judge-strict-new/);
+  } finally {
+    await stop(ep);
   }
 });

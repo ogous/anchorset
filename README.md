@@ -16,7 +16,9 @@ With anchorset you can:
 - **Check your graders** against each other before you trust their labels.
 - **Watch your judge** for change over time, and for noise within one run.
 - **Measure a judge upgrade** on answers you already stored, before you mix old and new labels, and compare
-  re-judging your baseline with recalibrating its old labels.
+  re-judging your baseline with recalibrating its old labels. The example grading scripts for promptfoo, Inspect and
+  Claude's eval-building skill are written for Anthropic's Messages API and OpenAI's Responses API; against OpenAI's
+  API they have run only in two short checks, one draw per call.
 - **Gate across a judge change**: when the judge moves, `gate` refuses, names what moved and prints the next
   commands; once the new judge has graded your baseline again, `gate --rejudge-of` lists the cases whose result
   flipped between the two judges, in each direction.
@@ -30,7 +32,7 @@ Four words used on this page: a **grader** is whoever gives the label, a person 
 grader that is a model. An **item** is what the rating files call a case. A **packet** is what a grader was shown
 for one item.
 
-Version 0.3.0, by Ogous Chan Ali.
+Version 0.4.0, by Ogous Chan Ali.
 
 ## Try it
 
@@ -128,7 +130,7 @@ your own code wrote; for another tool's result file, use its importer (see below
 | [Do my graders agree with each other?](#agree-do-my-graders-agree-with-each-other) | `agree` |
 | [Did my judge shift over time?](#drift-is-my-judge-still-grading-the-same-way) | `drift` |
 | [How much does my judge wobble?](#flips-how-noisy-is-my-judge) | `flips` |
-| [What did a judge upgrade do?](#judge-change-i-swapped-the-judge-what-changed) | `judge-change` |
+| [What did a judge upgrade, or a move to another provider, do?](#judge-change-i-swapped-the-judge-what-changed) | `judge-change` |
 
 Two more commands get your results in: `write-run` and `validate` ([Get your results in](#get-your-results-in)). When
 the judge changed between your baseline and your candidate, `gate --rejudge-of` gates across the change and lists
@@ -395,7 +397,8 @@ On your own files:
 node src/cli.ts judge-change --plan <plan file> --bar <bar file> --inputs <folder of run files>
 ```
 
-`judge-change` measures a judge change. To gate a release across one, use `gate --rejudge-of` (under
+`judge-change` measures a judge change, also from one provider to another (Anthropic's and OpenAI's own APIs, through
+the example grading scripts below; the report measures the whole grading path, not the model alone). To gate a release across one, use `gate --rejudge-of` (under
 [`gate`](#gate-did-my-new-version-get-worse)): it lists the baseline's cases whose result moved between the two judges.
 
 ## Use it with what you already run
@@ -403,7 +406,9 @@ node src/cli.ts judge-change --plan <plan file> --bar <bar file> --inputs <folde
 `judge-change` needs both judges to grade the same stored answers. If your stored answers come from one of the tools
 below, an example importer makes the files `judge-change` reads:
 
-- **promptfoo**, versions 0.123.1 and 0.125.1; any other is refused. You supply the stored answers in a file.
+- **promptfoo**, versions 0.123.1 and 0.125.1; any other is refused. The judge may be on Anthropic's or on OpenAI's own
+  API. A script takes the stored answers from a result file of
+  your system, or you write them in a file. [PROMPTFOO.md](docs/PROMPTFOO.md) walks through it.
 - **Inspect**, `inspect_ai` 0.3.275 and 0.3.286; any other is refused for the grading. It reads your Inspect log, which may
   come from any version the tested tool can read (one it cannot read is refused): the run records its sha256 and the
   version it states, and it must state how many answers it holds.
@@ -411,14 +416,21 @@ below, an example importer makes the files `judge-change` reads:
   reads that folder.
 
 The importers do not read labels you already have: both judges grade again, through an example grading script, and
-you pay for those calls with your own key. The grading scripts work with Anthropic models only; for a judge from
-another provider, you write the run files yourself. The old judge is its model name as served today. The scripts were
+you pay for those calls with your own key. The grading scripts work with Anthropic's Messages API and OpenAI's own
+Responses API; for a judge from another provider, you write the run files yourself. The old judge is its model name as served today. The scripts were
 run against a real provider on 2026-10-13, on small examples, with promptfoo 0.123.1 and `inspect_ai` 0.3.275. Six of
 seven imports succeeded; one was refused because five of its nine replies were not a single JSON object. A re-ask, a
-rate limit, a server error and a timeout were not tried there. Since then the JavaScript grader has changed only in
-where it reads the tested versions, and the two newer versions have run against a local stand-in only. The Inspect
-script `regrade.py` has since gained checks made before any call (the tested-versions list, the stated answer count)
-and a record of the system log, run against the stand-in only.
+rate limit, a server error and a timeout were not tried there. Since then the JavaScript grader has changed in
+where it reads the tested versions and, in this version, gained OpenAI's wire and a record that names the wire. Its
+Anthropic requests are built as before. The Inspect script `regrade.py` has since gained checks made before any call
+(the tested-versions list, the stated answer count) and a record of the system log. On Anthropic's wire, these
+changes, promptfoo 0.125.1 and `inspect_ai` 0.3.286 have run against a local stand-in only. OpenAI's wire ran against OpenAI's API on 2026-11-06 in two short checks, one draw per call: 13 requests through
+the JavaScript grading script (12 on gpt-6-luna, gpt-6-astra, gpt-5.5 and gpt-5.5-2026-04-23, one to a model name that
+does not exist) and 2 through the Python one, with `inspect_ai` 0.3.286. In the first check the grading scripts
+recorded each message's phase, `final_answer`, but the importers then read only a message with no phase, so its two
+imports were refused; the second, through the shipped importers, and through grading scripts that differ from the
+shipped ones in comments only, imported one case on each of the eval-skill and Inspect paths. Not run against OpenAI's API: a
+`promptfoo eval` run, a comparison of two judges, more than one draw, and the rate-limit, server-error and timeout paths.
 
 The [importers guide](docs/IMPORTERS.md) has the steps, and a trial that costs nothing.
 
@@ -467,8 +479,9 @@ It does not run your evals. `write-run` writes a run file only from what your ow
 - [The ratings format](docs/RATINGS_FORMAT.md): the files `agree` and `drift` read.
 - [Judge change](docs/JUDGE_CHANGE.md): the plan, the report and what each number means.
 - [Importers](docs/IMPORTERS.md): promptfoo, Inspect and the eval-building skill, step by step.
+- [promptfoo](docs/PROMPTFOO.md): what a change of your `llm-rubric` judge does to your grades.
 - [Comparison](docs/COMPARISON.md): anchorset next to promptfoo, DeepEval and Langfuse.
-- [Migrations](docs/MIGRATIONS.md): the format versions of 0.3.0, and how a file of 0.2.0 or 0.1.0 moves.
+- [Migrations](docs/MIGRATIONS.md): the format versions of 0.4.0, and how a file of 0.3.0, 0.2.0 or 0.1.0 moves.
 
 The installed package holds these documents at `node_modules/anchorset/docs/`, for an agent or a reader working
 offline. [llms.txt](llms.txt) lists them for a coding agent.
@@ -478,8 +491,8 @@ offline. [llms.txt](llms.txt) lists them for a coding agent.
 Node 22.21 or later. No runtime dependencies. It can also be used as a TypeScript library.
 
 Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). The code is under Apache-2.0 and the
-docs under CC-BY-4.0. To cite the tool, use [CITATION.cff](CITATION.cff). This version, 0.3.0, is archived at
-[doi:10.5281/zenodo.23974982](https://doi.org/10.5281/zenodo.23974982), and
+docs under CC-BY-4.0. To cite the tool, use [CITATION.cff](CITATION.cff). This version, 0.4.0, is archived at
+[doi:10.5281/zenodo.24033690](https://doi.org/10.5281/zenodo.24033690), and
 [doi:10.5281/zenodo.23358089](https://doi.org/10.5281/zenodo.23358089) always resolves to the latest version. Version
 0.1.0, the one the paper used, is archived at [doi:10.5281/zenodo.23358090](https://doi.org/10.5281/zenodo.23358090),
 and the study's data and analysis at [doi:10.5281/zenodo.23358200](https://doi.org/10.5281/zenodo.23358200).

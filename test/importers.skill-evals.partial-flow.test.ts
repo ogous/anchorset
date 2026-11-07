@@ -91,7 +91,7 @@ const check = (flow: string, cases: string): Cli => inProcess(checkMain, ['--flo
  */
 function regrade(flow: string, cases: string, rep: number, outPath: string, baseUrl: string): Promise<Cli> {
   const argv = [
-    join(dir, 'regrade.ts'), '--flow', flow, '--variant', 'baseline', '--cases', cases, '--reps', '2', '--rep', String(rep), '--draws', '2',
+    join(dir, 'regrade.ts'), '--wire', 'anthropic-messages/v1', '--flow', flow, '--variant', 'baseline', '--cases', cases, '--reps', '2', '--rep', String(rep), '--draws', '2',
     '--template', join(dir, 'template.txt'), '--criterion', join(dir, 'criterion.txt'), '--model', 'fake-judge-old', '--max-tokens', '256', '--temperature', '0',
     '--thinking', 'NOT_SENT', '--effort', 'NOT_SENT', '--max-reasks', '0', '--base-url', baseUrl, '--reading', 'one-json-object-boolean-pass/v1', '--out', outPath,
   ];

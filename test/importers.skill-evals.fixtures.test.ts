@@ -43,6 +43,7 @@ function listed(): Listed[] {
 
 const FIXTURES = [
   'fixtures/old-judge.regrade.jsonl', 'fixtures/new-judge.regrade.jsonl', 'fixtures/new-judge-rep1.regrade.jsonl', 'fixtures/reask.regrade.jsonl', 'fixtures/reask-new-judge.regrade.jsonl',
+  'fixtures/openai-old-judge.regrade.jsonl', 'fixtures/openai-new-judge.regrade.jsonl',
   'bad-fixtures/failed-slot.regrade.jsonl', 'bad-fixtures/unreadable-reply.regrade.jsonl', 'bad-fixtures/reask-exhausted.regrade.jsonl',
 ];
 /** The criterion text a fixture was graded under: the example's, or for a re-ask fixture one that carries the fake endpoint's marker. */

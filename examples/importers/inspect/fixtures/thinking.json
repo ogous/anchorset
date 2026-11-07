@@ -2,11 +2,11 @@
   "version": 2,
   "status": "success",
   "eval": {
-    "eval_id": "37SuiYohti7sUBSvTa7vcZ",
-    "run_id": "jboE6Zouj4S5uUbs65YKU5",
-    "created": "2026-10-13T17:54:18+00:00",
+    "eval_id": "UU55nxiBhFoqBa3Ps9i2uG",
+    "run_id": "HYrv9WCSA77wmjVm9rgKft",
+    "created": "2026-11-07T10:35:03+00:00",
     "task": "regrade",
-    "task_id": "m4WXy4huY8zEyHsxtaYe2c",
+    "task_id": "Lh9UDgtiKz6JWjeJHhsAzr",
     "task_version": 0,
     "task_display_name": "regrade",
     "task_attribs": {},
@@ -39,6 +39,13 @@
     "packages": {
       "inspect_ai": "0.3.275"
     },
+    "metadata": {
+      "anchorset_system_log": {
+        "sha256": "f3e7b7566772fad05882738692820eb97c1f1c393fe849c2f78bbb3e534b7d5f",
+        "tool": "inspect_ai",
+        "version": "0.3.275"
+      }
+    },
     "scorers": [
       {
         "name": "model_graded_qa",
@@ -53,11 +60,12 @@
             },
             "base_url": "http://127.0.0.1:18765",
             "model_args": {
+              "wire": "anthropic-messages/v1",
+              "effort": "high",
+              "max_reasks": 0,
               "thinking": {
                 "type": "adaptive"
-              },
-              "effort": "high",
-              "max_reasks": 0
+              }
             }
           }
         },
@@ -106,11 +114,12 @@
             },
             "base_url": "http://127.0.0.1:18765",
             "model_args": {
+              "wire": "anthropic-messages/v1",
+              "effort": "high",
+              "max_reasks": 0,
               "thinking": {
                 "type": "adaptive"
-              },
-              "effort": "high",
-              "max_reasks": 0
+              }
             }
           }
         },
@@ -135,8 +144,8 @@
     }
   },
   "stats": {
-    "started_at": "2026-10-13T17:54:18+00:00",
-    "completed_at": "2026-10-13T17:54:19+00:00",
+    "started_at": "2026-11-07T10:35:03+00:00",
+    "completed_at": "2026-11-07T10:35:04+00:00",
     "model_usage": {
       "recording/fake-judge-old": {
         "input_tokens": 900,
@@ -149,7 +158,13 @@
   },
   "invalidated": false,
   "tags": [],
-  "metadata": {},
+  "metadata": {
+    "anchorset_system_log": {
+      "sha256": "f3e7b7566772fad05882738692820eb97c1f1c393fe849c2f78bbb3e534b7d5f",
+      "tool": "inspect_ai",
+      "version": "0.3.275"
+    }
+  },
   "samples": [
     {
       "id": "c1",
@@ -158,13 +173,13 @@
       "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
       "messages": [
         {
-          "id": "TaB9t4QdqMyT2CNSoj4sg5",
+          "id": "Fcfyk7uRKNr27r7DYmeUVn",
           "content": "My blender arrived broken. Can I get my money back?",
           "source": "input",
           "role": "user"
         },
         {
-          "id": "eHyB6xQqtN7uA5GBsXsa5E",
+          "id": "miZPCF8FXjbG3MZoJcxnHB",
           "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]",
           "source": "generate",
           "role": "assistant",
@@ -176,7 +191,7 @@
         "choices": [
           {
             "message": {
-              "id": "eHyB6xQqtN7uA5GBsXsa5E",
+              "id": "miZPCF8FXjbG3MZoJcxnHB",
               "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]",
               "source": "generate",
               "role": "assistant",
@@ -195,7 +210,7 @@
           "metadata": {
             "grading": [
               {
-                "id": "F8SQKa72XaYi5efSpMmF8e",
+                "id": "WYCfrbDKwygayugHVJhubR",
                 "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                 "role": "user"
               },
@@ -205,16 +220,17 @@
                 "source": "generate",
                 "metadata": {
                   "graderEvidence": {
-                    "schema": "example.grader-evidence/v7",
+                    "schema": "example.grader-evidence/v8",
+                    "wire": "anthropic-messages/v1",
                     "grader": {
                       "name": "anchorset-recording-grader",
                       "language": "python",
-                      "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                      "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                       "runtime": "python 3.13.1"
                     },
-                    "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                    "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                     "callSeq": 1,
-                    "callId": "87f91634-913f-419a-8f4b-4463f0f6ef1b",
+                    "callId": "146821f3-f164-4a2c-887c-d5fdd910e168",
                     "promptSha256": "45690043a59a5d02ec91db20056b62e7cf9bd7b678095c6e7a19aaeb0fcb913e",
                     "sent": {
                       "system": "NOT_SENT",
@@ -284,20 +300,20 @@
       "store": {},
       "events": [
         {
-          "uuid": "CroM95F2Ey7fJfWFqM2PTh",
-          "span_id": "YC7ChWHF8Zv4qYUm72fpdP",
-          "timestamp": "2026-10-13T17:54:18.342541+00:00",
-          "working_start": 3275274.122966416,
+          "uuid": "GckxoySeNQRLfMcsPJzQnB",
+          "span_id": "cdWnihDuG7SESmj9HaR2Ui",
+          "timestamp": "2026-11-07T10:35:03.563521+00:00",
+          "working_start": 903960.355555541,
           "event": "span_begin",
-          "id": "YC7ChWHF8Zv4qYUm72fpdP",
+          "id": "cdWnihDuG7SESmj9HaR2Ui",
           "type": "init",
           "name": "init"
         },
         {
-          "uuid": "G8hJdnPhgGzVdeMNTLpv9F",
-          "span_id": "YC7ChWHF8Zv4qYUm72fpdP",
-          "timestamp": "2026-10-13T17:54:18.342941+00:00",
-          "working_start": 3275274.123367416,
+          "uuid": "K9yHr8MGqBUu4aFJv6dcap",
+          "span_id": "cdWnihDuG7SESmj9HaR2Ui",
+          "timestamp": "2026-11-07T10:35:03.563969+00:00",
+          "working_start": 903960.356002541,
           "event": "sample_init",
           "sample": {
             "input": "My blender arrived broken. Can I get my money back?",
@@ -307,7 +323,7 @@
           "state": {
             "messages": [
               {
-                "id": "TaB9t4QdqMyT2CNSoj4sg5",
+                "id": "Fcfyk7uRKNr27r7DYmeUVn",
                 "content": "My blender arrived broken. Can I get my money back?",
                 "source": "input",
                 "role": "user"
@@ -326,46 +342,46 @@
           }
         },
         {
-          "uuid": "Uh88MsWeBSm6CUQoqkEEGj",
-          "span_id": "YC7ChWHF8Zv4qYUm72fpdP",
-          "timestamp": "2026-10-13T17:54:18.343125+00:00",
-          "working_start": 3275274.123549916,
+          "uuid": "9ZJd8uYLMQE5ZX88K62z9U",
+          "span_id": "cdWnihDuG7SESmj9HaR2Ui",
+          "timestamp": "2026-11-07T10:35:03.564196+00:00",
+          "working_start": 903960.356230625,
           "event": "span_end",
-          "id": "YC7ChWHF8Zv4qYUm72fpdP"
+          "id": "cdWnihDuG7SESmj9HaR2Ui"
         },
         {
-          "uuid": "D3zVDnv3YFmN4uwYCNZeDr",
-          "span_id": "TRHunkpc3sdKAvANYegNGW",
-          "timestamp": "2026-10-13T17:54:18.348578+00:00",
-          "working_start": 0.005324207711964846,
+          "uuid": "jeTWcnspDDRRSm9e9dj6gi",
+          "span_id": "99mdEn5QFtdWCfj8eADfri",
+          "timestamp": "2026-11-07T10:35:03.571328+00:00",
+          "working_start": 0.007000750047154725,
           "event": "span_begin",
-          "id": "TRHunkpc3sdKAvANYegNGW",
+          "id": "99mdEn5QFtdWCfj8eADfri",
           "type": "solvers",
           "name": "solvers"
         },
         {
-          "uuid": "ekbmFRKherhrbiNArh6CmR",
-          "span_id": "CL2TgBayUU46rY6aCS2gWt",
-          "timestamp": "2026-10-13T17:54:18.348833+00:00",
-          "working_start": 0.005579374730587006,
+          "uuid": "CfgUCfGCrapag3wZMtUZrp",
+          "span_id": "RcXViYCBKa2R8gzjQqFyJH",
+          "timestamp": "2026-11-07T10:35:03.571930+00:00",
+          "working_start": 0.00760333298239857,
           "event": "span_begin",
-          "id": "CL2TgBayUU46rY6aCS2gWt",
-          "parent_id": "TRHunkpc3sdKAvANYegNGW",
+          "id": "RcXViYCBKa2R8gzjQqFyJH",
+          "parent_id": "99mdEn5QFtdWCfj8eADfri",
           "type": "solver",
           "name": "replay_stored"
         },
         {
-          "uuid": "eJBQr9LrnSertBbP7Artyi",
-          "span_id": "CL2TgBayUU46rY6aCS2gWt",
-          "timestamp": "2026-10-13T17:54:18.349239+00:00",
-          "working_start": 0.0059848749078810215,
+          "uuid": "m5PMsb8n28x8XTLK7JsQQw",
+          "span_id": "RcXViYCBKa2R8gzjQqFyJH",
+          "timestamp": "2026-11-07T10:35:03.572564+00:00",
+          "working_start": 0.00823720800690353,
           "event": "state",
           "changes": [
             {
               "op": "add",
               "path": "/messages/1",
               "value": {
-                "id": "eHyB6xQqtN7uA5GBsXsa5E",
+                "id": "miZPCF8FXjbG3MZoJcxnHB",
                 "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]",
                 "source": "generate",
                 "role": "assistant",
@@ -383,7 +399,7 @@
               "path": "/output/choices/0",
               "value": {
                 "message": {
-                  "id": "eHyB6xQqtN7uA5GBsXsa5E",
+                  "id": "miZPCF8FXjbG3MZoJcxnHB",
                   "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]",
                   "source": "generate",
                   "role": "assistant",
@@ -401,47 +417,47 @@
           ]
         },
         {
-          "uuid": "moqkYWkUM3U935LrXopKTQ",
-          "span_id": "CL2TgBayUU46rY6aCS2gWt",
-          "timestamp": "2026-10-13T17:54:18.349392+00:00",
-          "working_start": 0.006138457916676998,
+          "uuid": "7rjqPEGUeoWpANjpyrfTx8",
+          "span_id": "RcXViYCBKa2R8gzjQqFyJH",
+          "timestamp": "2026-11-07T10:35:03.572796+00:00",
+          "working_start": 0.008468875079415739,
           "event": "span_end",
-          "id": "CL2TgBayUU46rY6aCS2gWt"
+          "id": "RcXViYCBKa2R8gzjQqFyJH"
         },
         {
-          "uuid": "eswy8T4KyecoBK2YDeA7y8",
-          "span_id": "TRHunkpc3sdKAvANYegNGW",
-          "timestamp": "2026-10-13T17:54:18.349486+00:00",
-          "working_start": 0.006231457926332951,
+          "uuid": "SbFewmZSdBH9Ks2aB3cZHR",
+          "span_id": "99mdEn5QFtdWCfj8eADfri",
+          "timestamp": "2026-11-07T10:35:03.572905+00:00",
+          "working_start": 0.008577417000196874,
           "event": "span_end",
-          "id": "TRHunkpc3sdKAvANYegNGW"
+          "id": "99mdEn5QFtdWCfj8eADfri"
         },
         {
-          "uuid": "4ECaqaCpyiHS95xqfjN8EX",
-          "span_id": "RzkMwHnsC4M5XKcVkumacJ",
-          "timestamp": "2026-10-13T17:54:18.355184+00:00",
-          "working_start": 0.011930499691516161,
+          "uuid": "TrZCMBiFkVvYjeMUBCwraY",
+          "span_id": "QAnbpGixLXUK7E2H9EDD5B",
+          "timestamp": "2026-11-07T10:35:03.579615+00:00",
+          "working_start": 0.015289375092834234,
           "event": "span_begin",
-          "id": "RzkMwHnsC4M5XKcVkumacJ",
+          "id": "QAnbpGixLXUK7E2H9EDD5B",
           "type": "scorers",
           "name": "scorers"
         },
         {
-          "uuid": "B9EUAAC7rS5iipZn3xf5EH",
-          "span_id": "DYs6JM9P3gSGzaZQ4ZPmL7",
-          "timestamp": "2026-10-13T17:54:18.355283+00:00",
-          "working_start": 0.012029082980006933,
+          "uuid": "EbtvNVDn7JLiJRKhEtotbC",
+          "span_id": "4Z4m8eg9nCCWVyJeAcvHcj",
+          "timestamp": "2026-11-07T10:35:03.579860+00:00",
+          "working_start": 0.015532499994151294,
           "event": "span_begin",
-          "id": "DYs6JM9P3gSGzaZQ4ZPmL7",
-          "parent_id": "RzkMwHnsC4M5XKcVkumacJ",
+          "id": "4Z4m8eg9nCCWVyJeAcvHcj",
+          "parent_id": "QAnbpGixLXUK7E2H9EDD5B",
           "type": "scorer",
           "name": "model_graded_qa"
         },
         {
-          "uuid": "XVFc6HfT7fDacxvyfnXWnt",
-          "span_id": "DYs6JM9P3gSGzaZQ4ZPmL7",
-          "timestamp": "2026-10-13T17:54:18.355466+00:00",
-          "working_start": 0.012212082743644714,
+          "uuid": "NLdmSH6DUbnH7vcDCwProp",
+          "span_id": "4Z4m8eg9nCCWVyJeAcvHcj",
+          "timestamp": "2026-11-07T10:35:03.580114+00:00",
+          "working_start": 0.01578620809596032,
           "event": "model",
           "model": "recording/fake-judge-old",
           "input": [],
@@ -467,16 +483,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 1,
-                      "callId": "87f91634-913f-419a-8f4b-4463f0f6ef1b",
+                      "callId": "146821f3-f164-4a2c-887c-d5fdd910e168",
                       "promptSha256": "45690043a59a5d02ec91db20056b62e7cf9bd7b678095c6e7a19aaeb0fcb913e",
                       "sent": {
                         "system": "NOT_SENT",
@@ -546,19 +563,20 @@
               "output_tokens": 20,
               "total_tokens": 120
             },
-            "time": 0.05904504097998142,
+            "time": 0.05834395799320191,
             "metadata": {
               "graderEvidence": {
-                "schema": "example.grader-evidence/v7",
+                "schema": "example.grader-evidence/v8",
+                "wire": "anthropic-messages/v1",
                 "grader": {
                   "name": "anchorset-recording-grader",
                   "language": "python",
-                  "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                  "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                   "runtime": "python 3.13.1"
                 },
-                "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                 "callSeq": 1,
-                "callId": "87f91634-913f-419a-8f4b-4463f0f6ef1b",
+                "callId": "146821f3-f164-4a2c-887c-d5fdd910e168",
                 "promptSha256": "45690043a59a5d02ec91db20056b62e7cf9bd7b678095c6e7a19aaeb0fcb913e",
                 "sent": {
                   "system": "NOT_SENT",
@@ -617,14 +635,14 @@
               }
             }
           },
-          "completed": "2026-10-13T17:54:18.528231+00:00",
-          "working_time": 0.05904504097998142
+          "completed": "2026-11-07T10:35:03.756986+00:00",
+          "working_time": 0.05834395799320191
         },
         {
-          "uuid": "eZXjCP8kLE6wXJZwwezhAi",
-          "span_id": "DYs6JM9P3gSGzaZQ4ZPmL7",
-          "timestamp": "2026-10-13T17:54:18.528927+00:00",
-          "working_start": 0.07218362437561154,
+          "uuid": "5FJcGSpctTXqtgTw38LCBL",
+          "span_id": "4Z4m8eg9nCCWVyJeAcvHcj",
+          "timestamp": "2026-11-07T10:35:03.757849+00:00",
+          "working_start": 0.0753483340376988,
           "event": "score",
           "score": {
             "value": "C",
@@ -633,7 +651,7 @@
             "metadata": {
               "grading": [
                 {
-                  "id": "F8SQKa72XaYi5efSpMmF8e",
+                  "id": "WYCfrbDKwygayugHVJhubR",
                   "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                   "role": "user"
                 },
@@ -643,16 +661,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 1,
-                      "callId": "87f91634-913f-419a-8f4b-4463f0f6ef1b",
+                      "callId": "146821f3-f164-4a2c-887c-d5fdd910e168",
                       "promptSha256": "45690043a59a5d02ec91db20056b62e7cf9bd7b678095c6e7a19aaeb0fcb913e",
                       "sent": {
                         "system": "NOT_SENT",
@@ -731,11 +750,12 @@
               },
               "base_url": "http://127.0.0.1:18765",
               "model_args": {
+                "wire": "anthropic-messages/v1",
+                "effort": "high",
+                "max_reasks": 0,
                 "thinking": {
                   "type": "adaptive"
-                },
-                "effort": "high",
-                "max_reasks": 0
+                }
               }
             }
           },
@@ -748,20 +768,20 @@
           }
         },
         {
-          "uuid": "TAX4tY3JXvmDRNZgNcRFKE",
-          "span_id": "DYs6JM9P3gSGzaZQ4ZPmL7",
-          "timestamp": "2026-10-13T17:54:18.529193+00:00",
-          "working_start": 0.07244916632771492,
+          "uuid": "ASmpAsK6WFM845hVUKJLte",
+          "span_id": "4Z4m8eg9nCCWVyJeAcvHcj",
+          "timestamp": "2026-11-07T10:35:03.758256+00:00",
+          "working_start": 0.07575508404988796,
           "event": "span_end",
-          "id": "DYs6JM9P3gSGzaZQ4ZPmL7"
+          "id": "4Z4m8eg9nCCWVyJeAcvHcj"
         },
         {
-          "uuid": "A2TfKaibvhuHyKaboo8DZD",
-          "span_id": "RzkMwHnsC4M5XKcVkumacJ",
-          "timestamp": "2026-10-13T17:54:18.529303+00:00",
-          "working_start": 0.07255899952724576,
+          "uuid": "BaaBjHerSHrtGj2ggKMexA",
+          "span_id": "QAnbpGixLXUK7E2H9EDD5B",
+          "timestamp": "2026-11-07T10:35:03.758378+00:00",
+          "working_start": 0.0758766260696575,
           "event": "span_end",
-          "id": "RzkMwHnsC4M5XKcVkumacJ"
+          "id": "QAnbpGixLXUK7E2H9EDD5B"
         }
       ],
       "model_usage": {
@@ -772,11 +792,11 @@
         }
       },
       "role_usage": {},
-      "started_at": "2026-10-13T17:54:18.343256+00:00",
-      "completed_at": "2026-10-13T17:54:18.529584+00:00",
-      "total_time": 0.186,
-      "working_time": 0.073,
-      "uuid": "U5vZEHouXuFEhdkpwNJLq2",
+      "started_at": "2026-11-07T10:35:03.564330+00:00",
+      "completed_at": "2026-11-07T10:35:03.758726+00:00",
+      "total_time": 0.194,
+      "working_time": 0.076,
+      "uuid": "U7N2r35V3mRGMaubqEs8PD",
       "error_retries": [],
       "attachments": {
         "0c7b6da9fa696540df73ac9225bb5a50": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
@@ -784,7 +804,7 @@
       "events_data": {
         "messages": [
           {
-            "id": "F8SQKa72XaYi5efSpMmF8e",
+            "id": "WYCfrbDKwygayugHVJhubR",
             "content": "attachment://0c7b6da9fa696540df73ac9225bb5a50",
             "role": "user"
           }
@@ -800,13 +820,13 @@
       "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
       "messages": [
         {
-          "id": "n5e2Jok5TmEBxFN2mnvBfT",
+          "id": "hT2tZgqwyxfWihRdhseC58",
           "content": "I bought shoes 45 days ago and want a refund.",
           "source": "input",
           "role": "user"
         },
         {
-          "id": "cjoseiwT7PgPkmUiG36LMC",
+          "id": "GD5JiTfPv5REWJJw42MF5q",
           "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
           "source": "generate",
           "role": "assistant",
@@ -818,7 +838,7 @@
         "choices": [
           {
             "message": {
-              "id": "cjoseiwT7PgPkmUiG36LMC",
+              "id": "GD5JiTfPv5REWJJw42MF5q",
               "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
               "source": "generate",
               "role": "assistant",
@@ -837,7 +857,7 @@
           "metadata": {
             "grading": [
               {
-                "id": "A6nqhRjkMbeBqWTR6iVucw",
+                "id": "MGsWwNGdcfTr36UYNRSxcT",
                 "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                 "role": "user"
               },
@@ -847,16 +867,17 @@
                 "source": "generate",
                 "metadata": {
                   "graderEvidence": {
-                    "schema": "example.grader-evidence/v7",
+                    "schema": "example.grader-evidence/v8",
+                    "wire": "anthropic-messages/v1",
                     "grader": {
                       "name": "anchorset-recording-grader",
                       "language": "python",
-                      "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                      "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                       "runtime": "python 3.13.1"
                     },
-                    "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                    "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                     "callSeq": 2,
-                    "callId": "59387c77-bc1e-45ff-9de9-3b953a4a1db9",
+                    "callId": "d7d6fa4d-1ae9-4127-a2b9-918ce50b4c08",
                     "promptSha256": "b55cce7af00b8e6f7dec02f432070772e169bf65fbf9d8c1af8499fedd388b9a",
                     "sent": {
                       "system": "NOT_SENT",
@@ -925,20 +946,20 @@
       "store": {},
       "events": [
         {
-          "uuid": "Q6z8ubijWmk3NujfCnAmp3",
-          "span_id": "2G8FiRoyqpNCG7kLgpzRhB",
-          "timestamp": "2026-10-13T17:54:18.343598+00:00",
-          "working_start": 3275274.12402275,
+          "uuid": "jbB82zhDxi8yMfj6jh3MZM",
+          "span_id": "kkRyeRxEj7MfCUZ6B777of",
+          "timestamp": "2026-11-07T10:35:03.564732+00:00",
+          "working_start": 903960.356765791,
           "event": "span_begin",
-          "id": "2G8FiRoyqpNCG7kLgpzRhB",
+          "id": "kkRyeRxEj7MfCUZ6B777of",
           "type": "init",
           "name": "init"
         },
         {
-          "uuid": "97WwHnSC8UjsVSqX7dPFAQ",
-          "span_id": "2G8FiRoyqpNCG7kLgpzRhB",
-          "timestamp": "2026-10-13T17:54:18.343801+00:00",
-          "working_start": 3275274.124225625,
+          "uuid": "So9WbzJKPmEWjwqTw9cUoN",
+          "span_id": "kkRyeRxEj7MfCUZ6B777of",
+          "timestamp": "2026-11-07T10:35:03.564950+00:00",
+          "working_start": 903960.356984416,
           "event": "sample_init",
           "sample": {
             "input": "I bought shoes 45 days ago and want a refund.",
@@ -948,7 +969,7 @@
           "state": {
             "messages": [
               {
-                "id": "n5e2Jok5TmEBxFN2mnvBfT",
+                "id": "hT2tZgqwyxfWihRdhseC58",
                 "content": "I bought shoes 45 days ago and want a refund.",
                 "source": "input",
                 "role": "user"
@@ -967,46 +988,46 @@
           }
         },
         {
-          "uuid": "E9MRDH6srg8bEet6Msjc4N",
-          "span_id": "2G8FiRoyqpNCG7kLgpzRhB",
-          "timestamp": "2026-10-13T17:54:18.343922+00:00",
-          "working_start": 3275274.124346916,
+          "uuid": "PjjCKD3dS6htbXDkc2pTYK",
+          "span_id": "kkRyeRxEj7MfCUZ6B777of",
+          "timestamp": "2026-11-07T10:35:03.565084+00:00",
+          "working_start": 903960.357118291,
           "event": "span_end",
-          "id": "2G8FiRoyqpNCG7kLgpzRhB"
+          "id": "kkRyeRxEj7MfCUZ6B777of"
         },
         {
-          "uuid": "DRWpZXC4cMdaQoYqKGs7ac",
-          "span_id": "D3asbZVtyMMb6htbEKyuzA",
-          "timestamp": "2026-10-13T17:54:18.349651+00:00",
-          "working_start": 0.0056467498652637005,
+          "uuid": "kX8CnfU72xuzTTiWCr3KdS",
+          "span_id": "HeyAhhuZjrcho3uUnNGufM",
+          "timestamp": "2026-11-07T10:35:03.573122+00:00",
+          "working_start": 0.007950917002744973,
           "event": "span_begin",
-          "id": "D3asbZVtyMMb6htbEKyuzA",
+          "id": "HeyAhhuZjrcho3uUnNGufM",
           "type": "solvers",
           "name": "solvers"
         },
         {
-          "uuid": "jNGwhrRaK33tWc9w7kRanu",
-          "span_id": "jTPjVj7WA6xrfNhuP399px",
-          "timestamp": "2026-10-13T17:54:18.349760+00:00",
-          "working_start": 0.005755665712058544,
+          "uuid": "G6mKGsARVWMpqp25AjCPB9",
+          "span_id": "XuNq6B47X8uLuD3JYWt849",
+          "timestamp": "2026-11-07T10:35:03.573252+00:00",
+          "working_start": 0.008081416948698461,
           "event": "span_begin",
-          "id": "jTPjVj7WA6xrfNhuP399px",
-          "parent_id": "D3asbZVtyMMb6htbEKyuzA",
+          "id": "XuNq6B47X8uLuD3JYWt849",
+          "parent_id": "HeyAhhuZjrcho3uUnNGufM",
           "type": "solver",
           "name": "replay_stored"
         },
         {
-          "uuid": "cqz9XWJaqv9tPmeuNwSszU",
-          "span_id": "jTPjVj7WA6xrfNhuP399px",
-          "timestamp": "2026-10-13T17:54:18.349984+00:00",
-          "working_start": 0.005979249719530344,
+          "uuid": "6ZYirj2YTHFyi35U8vdFTW",
+          "span_id": "XuNq6B47X8uLuD3JYWt849",
+          "timestamp": "2026-11-07T10:35:03.573522+00:00",
+          "working_start": 0.008350917021743953,
           "event": "state",
           "changes": [
             {
               "op": "add",
               "path": "/messages/1",
               "value": {
-                "id": "cjoseiwT7PgPkmUiG36LMC",
+                "id": "GD5JiTfPv5REWJJw42MF5q",
                 "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
                 "source": "generate",
                 "role": "assistant",
@@ -1024,7 +1045,7 @@
               "path": "/output/choices/0",
               "value": {
                 "message": {
-                  "id": "cjoseiwT7PgPkmUiG36LMC",
+                  "id": "GD5JiTfPv5REWJJw42MF5q",
                   "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
                   "source": "generate",
                   "role": "assistant",
@@ -1042,47 +1063,47 @@
           ]
         },
         {
-          "uuid": "gtiBrXjcZeSke4xmkwBRJp",
-          "span_id": "jTPjVj7WA6xrfNhuP399px",
-          "timestamp": "2026-10-13T17:54:18.350091+00:00",
-          "working_start": 0.006086332723498344,
+          "uuid": "hYiC82dPiV42LxNx7A5UdA",
+          "span_id": "XuNq6B47X8uLuD3JYWt849",
+          "timestamp": "2026-11-07T10:35:03.573649+00:00",
+          "working_start": 0.008478209027089179,
           "event": "span_end",
-          "id": "jTPjVj7WA6xrfNhuP399px"
+          "id": "XuNq6B47X8uLuD3JYWt849"
         },
         {
-          "uuid": "dYVkPfekzPF2TiYEVjqnPG",
-          "span_id": "D3asbZVtyMMb6htbEKyuzA",
-          "timestamp": "2026-10-13T17:54:18.350176+00:00",
-          "working_start": 0.006171374581754208,
+          "uuid": "5zcKX7ysAtygvQyfgzirbM",
+          "span_id": "HeyAhhuZjrcho3uUnNGufM",
+          "timestamp": "2026-11-07T10:35:03.573749+00:00",
+          "working_start": 0.00857866695150733,
           "event": "span_end",
-          "id": "D3asbZVtyMMb6htbEKyuzA"
+          "id": "HeyAhhuZjrcho3uUnNGufM"
         },
         {
-          "uuid": "NSC8rKw47P3ojnbeXmr4Ph",
-          "span_id": "AafAcNBMdtjzTBSWqxEf2K",
-          "timestamp": "2026-10-13T17:54:18.355561+00:00",
-          "working_start": 0.011557040736079216,
+          "uuid": "HRzpG4sMzRyGXqpqnNbZfm",
+          "span_id": "o4y2rm9Mjw7aDmxHZojfxT",
+          "timestamp": "2026-11-07T10:35:03.580259+00:00",
+          "working_start": 0.015087959007360041,
           "event": "span_begin",
-          "id": "AafAcNBMdtjzTBSWqxEf2K",
+          "id": "o4y2rm9Mjw7aDmxHZojfxT",
           "type": "scorers",
           "name": "scorers"
         },
         {
-          "uuid": "Wp4LfsXCaaftSu5dWy85Db",
-          "span_id": "5MTkrsgYmYwyxxHX9PdgfE",
-          "timestamp": "2026-10-13T17:54:18.355653+00:00",
-          "working_start": 0.011649207677692175,
+          "uuid": "ArKFpQfNNv94mjrKUBR6Tx",
+          "span_id": "33iU8hvybu2dvdGYjtaeeD",
+          "timestamp": "2026-11-07T10:35:03.580369+00:00",
+          "working_start": 0.015198374981991947,
           "event": "span_begin",
-          "id": "5MTkrsgYmYwyxxHX9PdgfE",
-          "parent_id": "AafAcNBMdtjzTBSWqxEf2K",
+          "id": "33iU8hvybu2dvdGYjtaeeD",
+          "parent_id": "o4y2rm9Mjw7aDmxHZojfxT",
           "type": "scorer",
           "name": "model_graded_qa"
         },
         {
-          "uuid": "EoXegQWSrjZsZmH9LK7Y6F",
-          "span_id": "5MTkrsgYmYwyxxHX9PdgfE",
-          "timestamp": "2026-10-13T17:54:18.355795+00:00",
-          "working_start": 0.011790541000664234,
+          "uuid": "GPStj5yaN4E5DN2jZJg9FV",
+          "span_id": "33iU8hvybu2dvdGYjtaeeD",
+          "timestamp": "2026-11-07T10:35:03.580532+00:00",
+          "working_start": 0.015363625017926097,
           "event": "model",
           "model": "recording/fake-judge-old",
           "input": [],
@@ -1108,16 +1129,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 2,
-                      "callId": "59387c77-bc1e-45ff-9de9-3b953a4a1db9",
+                      "callId": "d7d6fa4d-1ae9-4127-a2b9-918ce50b4c08",
                       "promptSha256": "b55cce7af00b8e6f7dec02f432070772e169bf65fbf9d8c1af8499fedd388b9a",
                       "sent": {
                         "system": "NOT_SENT",
@@ -1186,19 +1208,20 @@
               "output_tokens": 20,
               "total_tokens": 120
             },
-            "time": 0.22424570797011256,
+            "time": 0.22676933300681412,
             "metadata": {
               "graderEvidence": {
-                "schema": "example.grader-evidence/v7",
+                "schema": "example.grader-evidence/v8",
+                "wire": "anthropic-messages/v1",
                 "grader": {
                   "name": "anchorset-recording-grader",
                   "language": "python",
-                  "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                  "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                   "runtime": "python 3.13.1"
                 },
-                "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                 "callSeq": 2,
-                "callId": "59387c77-bc1e-45ff-9de9-3b953a4a1db9",
+                "callId": "d7d6fa4d-1ae9-4127-a2b9-918ce50b4c08",
                 "promptSha256": "b55cce7af00b8e6f7dec02f432070772e169bf65fbf9d8c1af8499fedd388b9a",
                 "sent": {
                   "system": "NOT_SENT",
@@ -1256,14 +1279,14 @@
               }
             }
           },
-          "completed": "2026-10-13T17:54:18.583808+00:00",
-          "working_time": 0.22424570797011256
+          "completed": "2026-11-07T10:35:03.811834+00:00",
+          "working_time": 0.22676933300681412
         },
         {
-          "uuid": "5ZyWMGRSpTdswFni36KDwX",
-          "span_id": "5MTkrsgYmYwyxxHX9PdgfE",
-          "timestamp": "2026-10-13T17:54:18.584058+00:00",
-          "working_start": 0.23636624962091446,
+          "uuid": "dxkd8SjoFeCjJfi66rz6Fc",
+          "span_id": "33iU8hvybu2dvdGYjtaeeD",
+          "timestamp": "2026-11-07T10:35:03.812050+00:00",
+          "working_start": 0.24243795790243894,
           "event": "score",
           "score": {
             "value": "C",
@@ -1272,7 +1295,7 @@
             "metadata": {
               "grading": [
                 {
-                  "id": "A6nqhRjkMbeBqWTR6iVucw",
+                  "id": "MGsWwNGdcfTr36UYNRSxcT",
                   "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                   "role": "user"
                 },
@@ -1282,16 +1305,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 2,
-                      "callId": "59387c77-bc1e-45ff-9de9-3b953a4a1db9",
+                      "callId": "d7d6fa4d-1ae9-4127-a2b9-918ce50b4c08",
                       "promptSha256": "b55cce7af00b8e6f7dec02f432070772e169bf65fbf9d8c1af8499fedd388b9a",
                       "sent": {
                         "system": "NOT_SENT",
@@ -1369,11 +1393,12 @@
               },
               "base_url": "http://127.0.0.1:18765",
               "model_args": {
+                "wire": "anthropic-messages/v1",
+                "effort": "high",
+                "max_reasks": 0,
                 "thinking": {
                   "type": "adaptive"
-                },
-                "effort": "high",
-                "max_reasks": 0
+                }
               }
             }
           },
@@ -1386,20 +1411,20 @@
           }
         },
         {
-          "uuid": "c9k5JEaj4XnTUBfU42KMYt",
-          "span_id": "5MTkrsgYmYwyxxHX9PdgfE",
-          "timestamp": "2026-10-13T17:54:18.584279+00:00",
-          "working_start": 0.23658729065209627,
+          "uuid": "KReP8qbsa9qyU7NpKpyrhS",
+          "span_id": "33iU8hvybu2dvdGYjtaeeD",
+          "timestamp": "2026-11-07T10:35:03.812279+00:00",
+          "working_start": 0.24266629095654935,
           "event": "span_end",
-          "id": "5MTkrsgYmYwyxxHX9PdgfE"
+          "id": "33iU8hvybu2dvdGYjtaeeD"
         },
         {
-          "uuid": "6iMAUF8zF8rKDG3bWxvshU",
-          "span_id": "AafAcNBMdtjzTBSWqxEf2K",
-          "timestamp": "2026-10-13T17:54:18.584416+00:00",
-          "working_start": 0.2367244577035308,
+          "uuid": "VgD8sDPnGQx2jNv8QWBoV3",
+          "span_id": "o4y2rm9Mjw7aDmxHZojfxT",
+          "timestamp": "2026-11-07T10:35:03.812397+00:00",
+          "working_start": 0.242784290923737,
           "event": "span_end",
-          "id": "AafAcNBMdtjzTBSWqxEf2K"
+          "id": "o4y2rm9Mjw7aDmxHZojfxT"
         }
       ],
       "model_usage": {
@@ -1410,11 +1435,11 @@
         }
       },
       "role_usage": {},
-      "started_at": "2026-10-13T17:54:18.344006+00:00",
-      "completed_at": "2026-10-13T17:54:18.584657+00:00",
-      "total_time": 0.241,
-      "working_time": 0.237,
-      "uuid": "ENMmRyEj7C2VX2rBMk8ErQ",
+      "started_at": "2026-11-07T10:35:03.565172+00:00",
+      "completed_at": "2026-11-07T10:35:03.812683+00:00",
+      "total_time": 0.247,
+      "working_time": 0.243,
+      "uuid": "3RTTv9kv5mBGVjpbtonhVE",
       "error_retries": [],
       "attachments": {
         "a62565467235aa6087533ab0ae3e0e89": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
@@ -1422,7 +1447,7 @@
       "events_data": {
         "messages": [
           {
-            "id": "A6nqhRjkMbeBqWTR6iVucw",
+            "id": "MGsWwNGdcfTr36UYNRSxcT",
             "content": "attachment://a62565467235aa6087533ab0ae3e0e89",
             "role": "user"
           }
@@ -1438,13 +1463,13 @@
       "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
       "messages": [
         {
-          "id": "Asa7urBwWXRwE89NSBdR2C",
+          "id": "dMw5u5FiEFUbnTP5nMFMwH",
           "content": "Please refund my last order.",
           "source": "input",
           "role": "user"
         },
         {
-          "id": "BMEAd8CPtikoHAK8xP6diP",
+          "id": "kgDomTTXiaJ3qakB98L2bi",
           "content": "Sure, I refunded it twice to be safe. [[thinking]]",
           "source": "generate",
           "role": "assistant",
@@ -1456,7 +1481,7 @@
         "choices": [
           {
             "message": {
-              "id": "BMEAd8CPtikoHAK8xP6diP",
+              "id": "kgDomTTXiaJ3qakB98L2bi",
               "content": "Sure, I refunded it twice to be safe. [[thinking]]",
               "source": "generate",
               "role": "assistant",
@@ -1475,7 +1500,7 @@
           "metadata": {
             "grading": [
               {
-                "id": "DfLBarWUkZMd7vrzYWr5io",
+                "id": "f77JycQbesSKC9dSysDh4s",
                 "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                 "role": "user"
               },
@@ -1485,16 +1510,17 @@
                 "source": "generate",
                 "metadata": {
                   "graderEvidence": {
-                    "schema": "example.grader-evidence/v7",
+                    "schema": "example.grader-evidence/v8",
+                    "wire": "anthropic-messages/v1",
                     "grader": {
                       "name": "anchorset-recording-grader",
                       "language": "python",
-                      "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                      "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                       "runtime": "python 3.13.1"
                     },
-                    "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                    "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                     "callSeq": 3,
-                    "callId": "e51a402c-dabb-4428-bd3c-9b3d06fa14d6",
+                    "callId": "04fe01a1-1cba-4f6d-966d-fe63df6195a2",
                     "promptSha256": "2c91b29062fed2e9b037f0b6bfb12d95b84a26117897374d5c51adce5725c5f0",
                     "sent": {
                       "system": "NOT_SENT",
@@ -1564,20 +1590,20 @@
       "store": {},
       "events": [
         {
-          "uuid": "9rJHXoTeh2pKBKVG23bRdd",
-          "span_id": "7mukkunzMpXFHSMQ7HvnwL",
-          "timestamp": "2026-10-13T17:54:18.344264+00:00",
-          "working_start": 3275274.124688458,
+          "uuid": "DfHUqm26TTBNAyCkC5cTwh",
+          "span_id": "bsKckEigTvkeUc4mJRTcHY",
+          "timestamp": "2026-11-07T10:35:03.565459+00:00",
+          "working_start": 903960.357492875,
           "event": "span_begin",
-          "id": "7mukkunzMpXFHSMQ7HvnwL",
+          "id": "bsKckEigTvkeUc4mJRTcHY",
           "type": "init",
           "name": "init"
         },
         {
-          "uuid": "nYQVV5pnwmxtToqxg3T84j",
-          "span_id": "7mukkunzMpXFHSMQ7HvnwL",
-          "timestamp": "2026-10-13T17:54:18.344452+00:00",
-          "working_start": 3275274.12487675,
+          "uuid": "j7yEJjShiYvDwPG3eBP5vu",
+          "span_id": "bsKckEigTvkeUc4mJRTcHY",
+          "timestamp": "2026-11-07T10:35:03.565660+00:00",
+          "working_start": 903960.357693625,
           "event": "sample_init",
           "sample": {
             "input": "Please refund my last order.",
@@ -1587,7 +1613,7 @@
           "state": {
             "messages": [
               {
-                "id": "Asa7urBwWXRwE89NSBdR2C",
+                "id": "dMw5u5FiEFUbnTP5nMFMwH",
                 "content": "Please refund my last order.",
                 "source": "input",
                 "role": "user"
@@ -1606,46 +1632,46 @@
           }
         },
         {
-          "uuid": "fWzFdFwqJ9zxHo9HyURDGo",
-          "span_id": "7mukkunzMpXFHSMQ7HvnwL",
-          "timestamp": "2026-10-13T17:54:18.344572+00:00",
-          "working_start": 3275274.12499625,
+          "uuid": "QzifGKSg5bhY9Zn36uWHz6",
+          "span_id": "bsKckEigTvkeUc4mJRTcHY",
+          "timestamp": "2026-11-07T10:35:03.565771+00:00",
+          "working_start": 903960.357805291,
           "event": "span_end",
-          "id": "7mukkunzMpXFHSMQ7HvnwL"
+          "id": "bsKckEigTvkeUc4mJRTcHY"
         },
         {
-          "uuid": "TBF6kWnuPjTHzxptxfBDTz",
-          "span_id": "PdngeUZTdbBBipZduBgt7k",
-          "timestamp": "2026-10-13T17:54:18.350311+00:00",
-          "working_start": 0.005636333022266626,
+          "uuid": "eo9PKKqyrUhB5oqao7YE8s",
+          "span_id": "LymWDE2cwT7JyGM3gEHDAu",
+          "timestamp": "2026-11-07T10:35:03.573907+00:00",
+          "working_start": 0.008031125064007938,
           "event": "span_begin",
-          "id": "PdngeUZTdbBBipZduBgt7k",
+          "id": "LymWDE2cwT7JyGM3gEHDAu",
           "type": "solvers",
           "name": "solvers"
         },
         {
-          "uuid": "nfA3rWVPoKgJy8qmPJsUVA",
-          "span_id": "nePpkzr3e5qyV5KpxTBCoY",
-          "timestamp": "2026-10-13T17:54:18.350406+00:00",
-          "working_start": 0.005730874836444855,
+          "uuid": "nvXYckJhGwkYdk8eiaUN3t",
+          "span_id": "R2BAVqWYLRSKzxH345a7EV",
+          "timestamp": "2026-11-07T10:35:03.574005+00:00",
+          "working_start": 0.008128667017444968,
           "event": "span_begin",
-          "id": "nePpkzr3e5qyV5KpxTBCoY",
-          "parent_id": "PdngeUZTdbBBipZduBgt7k",
+          "id": "R2BAVqWYLRSKzxH345a7EV",
+          "parent_id": "LymWDE2cwT7JyGM3gEHDAu",
           "type": "solver",
           "name": "replay_stored"
         },
         {
-          "uuid": "ANy8vGKdW6zLEudXP6RPR2",
-          "span_id": "nePpkzr3e5qyV5KpxTBCoY",
-          "timestamp": "2026-10-13T17:54:18.350620+00:00",
-          "working_start": 0.005945458076894283,
+          "uuid": "JEp3dgxGU2zpATnaaHCKPn",
+          "span_id": "R2BAVqWYLRSKzxH345a7EV",
+          "timestamp": "2026-11-07T10:35:03.574238+00:00",
+          "working_start": 0.008362292079254985,
           "event": "state",
           "changes": [
             {
               "op": "add",
               "path": "/messages/1",
               "value": {
-                "id": "BMEAd8CPtikoHAK8xP6diP",
+                "id": "kgDomTTXiaJ3qakB98L2bi",
                 "content": "Sure, I refunded it twice to be safe. [[thinking]]",
                 "source": "generate",
                 "role": "assistant",
@@ -1663,7 +1689,7 @@
               "path": "/output/choices/0",
               "value": {
                 "message": {
-                  "id": "BMEAd8CPtikoHAK8xP6diP",
+                  "id": "kgDomTTXiaJ3qakB98L2bi",
                   "content": "Sure, I refunded it twice to be safe. [[thinking]]",
                   "source": "generate",
                   "role": "assistant",
@@ -1681,47 +1707,47 @@
           ]
         },
         {
-          "uuid": "QhbhF78ypK8RyHC8Y3fZjF",
-          "span_id": "nePpkzr3e5qyV5KpxTBCoY",
-          "timestamp": "2026-10-13T17:54:18.350746+00:00",
-          "working_start": 0.006071791052818298,
+          "uuid": "mxKM5t6QoHhhzLF2P3Vx3Q",
+          "span_id": "R2BAVqWYLRSKzxH345a7EV",
+          "timestamp": "2026-11-07T10:35:03.574364+00:00",
+          "working_start": 0.008488291990943253,
           "event": "span_end",
-          "id": "nePpkzr3e5qyV5KpxTBCoY"
+          "id": "R2BAVqWYLRSKzxH345a7EV"
         },
         {
-          "uuid": "UEVZSyknJALXsWQif7hWae",
-          "span_id": "PdngeUZTdbBBipZduBgt7k",
-          "timestamp": "2026-10-13T17:54:18.350834+00:00",
-          "working_start": 0.006159041076898575,
+          "uuid": "GztWsy2ztvUDXAa3n3cqwt",
+          "span_id": "LymWDE2cwT7JyGM3gEHDAu",
+          "timestamp": "2026-11-07T10:35:03.574462+00:00",
+          "working_start": 0.008586207986809313,
           "event": "span_end",
-          "id": "PdngeUZTdbBBipZduBgt7k"
+          "id": "LymWDE2cwT7JyGM3gEHDAu"
         },
         {
-          "uuid": "gudJBhkxvWW36ScSwuUxE4",
-          "span_id": "nak6xXsvcQaMV4iCrKLW34",
-          "timestamp": "2026-10-13T17:54:18.355853+00:00",
-          "working_start": 0.011178249958902597,
+          "uuid": "7VLQzVdEjcnChwJtYPweUH",
+          "span_id": "mTdz4DoArbzR9Kj2ujHCkY",
+          "timestamp": "2026-11-07T10:35:03.580600+00:00",
+          "working_start": 0.014724042033776641,
           "event": "span_begin",
-          "id": "nak6xXsvcQaMV4iCrKLW34",
+          "id": "mTdz4DoArbzR9Kj2ujHCkY",
           "type": "scorers",
           "name": "scorers"
         },
         {
-          "uuid": "oVsjHEC8V2XN4ckWBpodj2",
-          "span_id": "ANmeHLuUQhWAZmMyBLECfb",
-          "timestamp": "2026-10-13T17:54:18.355940+00:00",
-          "working_start": 0.011265791021287441,
+          "uuid": "E3eMGgfSNox2q8pLpAFmh4",
+          "span_id": "YJHjMiDsnP3NPTBnTLRuSJ",
+          "timestamp": "2026-11-07T10:35:03.580695+00:00",
+          "working_start": 0.014818667084909976,
           "event": "span_begin",
-          "id": "ANmeHLuUQhWAZmMyBLECfb",
-          "parent_id": "nak6xXsvcQaMV4iCrKLW34",
+          "id": "YJHjMiDsnP3NPTBnTLRuSJ",
+          "parent_id": "mTdz4DoArbzR9Kj2ujHCkY",
           "type": "scorer",
           "name": "model_graded_qa"
         },
         {
-          "uuid": "QU4VZdp6hhME7mfdDyyyGC",
-          "span_id": "ANmeHLuUQhWAZmMyBLECfb",
-          "timestamp": "2026-10-13T17:54:18.356073+00:00",
-          "working_start": 0.01139783300459385,
+          "uuid": "ZUsPhfQSGrmKxcUnTWLCeq",
+          "span_id": "YJHjMiDsnP3NPTBnTLRuSJ",
+          "timestamp": "2026-11-07T10:35:03.580848+00:00",
+          "working_start": 0.014971458003856242,
           "event": "model",
           "model": "recording/fake-judge-old",
           "input": [],
@@ -1747,16 +1773,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 3,
-                      "callId": "e51a402c-dabb-4428-bd3c-9b3d06fa14d6",
+                      "callId": "04fe01a1-1cba-4f6d-966d-fe63df6195a2",
                       "promptSha256": "2c91b29062fed2e9b037f0b6bfb12d95b84a26117897374d5c51adce5725c5f0",
                       "sent": {
                         "system": "NOT_SENT",
@@ -1826,19 +1853,20 @@
               "output_tokens": 20,
               "total_tokens": 120
             },
-            "time": 0.2789314170368016,
+            "time": 0.27948479203041643,
             "metadata": {
               "graderEvidence": {
-                "schema": "example.grader-evidence/v7",
+                "schema": "example.grader-evidence/v8",
+                "wire": "anthropic-messages/v1",
                 "grader": {
                   "name": "anchorset-recording-grader",
                   "language": "python",
-                  "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                  "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                   "runtime": "python 3.13.1"
                 },
-                "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                 "callSeq": 3,
-                "callId": "e51a402c-dabb-4428-bd3c-9b3d06fa14d6",
+                "callId": "04fe01a1-1cba-4f6d-966d-fe63df6195a2",
                 "promptSha256": "2c91b29062fed2e9b037f0b6bfb12d95b84a26117897374d5c51adce5725c5f0",
                 "sent": {
                   "system": "NOT_SENT",
@@ -1897,14 +1925,14 @@
               }
             }
           },
-          "completed": "2026-10-13T17:54:18.638995+00:00",
-          "working_time": 0.2789314170368016
+          "completed": "2026-11-07T10:35:03.865258+00:00",
+          "working_time": 0.27948479203041643
         },
         {
-          "uuid": "mcyeqVTpgjPt3ao84XyfTt",
-          "span_id": "ANmeHLuUQhWAZmMyBLECfb",
-          "timestamp": "2026-10-13T17:54:18.639302+00:00",
-          "working_start": 0.2906989171169698,
+          "uuid": "Zg6rM2c5yWQaSUAADtqG3C",
+          "span_id": "YJHjMiDsnP3NPTBnTLRuSJ",
+          "timestamp": "2026-11-07T10:35:03.865487+00:00",
+          "working_start": 0.29477866704110056,
           "event": "score",
           "score": {
             "value": "C",
@@ -1913,7 +1941,7 @@
             "metadata": {
               "grading": [
                 {
-                  "id": "DfLBarWUkZMd7vrzYWr5io",
+                  "id": "f77JycQbesSKC9dSysDh4s",
                   "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                   "role": "user"
                 },
@@ -1923,16 +1951,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 3,
-                      "callId": "e51a402c-dabb-4428-bd3c-9b3d06fa14d6",
+                      "callId": "04fe01a1-1cba-4f6d-966d-fe63df6195a2",
                       "promptSha256": "2c91b29062fed2e9b037f0b6bfb12d95b84a26117897374d5c51adce5725c5f0",
                       "sent": {
                         "system": "NOT_SENT",
@@ -2011,11 +2040,12 @@
               },
               "base_url": "http://127.0.0.1:18765",
               "model_args": {
+                "wire": "anthropic-messages/v1",
+                "effort": "high",
+                "max_reasks": 0,
                 "thinking": {
                   "type": "adaptive"
-                },
-                "effort": "high",
-                "max_reasks": 0
+                }
               }
             }
           },
@@ -2028,20 +2058,20 @@
           }
         },
         {
-          "uuid": "FUBDJtpjpFjW5jB5fF9Gef",
-          "span_id": "ANmeHLuUQhWAZmMyBLECfb",
-          "timestamp": "2026-10-13T17:54:18.639590+00:00",
-          "working_start": 0.2909867502748966,
+          "uuid": "2EqESKmFaKbTUrPRoSQm8C",
+          "span_id": "YJHjMiDsnP3NPTBnTLRuSJ",
+          "timestamp": "2026-11-07T10:35:03.865695+00:00",
+          "working_start": 0.2949864590773359,
           "event": "span_end",
-          "id": "ANmeHLuUQhWAZmMyBLECfb"
+          "id": "YJHjMiDsnP3NPTBnTLRuSJ"
         },
         {
-          "uuid": "GbaXMt2ieNC8zxQkQPyTDZ",
-          "span_id": "nak6xXsvcQaMV4iCrKLW34",
-          "timestamp": "2026-10-13T17:54:18.639743+00:00",
-          "working_start": 0.29113941732794046,
+          "uuid": "JuBzMpqrATAW2Zzx2LEJig",
+          "span_id": "mTdz4DoArbzR9Kj2ujHCkY",
+          "timestamp": "2026-11-07T10:35:03.865810+00:00",
+          "working_start": 0.295100751100108,
           "event": "span_end",
-          "id": "nak6xXsvcQaMV4iCrKLW34"
+          "id": "mTdz4DoArbzR9Kj2ujHCkY"
         }
       ],
       "model_usage": {
@@ -2052,11 +2082,11 @@
         }
       },
       "role_usage": {},
-      "started_at": "2026-10-13T17:54:18.344675+00:00",
-      "completed_at": "2026-10-13T17:54:18.640008+00:00",
-      "total_time": 0.295,
-      "working_time": 0.291,
-      "uuid": "bGtWRruss7qquuyLmjpfWM",
+      "started_at": "2026-11-07T10:35:03.565877+00:00",
+      "completed_at": "2026-11-07T10:35:03.866061+00:00",
+      "total_time": 0.3,
+      "working_time": 0.295,
+      "uuid": "Kt3z6gNCofRvZBR2u9NhXr",
       "error_retries": [],
       "attachments": {
         "1f9c7a0a4fb7c38a22e9d05714ba8926": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
@@ -2064,7 +2094,7 @@
       "events_data": {
         "messages": [
           {
-            "id": "DfLBarWUkZMd7vrzYWr5io",
+            "id": "f77JycQbesSKC9dSysDh4s",
             "content": "attachment://1f9c7a0a4fb7c38a22e9d05714ba8926",
             "role": "user"
           }
@@ -2080,13 +2110,13 @@
       "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
       "messages": [
         {
-          "id": "W2oAsNN4X4ToF2PLWnN3qM",
+          "id": "8e7rTFNPEBTzhaxNUUaEW5",
           "content": "My blender arrived broken. Can I get my money back?",
           "source": "input",
           "role": "user"
         },
         {
-          "id": "nKswTRAseQHUxRkQ7g5cMj",
+          "id": "c7UgdLXzodis7rzTthCraL",
           "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]",
           "source": "generate",
           "role": "assistant",
@@ -2098,7 +2128,7 @@
         "choices": [
           {
             "message": {
-              "id": "nKswTRAseQHUxRkQ7g5cMj",
+              "id": "c7UgdLXzodis7rzTthCraL",
               "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]",
               "source": "generate",
               "role": "assistant",
@@ -2117,7 +2147,7 @@
           "metadata": {
             "grading": [
               {
-                "id": "XccLBNmRamzU9MhyqrHicB",
+                "id": "7uw3cUC96akSqe2EMMGzk8",
                 "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                 "role": "user"
               },
@@ -2127,16 +2157,17 @@
                 "source": "generate",
                 "metadata": {
                   "graderEvidence": {
-                    "schema": "example.grader-evidence/v7",
+                    "schema": "example.grader-evidence/v8",
+                    "wire": "anthropic-messages/v1",
                     "grader": {
                       "name": "anchorset-recording-grader",
                       "language": "python",
-                      "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                      "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                       "runtime": "python 3.13.1"
                     },
-                    "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                    "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                     "callSeq": 4,
-                    "callId": "dab86556-0bbe-4fcf-b3b2-ad4722394ecd",
+                    "callId": "21e0cfb6-35b6-436c-87c2-0dcd2e515f66",
                     "promptSha256": "45690043a59a5d02ec91db20056b62e7cf9bd7b678095c6e7a19aaeb0fcb913e",
                     "sent": {
                       "system": "NOT_SENT",
@@ -2206,20 +2237,20 @@
       "store": {},
       "events": [
         {
-          "uuid": "7qp2xPugNXz3oMgcAgjxnB",
-          "span_id": "o8ZEGnmSjwqW8VAHKuXKRz",
-          "timestamp": "2026-10-13T17:54:18.344926+00:00",
-          "working_start": 3275274.125349916,
+          "uuid": "DqHiC9aML4mSm9umqZJCT4",
+          "span_id": "YL3u3L32MDkjhxJLrCENNH",
+          "timestamp": "2026-11-07T10:35:03.566129+00:00",
+          "working_start": 903960.358162916,
           "event": "span_begin",
-          "id": "o8ZEGnmSjwqW8VAHKuXKRz",
+          "id": "YL3u3L32MDkjhxJLrCENNH",
           "type": "init",
           "name": "init"
         },
         {
-          "uuid": "oNm3gHwikwXvoQLpRhs2Py",
-          "span_id": "o8ZEGnmSjwqW8VAHKuXKRz",
-          "timestamp": "2026-10-13T17:54:18.345106+00:00",
-          "working_start": 3275274.125530791,
+          "uuid": "7upJtP5jH2miQHRqZfUpyz",
+          "span_id": "YL3u3L32MDkjhxJLrCENNH",
+          "timestamp": "2026-11-07T10:35:03.566310+00:00",
+          "working_start": 903960.358343875,
           "event": "sample_init",
           "sample": {
             "input": "My blender arrived broken. Can I get my money back?",
@@ -2229,7 +2260,7 @@
           "state": {
             "messages": [
               {
-                "id": "W2oAsNN4X4ToF2PLWnN3qM",
+                "id": "8e7rTFNPEBTzhaxNUUaEW5",
                 "content": "My blender arrived broken. Can I get my money back?",
                 "source": "input",
                 "role": "user"
@@ -2248,46 +2279,46 @@
           }
         },
         {
-          "uuid": "a6h752c96sLZDkUBFxrjHC",
-          "span_id": "o8ZEGnmSjwqW8VAHKuXKRz",
-          "timestamp": "2026-10-13T17:54:18.345212+00:00",
-          "working_start": 3275274.125636458,
+          "uuid": "mFhzqZiRuUg3uuV4YRWH2K",
+          "span_id": "YL3u3L32MDkjhxJLrCENNH",
+          "timestamp": "2026-11-07T10:35:03.566423+00:00",
+          "working_start": 903960.358456875,
           "event": "span_end",
-          "id": "o8ZEGnmSjwqW8VAHKuXKRz"
+          "id": "YL3u3L32MDkjhxJLrCENNH"
         },
         {
-          "uuid": "dKewWRspQudsYDQP4xcGjN",
-          "span_id": "8wAKUazZCwYeG6LcuA6Z9y",
-          "timestamp": "2026-10-13T17:54:18.350970+00:00",
-          "working_start": 0.005680084228515625,
+          "uuid": "XiXQE8atWGuXQk2ZSGGA94",
+          "span_id": "H6QJmANfRkUJLsqYJ9jgeQ",
+          "timestamp": "2026-11-07T10:35:03.574613+00:00",
+          "working_start": 0.008110958966426551,
           "event": "span_begin",
-          "id": "8wAKUazZCwYeG6LcuA6Z9y",
+          "id": "H6QJmANfRkUJLsqYJ9jgeQ",
           "type": "solvers",
           "name": "solvers"
         },
         {
-          "uuid": "h77xQbzo3f5NhXmiS2ZDv7",
-          "span_id": "h9vJfV35ST7PS9SRhwtbc3",
-          "timestamp": "2026-10-13T17:54:18.351066+00:00",
-          "working_start": 0.005776542238891125,
+          "uuid": "T68b9Us6dvgaXm7Yf8vTXJ",
+          "span_id": "7HavjD5Yc5FcDJ3aiQfPME",
+          "timestamp": "2026-11-07T10:35:03.574709+00:00",
+          "working_start": 0.008205667021684349,
           "event": "span_begin",
-          "id": "h9vJfV35ST7PS9SRhwtbc3",
-          "parent_id": "8wAKUazZCwYeG6LcuA6Z9y",
+          "id": "7HavjD5Yc5FcDJ3aiQfPME",
+          "parent_id": "H6QJmANfRkUJLsqYJ9jgeQ",
           "type": "solver",
           "name": "replay_stored"
         },
         {
-          "uuid": "BGa298fBWJmRhLNsRcVyDa",
-          "span_id": "h9vJfV35ST7PS9SRhwtbc3",
-          "timestamp": "2026-10-13T17:54:18.351291+00:00",
-          "working_start": 0.0060012503527104855,
+          "uuid": "8kiFTmdQwbm37EMKno9eME",
+          "span_id": "7HavjD5Yc5FcDJ3aiQfPME",
+          "timestamp": "2026-11-07T10:35:03.574945+00:00",
+          "working_start": 0.008442417019978166,
           "event": "state",
           "changes": [
             {
               "op": "add",
               "path": "/messages/1",
               "value": {
-                "id": "nKswTRAseQHUxRkQ7g5cMj",
+                "id": "c7UgdLXzodis7rzTthCraL",
                 "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]",
                 "source": "generate",
                 "role": "assistant",
@@ -2305,7 +2336,7 @@
               "path": "/output/choices/0",
               "value": {
                 "message": {
-                  "id": "nKswTRAseQHUxRkQ7g5cMj",
+                  "id": "c7UgdLXzodis7rzTthCraL",
                   "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]",
                   "source": "generate",
                   "role": "assistant",
@@ -2323,47 +2354,47 @@
           ]
         },
         {
-          "uuid": "Wkqtnam6Guckj4cL75KSyD",
-          "span_id": "h9vJfV35ST7PS9SRhwtbc3",
-          "timestamp": "2026-10-13T17:54:18.351396+00:00",
-          "working_start": 0.0061067091301083565,
+          "uuid": "iiasYrFtfPwBrFKXQ9kUcW",
+          "span_id": "7HavjD5Yc5FcDJ3aiQfPME",
+          "timestamp": "2026-11-07T10:35:03.575063+00:00",
+          "working_start": 0.008560416987165809,
           "event": "span_end",
-          "id": "h9vJfV35ST7PS9SRhwtbc3"
+          "id": "7HavjD5Yc5FcDJ3aiQfPME"
         },
         {
-          "uuid": "2Y3XMeUKLm9ZXroScgkPpb",
-          "span_id": "8wAKUazZCwYeG6LcuA6Z9y",
-          "timestamp": "2026-10-13T17:54:18.351482+00:00",
-          "working_start": 0.0061919172294437885,
+          "uuid": "XdTpLdbbTHTKy4h6T98iEP",
+          "span_id": "H6QJmANfRkUJLsqYJ9jgeQ",
+          "timestamp": "2026-11-07T10:35:03.575153+00:00",
+          "working_start": 0.008650542004033923,
           "event": "span_end",
-          "id": "8wAKUazZCwYeG6LcuA6Z9y"
+          "id": "H6QJmANfRkUJLsqYJ9jgeQ"
         },
         {
-          "uuid": "BqhY9Lfc779Mw5yvkAPxd2",
-          "span_id": "JddLJV9juGyQ29sQT7Pf6e",
-          "timestamp": "2026-10-13T17:54:18.356127+00:00",
-          "working_start": 0.010837208945304155,
+          "uuid": "9NJGc68t8y88Vg9qeJqPc5",
+          "span_id": "hoDYZw7eMeHyCd2ptzrq5w",
+          "timestamp": "2026-11-07T10:35:03.580912+00:00",
+          "working_start": 0.014412124990485609,
           "event": "span_begin",
-          "id": "JddLJV9juGyQ29sQT7Pf6e",
+          "id": "hoDYZw7eMeHyCd2ptzrq5w",
           "type": "scorers",
           "name": "scorers"
         },
         {
-          "uuid": "CeUnvaiPHwLyuasqFqaD9c",
-          "span_id": "he8UGyQcxMknbrp82Qi9cT",
-          "timestamp": "2026-10-13T17:54:18.356224+00:00",
-          "working_start": 0.01093429233878851,
+          "uuid": "UQKShAEA8eBpW5hmdg4Wjk",
+          "span_id": "hJMfFetxYn9KQ7zrE7XVuU",
+          "timestamp": "2026-11-07T10:35:03.581012+00:00",
+          "working_start": 0.014509374974295497,
           "event": "span_begin",
-          "id": "he8UGyQcxMknbrp82Qi9cT",
-          "parent_id": "JddLJV9juGyQ29sQT7Pf6e",
+          "id": "hJMfFetxYn9KQ7zrE7XVuU",
+          "parent_id": "hoDYZw7eMeHyCd2ptzrq5w",
           "type": "scorer",
           "name": "model_graded_qa"
         },
         {
-          "uuid": "ngyRoy7bUoeos5SPkQgNPt",
-          "span_id": "he8UGyQcxMknbrp82Qi9cT",
-          "timestamp": "2026-10-13T17:54:18.356367+00:00",
-          "working_start": 0.011077667120844126,
+          "uuid": "8VU9qyMUXRMoTZRH5xz8Eu",
+          "span_id": "hJMfFetxYn9KQ7zrE7XVuU",
+          "timestamp": "2026-11-07T10:35:03.581175+00:00",
+          "working_start": 0.014672541990876198,
           "event": "model",
           "model": "recording/fake-judge-old",
           "input": [],
@@ -2389,16 +2420,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 4,
-                      "callId": "dab86556-0bbe-4fcf-b3b2-ad4722394ecd",
+                      "callId": "21e0cfb6-35b6-436c-87c2-0dcd2e515f66",
                       "promptSha256": "45690043a59a5d02ec91db20056b62e7cf9bd7b678095c6e7a19aaeb0fcb913e",
                       "sent": {
                         "system": "NOT_SENT",
@@ -2468,19 +2500,20 @@
               "output_tokens": 20,
               "total_tokens": 120
             },
-            "time": 0.3320720409974456,
+            "time": 0.3335389159619808,
             "metadata": {
               "graderEvidence": {
-                "schema": "example.grader-evidence/v7",
+                "schema": "example.grader-evidence/v8",
+                "wire": "anthropic-messages/v1",
                 "grader": {
                   "name": "anchorset-recording-grader",
                   "language": "python",
-                  "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                  "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                   "runtime": "python 3.13.1"
                 },
-                "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                 "callSeq": 4,
-                "callId": "dab86556-0bbe-4fcf-b3b2-ad4722394ecd",
+                "callId": "21e0cfb6-35b6-436c-87c2-0dcd2e515f66",
                 "promptSha256": "45690043a59a5d02ec91db20056b62e7cf9bd7b678095c6e7a19aaeb0fcb913e",
                 "sent": {
                   "system": "NOT_SENT",
@@ -2539,14 +2572,14 @@
               }
             }
           },
-          "completed": "2026-10-13T17:54:18.692755+00:00",
-          "working_time": 0.3320720409974456
+          "completed": "2026-11-07T10:35:03.919750+00:00",
+          "working_time": 0.3335389159619808
         },
         {
-          "uuid": "cg6Nf8GDBHPLR2o9TGYYsy",
-          "span_id": "he8UGyQcxMknbrp82Qi9cT",
-          "timestamp": "2026-10-13T17:54:18.693106+00:00",
-          "working_start": 0.34374449914321303,
+          "uuid": "EPwEo8Sip3Y9tba4HdcsCP",
+          "span_id": "hJMfFetxYn9KQ7zrE7XVuU",
+          "timestamp": "2026-11-07T10:35:03.919965+00:00",
+          "working_start": 0.34849087602924556,
           "event": "score",
           "score": {
             "value": "C",
@@ -2555,7 +2588,7 @@
             "metadata": {
               "grading": [
                 {
-                  "id": "XccLBNmRamzU9MhyqrHicB",
+                  "id": "7uw3cUC96akSqe2EMMGzk8",
                   "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                   "role": "user"
                 },
@@ -2565,16 +2598,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 4,
-                      "callId": "dab86556-0bbe-4fcf-b3b2-ad4722394ecd",
+                      "callId": "21e0cfb6-35b6-436c-87c2-0dcd2e515f66",
                       "promptSha256": "45690043a59a5d02ec91db20056b62e7cf9bd7b678095c6e7a19aaeb0fcb913e",
                       "sent": {
                         "system": "NOT_SENT",
@@ -2653,11 +2687,12 @@
               },
               "base_url": "http://127.0.0.1:18765",
               "model_args": {
+                "wire": "anthropic-messages/v1",
+                "effort": "high",
+                "max_reasks": 0,
                 "thinking": {
                   "type": "adaptive"
-                },
-                "effort": "high",
-                "max_reasks": 0
+                }
               }
             }
           },
@@ -2670,20 +2705,20 @@
           }
         },
         {
-          "uuid": "R2jEHXvCtyWbJ66qv7Lrj4",
-          "span_id": "he8UGyQcxMknbrp82Qi9cT",
-          "timestamp": "2026-10-13T17:54:18.693436+00:00",
-          "working_start": 0.34407454123720527,
+          "uuid": "ZyQhXfF8W4qhZ4dzzr3RcG",
+          "span_id": "hJMfFetxYn9KQ7zrE7XVuU",
+          "timestamp": "2026-11-07T10:35:03.920173+00:00",
+          "working_start": 0.348698667017743,
           "event": "span_end",
-          "id": "he8UGyQcxMknbrp82Qi9cT"
+          "id": "hJMfFetxYn9KQ7zrE7XVuU"
         },
         {
-          "uuid": "YeFtEGFQiEJxUbZcHyZ5tW",
-          "span_id": "JddLJV9juGyQ29sQT7Pf6e",
-          "timestamp": "2026-10-13T17:54:18.693636+00:00",
-          "working_start": 0.34427387453615665,
+          "uuid": "hCqv85MZmEowavYJzNqPqV",
+          "span_id": "hoDYZw7eMeHyCd2ptzrq5w",
+          "timestamp": "2026-11-07T10:35:03.920288+00:00",
+          "working_start": 0.34881350107025355,
           "event": "span_end",
-          "id": "JddLJV9juGyQ29sQT7Pf6e"
+          "id": "hoDYZw7eMeHyCd2ptzrq5w"
         }
       ],
       "model_usage": {
@@ -2694,11 +2729,11 @@
         }
       },
       "role_usage": {},
-      "started_at": "2026-10-13T17:54:18.345291+00:00",
-      "completed_at": "2026-10-13T17:54:18.693972+00:00",
-      "total_time": 0.349,
-      "working_time": 0.345,
-      "uuid": "7FgUuvQgonFrv7rxizyc2T",
+      "started_at": "2026-11-07T10:35:03.566504+00:00",
+      "completed_at": "2026-11-07T10:35:03.920537+00:00",
+      "total_time": 0.354,
+      "working_time": 0.349,
+      "uuid": "4M5rdt4tUdLSX8Q2R7Zeyh",
       "error_retries": [],
       "attachments": {
         "0c7b6da9fa696540df73ac9225bb5a50": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
@@ -2706,7 +2741,7 @@
       "events_data": {
         "messages": [
           {
-            "id": "XccLBNmRamzU9MhyqrHicB",
+            "id": "7uw3cUC96akSqe2EMMGzk8",
             "content": "attachment://0c7b6da9fa696540df73ac9225bb5a50",
             "role": "user"
           }
@@ -2722,13 +2757,13 @@
       "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
       "messages": [
         {
-          "id": "2CRkL5yU5Brmz5Vp4SbMAn",
+          "id": "hsxLWNaoob4isSvpX7BAv6",
           "content": "I bought shoes 45 days ago and want a refund.",
           "source": "input",
           "role": "user"
         },
         {
-          "id": "UAgmwfomwZgd4tFfRXzBDB",
+          "id": "bZQfsgusXkrYmEYobF2D4Z",
           "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
           "source": "generate",
           "role": "assistant",
@@ -2740,7 +2775,7 @@
         "choices": [
           {
             "message": {
-              "id": "UAgmwfomwZgd4tFfRXzBDB",
+              "id": "bZQfsgusXkrYmEYobF2D4Z",
               "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
               "source": "generate",
               "role": "assistant",
@@ -2759,7 +2794,7 @@
           "metadata": {
             "grading": [
               {
-                "id": "XFRF6JP5NTZBFEEVP4ucjr",
+                "id": "BerocwnuH86yv9nSk4hF53",
                 "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                 "role": "user"
               },
@@ -2769,16 +2804,17 @@
                 "source": "generate",
                 "metadata": {
                   "graderEvidence": {
-                    "schema": "example.grader-evidence/v7",
+                    "schema": "example.grader-evidence/v8",
+                    "wire": "anthropic-messages/v1",
                     "grader": {
                       "name": "anchorset-recording-grader",
                       "language": "python",
-                      "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                      "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                       "runtime": "python 3.13.1"
                     },
-                    "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                    "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                     "callSeq": 5,
-                    "callId": "47d3b2e0-0bce-44cc-a6e0-15ffd2f2df8e",
+                    "callId": "bdf55090-23d9-4c09-a125-71d102a54a63",
                     "promptSha256": "b55cce7af00b8e6f7dec02f432070772e169bf65fbf9d8c1af8499fedd388b9a",
                     "sent": {
                       "system": "NOT_SENT",
@@ -2847,20 +2883,20 @@
       "store": {},
       "events": [
         {
-          "uuid": "RCLr827SXUXyU4csXu889t",
-          "span_id": "K5eEoVsYeiMM5RPBbTdTpQ",
-          "timestamp": "2026-10-13T17:54:18.345526+00:00",
-          "working_start": 3275274.125950166,
+          "uuid": "4RGqF4yD4QDVD6UFr4DbXg",
+          "span_id": "Rt2tMzHHu6KehterxqNRYN",
+          "timestamp": "2026-11-07T10:35:03.566754+00:00",
+          "working_start": 903960.35878775,
           "event": "span_begin",
-          "id": "K5eEoVsYeiMM5RPBbTdTpQ",
+          "id": "Rt2tMzHHu6KehterxqNRYN",
           "type": "init",
           "name": "init"
         },
         {
-          "uuid": "G99aTTx8qrrZvPoWY5JvCu",
-          "span_id": "K5eEoVsYeiMM5RPBbTdTpQ",
-          "timestamp": "2026-10-13T17:54:18.345702+00:00",
-          "working_start": 3275274.12612675,
+          "uuid": "jYrn3VxNNQq8aoobcNhtJ8",
+          "span_id": "Rt2tMzHHu6KehterxqNRYN",
+          "timestamp": "2026-11-07T10:35:03.566944+00:00",
+          "working_start": 903960.358977708,
           "event": "sample_init",
           "sample": {
             "input": "I bought shoes 45 days ago and want a refund.",
@@ -2870,7 +2906,7 @@
           "state": {
             "messages": [
               {
-                "id": "2CRkL5yU5Brmz5Vp4SbMAn",
+                "id": "hsxLWNaoob4isSvpX7BAv6",
                 "content": "I bought shoes 45 days ago and want a refund.",
                 "source": "input",
                 "role": "user"
@@ -2889,46 +2925,46 @@
           }
         },
         {
-          "uuid": "GY3wdZPSy2bDyEqD8SrYKw",
-          "span_id": "K5eEoVsYeiMM5RPBbTdTpQ",
-          "timestamp": "2026-10-13T17:54:18.345808+00:00",
-          "working_start": 3275274.126231958,
+          "uuid": "XsZm7TKkaSP4KLKakTx6oj",
+          "span_id": "Rt2tMzHHu6KehterxqNRYN",
+          "timestamp": "2026-11-07T10:35:03.567053+00:00",
+          "working_start": 903960.359086708,
           "event": "span_end",
-          "id": "K5eEoVsYeiMM5RPBbTdTpQ"
+          "id": "Rt2tMzHHu6KehterxqNRYN"
         },
         {
-          "uuid": "fEMkbocU8Wx69CLU5aUGvG",
-          "span_id": "mMjGhcq5DuX6yFgw7ZwN9f",
-          "timestamp": "2026-10-13T17:54:18.351624+00:00",
-          "working_start": 0.005736874882131815,
+          "uuid": "cmNwZP3b2adCveybi35tkx",
+          "span_id": "hak4BZecch6cZDkntsHRRm",
+          "timestamp": "2026-11-07T10:35:03.575315+00:00",
+          "working_start": 0.008183208992704749,
           "event": "span_begin",
-          "id": "mMjGhcq5DuX6yFgw7ZwN9f",
+          "id": "hak4BZecch6cZDkntsHRRm",
           "type": "solvers",
           "name": "solvers"
         },
         {
-          "uuid": "RL9wLdsHWGnzNctKa4RhrW",
-          "span_id": "W6XE5x9UaWH4qwygHhX4EN",
-          "timestamp": "2026-10-13T17:54:18.351715+00:00",
-          "working_start": 0.0058279577642679214,
+          "uuid": "gQ7cPszNqx6mzy7F53tSR5",
+          "span_id": "dv7LJUWc5qV4i9oMsyWDBo",
+          "timestamp": "2026-11-07T10:35:03.575409+00:00",
+          "working_start": 0.008277709013782442,
           "event": "span_begin",
-          "id": "W6XE5x9UaWH4qwygHhX4EN",
-          "parent_id": "mMjGhcq5DuX6yFgw7ZwN9f",
+          "id": "dv7LJUWc5qV4i9oMsyWDBo",
+          "parent_id": "hak4BZecch6cZDkntsHRRm",
           "type": "solver",
           "name": "replay_stored"
         },
         {
-          "uuid": "GABhyGHSyvfXcPxDWBEsXV",
-          "span_id": "W6XE5x9UaWH4qwygHhX4EN",
-          "timestamp": "2026-10-13T17:54:18.351918+00:00",
-          "working_start": 0.006031582597643137,
+          "uuid": "F5MV9ofnfgUM2QmsSKbVAv",
+          "span_id": "dv7LJUWc5qV4i9oMsyWDBo",
+          "timestamp": "2026-11-07T10:35:03.575638+00:00",
+          "working_start": 0.008506249985657632,
           "event": "state",
           "changes": [
             {
               "op": "add",
               "path": "/messages/1",
               "value": {
-                "id": "UAgmwfomwZgd4tFfRXzBDB",
+                "id": "bZQfsgusXkrYmEYobF2D4Z",
                 "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
                 "source": "generate",
                 "role": "assistant",
@@ -2946,7 +2982,7 @@
               "path": "/output/choices/0",
               "value": {
                 "message": {
-                  "id": "UAgmwfomwZgd4tFfRXzBDB",
+                  "id": "bZQfsgusXkrYmEYobF2D4Z",
                   "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
                   "source": "generate",
                   "role": "assistant",
@@ -2964,47 +3000,47 @@
           ]
         },
         {
-          "uuid": "fNSeGByu8Wibwarp4tg9At",
-          "span_id": "W6XE5x9UaWH4qwygHhX4EN",
-          "timestamp": "2026-10-13T17:54:18.352025+00:00",
-          "working_start": 0.006138582713901997,
+          "uuid": "Grs86BsU4W56dgJWfjjAYZ",
+          "span_id": "dv7LJUWc5qV4i9oMsyWDBo",
+          "timestamp": "2026-11-07T10:35:03.575747+00:00",
+          "working_start": 0.008614875026978552,
           "event": "span_end",
-          "id": "W6XE5x9UaWH4qwygHhX4EN"
+          "id": "dv7LJUWc5qV4i9oMsyWDBo"
         },
         {
-          "uuid": "erp8bkb3k2CRqiu4cqDVoe",
-          "span_id": "mMjGhcq5DuX6yFgw7ZwN9f",
-          "timestamp": "2026-10-13T17:54:18.352110+00:00",
-          "working_start": 0.006222915835678577,
+          "uuid": "UZLF7c8bvQQB9PMMaAxQkk",
+          "span_id": "hak4BZecch6cZDkntsHRRm",
+          "timestamp": "2026-11-07T10:35:03.575844+00:00",
+          "working_start": 0.008712084032595158,
           "event": "span_end",
-          "id": "mMjGhcq5DuX6yFgw7ZwN9f"
+          "id": "hak4BZecch6cZDkntsHRRm"
         },
         {
-          "uuid": "3d3xJgiUhHzvpAGJNuk59y",
-          "span_id": "QXjfPBQEntJXYyC386Kw7X",
-          "timestamp": "2026-10-13T17:54:18.356417+00:00",
-          "working_start": 0.01053029065951705,
+          "uuid": "66XSQRXsgmdrHV9eHRt2Nj",
+          "span_id": "VnzfjDSXWx6cqGis4YWjS8",
+          "timestamp": "2026-11-07T10:35:03.581234+00:00",
+          "working_start": 0.01410200004465878,
           "event": "span_begin",
-          "id": "QXjfPBQEntJXYyC386Kw7X",
+          "id": "VnzfjDSXWx6cqGis4YWjS8",
           "type": "scorers",
           "name": "scorers"
         },
         {
-          "uuid": "DSWfhZbkoGENLbF77Fjkqf",
-          "span_id": "4TzNkLYGUXfc2LAz4CRsw2",
-          "timestamp": "2026-10-13T17:54:18.356509+00:00",
-          "working_start": 0.010622290894389153,
+          "uuid": "KgYm5Mjgju4oYW5Ktv3CGr",
+          "span_id": "Q695Agf7sroecidaVPz86j",
+          "timestamp": "2026-11-07T10:35:03.581333+00:00",
+          "working_start": 0.014201416983269155,
           "event": "span_begin",
-          "id": "4TzNkLYGUXfc2LAz4CRsw2",
-          "parent_id": "QXjfPBQEntJXYyC386Kw7X",
+          "id": "Q695Agf7sroecidaVPz86j",
+          "parent_id": "VnzfjDSXWx6cqGis4YWjS8",
           "type": "scorer",
           "name": "model_graded_qa"
         },
         {
-          "uuid": "NCctFWrhN5EYaoVjsQuZrc",
-          "span_id": "4TzNkLYGUXfc2LAz4CRsw2",
-          "timestamp": "2026-10-13T17:54:18.356644+00:00",
-          "working_start": 0.010757874697446823,
+          "uuid": "Mp2tjD99YxfLdoVai7qPge",
+          "span_id": "Q695Agf7sroecidaVPz86j",
+          "timestamp": "2026-11-07T10:35:03.581474+00:00",
+          "working_start": 0.014342291979119182,
           "event": "model",
           "model": "recording/fake-judge-old",
           "input": [],
@@ -3030,16 +3066,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 5,
-                      "callId": "47d3b2e0-0bce-44cc-a6e0-15ffd2f2df8e",
+                      "callId": "bdf55090-23d9-4c09-a125-71d102a54a63",
                       "promptSha256": "b55cce7af00b8e6f7dec02f432070772e169bf65fbf9d8c1af8499fedd388b9a",
                       "sent": {
                         "system": "NOT_SENT",
@@ -3108,19 +3145,20 @@
               "output_tokens": 20,
               "total_tokens": 120
             },
-            "time": 0.389081166125834,
+            "time": 0.3876442080363631,
             "metadata": {
               "graderEvidence": {
-                "schema": "example.grader-evidence/v7",
+                "schema": "example.grader-evidence/v8",
+                "wire": "anthropic-messages/v1",
                 "grader": {
                   "name": "anchorset-recording-grader",
                   "language": "python",
-                  "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                  "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                   "runtime": "python 3.13.1"
                 },
-                "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                 "callSeq": 5,
-                "callId": "47d3b2e0-0bce-44cc-a6e0-15ffd2f2df8e",
+                "callId": "bdf55090-23d9-4c09-a125-71d102a54a63",
                 "promptSha256": "b55cce7af00b8e6f7dec02f432070772e169bf65fbf9d8c1af8499fedd388b9a",
                 "sent": {
                   "system": "NOT_SENT",
@@ -3178,14 +3216,14 @@
               }
             }
           },
-          "completed": "2026-10-13T17:54:18.750764+00:00",
-          "working_time": 0.389081166125834
+          "completed": "2026-11-07T10:35:03.974166+00:00",
+          "working_time": 0.3876442080363631
         },
         {
-          "uuid": "9CLCAGZSCC4F84QMsVVV4z",
-          "span_id": "4TzNkLYGUXfc2LAz4CRsw2",
-          "timestamp": "2026-10-13T17:54:18.751309+00:00",
-          "working_start": 0.40046083088964224,
+          "uuid": "HvMHhguLZfnKseTiBg9Twn",
+          "span_id": "Q695Agf7sroecidaVPz86j",
+          "timestamp": "2026-11-07T10:35:03.974390+00:00",
+          "working_start": 0.4022741239750758,
           "event": "score",
           "score": {
             "value": "C",
@@ -3194,7 +3232,7 @@
             "metadata": {
               "grading": [
                 {
-                  "id": "XFRF6JP5NTZBFEEVP4ucjr",
+                  "id": "BerocwnuH86yv9nSk4hF53",
                   "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                   "role": "user"
                 },
@@ -3204,16 +3242,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 5,
-                      "callId": "47d3b2e0-0bce-44cc-a6e0-15ffd2f2df8e",
+                      "callId": "bdf55090-23d9-4c09-a125-71d102a54a63",
                       "promptSha256": "b55cce7af00b8e6f7dec02f432070772e169bf65fbf9d8c1af8499fedd388b9a",
                       "sent": {
                         "system": "NOT_SENT",
@@ -3291,11 +3330,12 @@
               },
               "base_url": "http://127.0.0.1:18765",
               "model_args": {
+                "wire": "anthropic-messages/v1",
+                "effort": "high",
+                "max_reasks": 0,
                 "thinking": {
                   "type": "adaptive"
-                },
-                "effort": "high",
-                "max_reasks": 0
+                }
               }
             }
           },
@@ -3308,20 +3348,20 @@
           }
         },
         {
-          "uuid": "irX4hZ5SH57D6nUrReXgLt",
-          "span_id": "4TzNkLYGUXfc2LAz4CRsw2",
-          "timestamp": "2026-10-13T17:54:18.751751+00:00",
-          "working_start": 0.40090183075517416,
+          "uuid": "iG4XbKxhZsq8g79QNxJWj8",
+          "span_id": "Q695Agf7sroecidaVPz86j",
+          "timestamp": "2026-11-07T10:35:03.974613+00:00",
+          "working_start": 0.4024963319534436,
           "event": "span_end",
-          "id": "4TzNkLYGUXfc2LAz4CRsw2"
+          "id": "Q695Agf7sroecidaVPz86j"
         },
         {
-          "uuid": "6DMA2w9gCJ26bq6L8PvaHn",
-          "span_id": "QXjfPBQEntJXYyC386Kw7X",
-          "timestamp": "2026-10-13T17:54:18.752002+00:00",
-          "working_start": 0.4011524557135999,
+          "uuid": "kerUADgBcqJ9qDC8z3auc7",
+          "span_id": "VnzfjDSXWx6cqGis4YWjS8",
+          "timestamp": "2026-11-07T10:35:03.974731+00:00",
+          "working_start": 0.40261412400286645,
           "event": "span_end",
-          "id": "QXjfPBQEntJXYyC386Kw7X"
+          "id": "VnzfjDSXWx6cqGis4YWjS8"
         }
       ],
       "model_usage": {
@@ -3332,11 +3372,11 @@
         }
       },
       "role_usage": {},
-      "started_at": "2026-10-13T17:54:18.345887+00:00",
-      "completed_at": "2026-10-13T17:54:18.752483+00:00",
-      "total_time": 0.407,
-      "working_time": 0.402,
-      "uuid": "XLDR4BLjerLYofpEUuNnNz",
+      "started_at": "2026-11-07T10:35:03.567132+00:00",
+      "completed_at": "2026-11-07T10:35:03.974993+00:00",
+      "total_time": 0.408,
+      "working_time": 0.403,
+      "uuid": "5dej3oWLanpfJ4DPmutCoS",
       "error_retries": [],
       "attachments": {
         "a62565467235aa6087533ab0ae3e0e89": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
@@ -3344,7 +3384,7 @@
       "events_data": {
         "messages": [
           {
-            "id": "XFRF6JP5NTZBFEEVP4ucjr",
+            "id": "BerocwnuH86yv9nSk4hF53",
             "content": "attachment://a62565467235aa6087533ab0ae3e0e89",
             "role": "user"
           }
@@ -3360,13 +3400,13 @@
       "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
       "messages": [
         {
-          "id": "AW2xtQAcxRBpK6V55anaUz",
+          "id": "YUeEL7xVgxEMR8imQ2Zpav",
           "content": "Please refund my last order.",
           "source": "input",
           "role": "user"
         },
         {
-          "id": "EijsB5iZDk8kFCjErkYkGi",
+          "id": "JciTWXvJkafXoRyeuCRr8J",
           "content": "Sure, I refunded it twice to be safe. [[thinking]]",
           "source": "generate",
           "role": "assistant",
@@ -3378,7 +3418,7 @@
         "choices": [
           {
             "message": {
-              "id": "EijsB5iZDk8kFCjErkYkGi",
+              "id": "JciTWXvJkafXoRyeuCRr8J",
               "content": "Sure, I refunded it twice to be safe. [[thinking]]",
               "source": "generate",
               "role": "assistant",
@@ -3397,7 +3437,7 @@
           "metadata": {
             "grading": [
               {
-                "id": "M4yNJHbZbxGZQUnoQeXPZk",
+                "id": "2ziMDRaLPdbNsPoNQbeqCq",
                 "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                 "role": "user"
               },
@@ -3407,16 +3447,17 @@
                 "source": "generate",
                 "metadata": {
                   "graderEvidence": {
-                    "schema": "example.grader-evidence/v7",
+                    "schema": "example.grader-evidence/v8",
+                    "wire": "anthropic-messages/v1",
                     "grader": {
                       "name": "anchorset-recording-grader",
                       "language": "python",
-                      "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                      "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                       "runtime": "python 3.13.1"
                     },
-                    "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                    "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                     "callSeq": 6,
-                    "callId": "87a50692-8247-4453-b5e3-ddfd485b010a",
+                    "callId": "d90095ae-6d0d-4a0a-9d5f-3fc176eaf427",
                     "promptSha256": "2c91b29062fed2e9b037f0b6bfb12d95b84a26117897374d5c51adce5725c5f0",
                     "sent": {
                       "system": "NOT_SENT",
@@ -3486,20 +3527,20 @@
       "store": {},
       "events": [
         {
-          "uuid": "Z3VZbypNgufE2J4RuBTU3u",
-          "span_id": "doV28F7NKHMS2q764ncWKv",
-          "timestamp": "2026-10-13T17:54:18.346124+00:00",
-          "working_start": 3275274.126547833,
+          "uuid": "dYMNmrHuzju5FoFg9zHu7u",
+          "span_id": "d7ikx2iDWAunG5vaDcpjHP",
+          "timestamp": "2026-11-07T10:35:03.567440+00:00",
+          "working_start": 903960.35947375,
           "event": "span_begin",
-          "id": "doV28F7NKHMS2q764ncWKv",
+          "id": "d7ikx2iDWAunG5vaDcpjHP",
           "type": "init",
           "name": "init"
         },
         {
-          "uuid": "5tJ3GyVKtDbcvzkTquS4Wv",
-          "span_id": "doV28F7NKHMS2q764ncWKv",
-          "timestamp": "2026-10-13T17:54:18.346307+00:00",
-          "working_start": 3275274.126731291,
+          "uuid": "hFrocsmD7xtXG6RCKyNgJx",
+          "span_id": "d7ikx2iDWAunG5vaDcpjHP",
+          "timestamp": "2026-11-07T10:35:03.567625+00:00",
+          "working_start": 903960.359659291,
           "event": "sample_init",
           "sample": {
             "input": "Please refund my last order.",
@@ -3509,7 +3550,7 @@
           "state": {
             "messages": [
               {
-                "id": "AW2xtQAcxRBpK6V55anaUz",
+                "id": "YUeEL7xVgxEMR8imQ2Zpav",
                 "content": "Please refund my last order.",
                 "source": "input",
                 "role": "user"
@@ -3528,46 +3569,46 @@
           }
         },
         {
-          "uuid": "2FyPzgmUAyM838fpsYjEVW",
-          "span_id": "doV28F7NKHMS2q764ncWKv",
-          "timestamp": "2026-10-13T17:54:18.346424+00:00",
-          "working_start": 3275274.126848208,
+          "uuid": "XujfejQ7KYD4Nx8sPtSqiy",
+          "span_id": "d7ikx2iDWAunG5vaDcpjHP",
+          "timestamp": "2026-11-07T10:35:03.567748+00:00",
+          "working_start": 903960.359781625,
           "event": "span_end",
-          "id": "doV28F7NKHMS2q764ncWKv"
+          "id": "d7ikx2iDWAunG5vaDcpjHP"
         },
         {
-          "uuid": "5SngmKbu2ELs7FJUvPHwHk",
-          "span_id": "Pr3hZyfp2tf6sj8XLf9knV",
-          "timestamp": "2026-10-13T17:54:18.352236+00:00",
-          "working_start": 0.005736832972615957,
+          "uuid": "BdYH4XhTz6fViiizz7Ru3P",
+          "span_id": "7kRqR7TaoxVWFcAJpXAaVz",
+          "timestamp": "2026-11-07T10:35:03.575979+00:00",
+          "working_start": 0.008152249967679381,
           "event": "span_begin",
-          "id": "Pr3hZyfp2tf6sj8XLf9knV",
+          "id": "7kRqR7TaoxVWFcAJpXAaVz",
           "type": "solvers",
           "name": "solvers"
         },
         {
-          "uuid": "MwUFKzmHLNgTEiNtKa8aQA",
-          "span_id": "3xPKhQAcVtci7dJdmNYQCV",
-          "timestamp": "2026-10-13T17:54:18.352335+00:00",
-          "working_start": 0.005835582967847586,
+          "uuid": "X5UhF55QJFtuYa8N4jwWSR",
+          "span_id": "bjLCF4PFN3bnt3gZsTbA7r",
+          "timestamp": "2026-11-07T10:35:03.576072+00:00",
+          "working_start": 0.008245541015639901,
           "event": "span_begin",
-          "id": "3xPKhQAcVtci7dJdmNYQCV",
-          "parent_id": "Pr3hZyfp2tf6sj8XLf9knV",
+          "id": "bjLCF4PFN3bnt3gZsTbA7r",
+          "parent_id": "7kRqR7TaoxVWFcAJpXAaVz",
           "type": "solver",
           "name": "replay_stored"
         },
         {
-          "uuid": "UTstDcxZwGq27cGarUjNGu",
-          "span_id": "3xPKhQAcVtci7dJdmNYQCV",
-          "timestamp": "2026-10-13T17:54:18.352540+00:00",
-          "working_start": 0.006040749605745077,
+          "uuid": "fafDJRCTrLoq63MvMJazjo",
+          "span_id": "bjLCF4PFN3bnt3gZsTbA7r",
+          "timestamp": "2026-11-07T10:35:03.576544+00:00",
+          "working_start": 0.008717707940377295,
           "event": "state",
           "changes": [
             {
               "op": "add",
               "path": "/messages/1",
               "value": {
-                "id": "EijsB5iZDk8kFCjErkYkGi",
+                "id": "JciTWXvJkafXoRyeuCRr8J",
                 "content": "Sure, I refunded it twice to be safe. [[thinking]]",
                 "source": "generate",
                 "role": "assistant",
@@ -3585,7 +3626,7 @@
               "path": "/output/choices/0",
               "value": {
                 "message": {
-                  "id": "EijsB5iZDk8kFCjErkYkGi",
+                  "id": "JciTWXvJkafXoRyeuCRr8J",
                   "content": "Sure, I refunded it twice to be safe. [[thinking]]",
                   "source": "generate",
                   "role": "assistant",
@@ -3603,47 +3644,47 @@
           ]
         },
         {
-          "uuid": "QRdh8WhwfTL7bzoBmHUXxz",
-          "span_id": "3xPKhQAcVtci7dJdmNYQCV",
-          "timestamp": "2026-10-13T17:54:18.352793+00:00",
-          "working_start": 0.006294041872024536,
+          "uuid": "cQ2LR8r7szoRAoXfSCFe4e",
+          "span_id": "bjLCF4PFN3bnt3gZsTbA7r",
+          "timestamp": "2026-11-07T10:35:03.576718+00:00",
+          "working_start": 0.008891250006854534,
           "event": "span_end",
-          "id": "3xPKhQAcVtci7dJdmNYQCV"
+          "id": "bjLCF4PFN3bnt3gZsTbA7r"
         },
         {
-          "uuid": "gMtiHruNdhrxa2Swvbkvoh",
-          "span_id": "Pr3hZyfp2tf6sj8XLf9knV",
-          "timestamp": "2026-10-13T17:54:18.352883+00:00",
-          "working_start": 0.006383749656379223,
+          "uuid": "SmLAHeFgsnv8wPZ6qYBLQa",
+          "span_id": "7kRqR7TaoxVWFcAJpXAaVz",
+          "timestamp": "2026-11-07T10:35:03.576823+00:00",
+          "working_start": 0.008995707961730659,
           "event": "span_end",
-          "id": "Pr3hZyfp2tf6sj8XLf9knV"
+          "id": "7kRqR7TaoxVWFcAJpXAaVz"
         },
         {
-          "uuid": "YRAXesGweF3NJH5mEZHQbN",
-          "span_id": "FQ5eBJphtQVuevGg85Vb2d",
-          "timestamp": "2026-10-13T17:54:18.356694+00:00",
-          "working_start": 0.010194666683673859,
+          "uuid": "SCTcEskRGg4fcYPDnfizgL",
+          "span_id": "2DYvFacHEELjYPaamJ6Ykg",
+          "timestamp": "2026-11-07T10:35:03.581528+00:00",
+          "working_start": 0.01370104099623859,
           "event": "span_begin",
-          "id": "FQ5eBJphtQVuevGg85Vb2d",
+          "id": "2DYvFacHEELjYPaamJ6Ykg",
           "type": "scorers",
           "name": "scorers"
         },
         {
-          "uuid": "oAWncJ76qfn8NHuBUXEeck",
-          "span_id": "PzykeNC9TtNyZoK2FGeovg",
-          "timestamp": "2026-10-13T17:54:18.356783+00:00",
-          "working_start": 0.010283916722983122,
+          "uuid": "WJdWhj5ugf2QxdbP8edSPV",
+          "span_id": "aj6paJEDG2vX2Ye9ms6RKq",
+          "timestamp": "2026-11-07T10:35:03.581619+00:00",
+          "working_start": 0.013792457990348339,
           "event": "span_begin",
-          "id": "PzykeNC9TtNyZoK2FGeovg",
-          "parent_id": "FQ5eBJphtQVuevGg85Vb2d",
+          "id": "aj6paJEDG2vX2Ye9ms6RKq",
+          "parent_id": "2DYvFacHEELjYPaamJ6Ykg",
           "type": "scorer",
           "name": "model_graded_qa"
         },
         {
-          "uuid": "8NeW5BqmsCGPz5qagxgoBC",
-          "span_id": "PzykeNC9TtNyZoK2FGeovg",
-          "timestamp": "2026-10-13T17:54:18.356913+00:00",
-          "working_start": 0.01041337475180626,
+          "uuid": "TUesWUBvVwmuQxriSJMkAB",
+          "span_id": "aj6paJEDG2vX2Ye9ms6RKq",
+          "timestamp": "2026-11-07T10:35:03.581761+00:00",
+          "working_start": 0.013933624955825508,
           "event": "model",
           "model": "recording/fake-judge-old",
           "input": [],
@@ -3669,16 +3710,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 6,
-                      "callId": "87a50692-8247-4453-b5e3-ddfd485b010a",
+                      "callId": "d90095ae-6d0d-4a0a-9d5f-3fc176eaf427",
                       "promptSha256": "2c91b29062fed2e9b037f0b6bfb12d95b84a26117897374d5c51adce5725c5f0",
                       "sent": {
                         "system": "NOT_SENT",
@@ -3748,19 +3790,20 @@
               "output_tokens": 20,
               "total_tokens": 120
             },
-            "time": 0.4471044996753335,
+            "time": 0.4408225000370294,
             "metadata": {
               "graderEvidence": {
-                "schema": "example.grader-evidence/v7",
+                "schema": "example.grader-evidence/v8",
+                "wire": "anthropic-messages/v1",
                 "grader": {
                   "name": "anchorset-recording-grader",
                   "language": "python",
-                  "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                  "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                   "runtime": "python 3.13.1"
                 },
-                "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                 "callSeq": 6,
-                "callId": "87a50692-8247-4453-b5e3-ddfd485b010a",
+                "callId": "d90095ae-6d0d-4a0a-9d5f-3fc176eaf427",
                 "promptSha256": "2c91b29062fed2e9b037f0b6bfb12d95b84a26117897374d5c51adce5725c5f0",
                 "sent": {
                   "system": "NOT_SENT",
@@ -3819,14 +3862,14 @@
               }
             }
           },
-          "completed": "2026-10-13T17:54:18.808834+00:00",
-          "working_time": 0.4471044996753335
+          "completed": "2026-11-07T10:35:04.027611+00:00",
+          "working_time": 0.4408225000370294
         },
         {
-          "uuid": "gbmhVkWe47ZPJHPyEHgQzd",
-          "span_id": "PzykeNC9TtNyZoK2FGeovg",
-          "timestamp": "2026-10-13T17:54:18.809293+00:00",
-          "working_start": 0.458042208570987,
+          "uuid": "EH3wwKXNR46hJw5ZW87Gu8",
+          "span_id": "aj6paJEDG2vX2Ye9ms6RKq",
+          "timestamp": "2026-11-07T10:35:04.027841+00:00",
+          "working_start": 0.4550523739308119,
           "event": "score",
           "score": {
             "value": "C",
@@ -3835,7 +3878,7 @@
             "metadata": {
               "grading": [
                 {
-                  "id": "M4yNJHbZbxGZQUnoQeXPZk",
+                  "id": "2ziMDRaLPdbNsPoNQbeqCq",
                   "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                   "role": "user"
                 },
@@ -3845,16 +3888,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 6,
-                      "callId": "87a50692-8247-4453-b5e3-ddfd485b010a",
+                      "callId": "d90095ae-6d0d-4a0a-9d5f-3fc176eaf427",
                       "promptSha256": "2c91b29062fed2e9b037f0b6bfb12d95b84a26117897374d5c51adce5725c5f0",
                       "sent": {
                         "system": "NOT_SENT",
@@ -3933,11 +3977,12 @@
               },
               "base_url": "http://127.0.0.1:18765",
               "model_args": {
+                "wire": "anthropic-messages/v1",
+                "effort": "high",
+                "max_reasks": 0,
                 "thinking": {
                   "type": "adaptive"
-                },
-                "effort": "high",
-                "max_reasks": 0
+                }
               }
             }
           },
@@ -3950,20 +3995,20 @@
           }
         },
         {
-          "uuid": "2fq2PQHRWuYJYmxRm4Qkqh",
-          "span_id": "PzykeNC9TtNyZoK2FGeovg",
-          "timestamp": "2026-10-13T17:54:18.809739+00:00",
-          "working_start": 0.4584881258197129,
+          "uuid": "CpHRtV5z67gfG6Mp4SYwKG",
+          "span_id": "aj6paJEDG2vX2Ye9ms6RKq",
+          "timestamp": "2026-11-07T10:35:04.028058+00:00",
+          "working_start": 0.45526895695365965,
           "event": "span_end",
-          "id": "PzykeNC9TtNyZoK2FGeovg"
+          "id": "aj6paJEDG2vX2Ye9ms6RKq"
         },
         {
-          "uuid": "BvXN8HFxaMQmbiuJUCGeVg",
-          "span_id": "FQ5eBJphtQVuevGg85Vb2d",
-          "timestamp": "2026-10-13T17:54:18.809978+00:00",
-          "working_start": 0.45872612576931715,
+          "uuid": "FHosasAKWwbJrsqtr9T78S",
+          "span_id": "2DYvFacHEELjYPaamJ6Ykg",
+          "timestamp": "2026-11-07T10:35:04.028220+00:00",
+          "working_start": 0.4554304159246385,
           "event": "span_end",
-          "id": "FQ5eBJphtQVuevGg85Vb2d"
+          "id": "2DYvFacHEELjYPaamJ6Ykg"
         }
       ],
       "model_usage": {
@@ -3974,11 +4019,11 @@
         }
       },
       "role_usage": {},
-      "started_at": "2026-10-13T17:54:18.346500+00:00",
-      "completed_at": "2026-10-13T17:54:18.810416+00:00",
-      "total_time": 0.464,
-      "working_time": 0.459,
-      "uuid": "miTxEfvWoaVkqcWqQcXsMR",
+      "started_at": "2026-11-07T10:35:03.567828+00:00",
+      "completed_at": "2026-11-07T10:35:04.028530+00:00",
+      "total_time": 0.461,
+      "working_time": 0.456,
+      "uuid": "M9tKGzbT4E8qS5B7iUDYUH",
       "error_retries": [],
       "attachments": {
         "1f9c7a0a4fb7c38a22e9d05714ba8926": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
@@ -3986,7 +4031,7 @@
       "events_data": {
         "messages": [
           {
-            "id": "M4yNJHbZbxGZQUnoQeXPZk",
+            "id": "2ziMDRaLPdbNsPoNQbeqCq",
             "content": "attachment://1f9c7a0a4fb7c38a22e9d05714ba8926",
             "role": "user"
           }
@@ -4002,13 +4047,13 @@
       "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
       "messages": [
         {
-          "id": "YUu4vCw7b6h9A9L3v36iMB",
+          "id": "TXfcxtBoFCSHQD6aFhEUxR",
           "content": "My blender arrived broken. Can I get my money back?",
           "source": "input",
           "role": "user"
         },
         {
-          "id": "UBHexnoFTUZLEvK2Y7kDWt",
+          "id": "KVUDR9szDRoSDyamJZHC9w",
           "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]",
           "source": "generate",
           "role": "assistant",
@@ -4020,7 +4065,7 @@
         "choices": [
           {
             "message": {
-              "id": "UBHexnoFTUZLEvK2Y7kDWt",
+              "id": "KVUDR9szDRoSDyamJZHC9w",
               "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]",
               "source": "generate",
               "role": "assistant",
@@ -4039,7 +4084,7 @@
           "metadata": {
             "grading": [
               {
-                "id": "7ckjUXERqKAUUJJcpXP5Td",
+                "id": "UqbBp2QKURgHpCJuKF5EYc",
                 "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                 "role": "user"
               },
@@ -4049,16 +4094,17 @@
                 "source": "generate",
                 "metadata": {
                   "graderEvidence": {
-                    "schema": "example.grader-evidence/v7",
+                    "schema": "example.grader-evidence/v8",
+                    "wire": "anthropic-messages/v1",
                     "grader": {
                       "name": "anchorset-recording-grader",
                       "language": "python",
-                      "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                      "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                       "runtime": "python 3.13.1"
                     },
-                    "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                    "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                     "callSeq": 7,
-                    "callId": "dab38b92-60d0-4ebc-8b25-4cfa8513ea2e",
+                    "callId": "ba4480fb-f034-4e73-97f8-a958471e5ca0",
                     "promptSha256": "45690043a59a5d02ec91db20056b62e7cf9bd7b678095c6e7a19aaeb0fcb913e",
                     "sent": {
                       "system": "NOT_SENT",
@@ -4128,20 +4174,20 @@
       "store": {},
       "events": [
         {
-          "uuid": "2RrtgbmEmPn3vV5w38UHSJ",
-          "span_id": "LbBjW7kvtwAtWj78swDo5D",
-          "timestamp": "2026-10-13T17:54:18.346853+00:00",
-          "working_start": 3275274.127277541,
+          "uuid": "Dnm7LJPAWjgcAVNQPUwV8i",
+          "span_id": "6vvj9ihMp4r8hdGNAyhFGV",
+          "timestamp": "2026-11-07T10:35:03.568204+00:00",
+          "working_start": 903960.360237625,
           "event": "span_begin",
-          "id": "LbBjW7kvtwAtWj78swDo5D",
+          "id": "6vvj9ihMp4r8hdGNAyhFGV",
           "type": "init",
           "name": "init"
         },
         {
-          "uuid": "c5KscPw58yFpMeSgSHbXog",
-          "span_id": "LbBjW7kvtwAtWj78swDo5D",
-          "timestamp": "2026-10-13T17:54:18.347038+00:00",
-          "working_start": 3275274.127462208,
+          "uuid": "o52AVYtzocGgtMRutYzebr",
+          "span_id": "6vvj9ihMp4r8hdGNAyhFGV",
+          "timestamp": "2026-11-07T10:35:03.568405+00:00",
+          "working_start": 903960.360439041,
           "event": "sample_init",
           "sample": {
             "input": "My blender arrived broken. Can I get my money back?",
@@ -4151,7 +4197,7 @@
           "state": {
             "messages": [
               {
-                "id": "YUu4vCw7b6h9A9L3v36iMB",
+                "id": "TXfcxtBoFCSHQD6aFhEUxR",
                 "content": "My blender arrived broken. Can I get my money back?",
                 "source": "input",
                 "role": "user"
@@ -4170,46 +4216,46 @@
           }
         },
         {
-          "uuid": "ZSVi27ii54JfSDbPyFD8QC",
-          "span_id": "LbBjW7kvtwAtWj78swDo5D",
-          "timestamp": "2026-10-13T17:54:18.347141+00:00",
-          "working_start": 3275274.127565833,
+          "uuid": "ET3DdGRfkFbDzoAbg9rnBy",
+          "span_id": "6vvj9ihMp4r8hdGNAyhFGV",
+          "timestamp": "2026-11-07T10:35:03.568655+00:00",
+          "working_start": 903960.36069225,
           "event": "span_end",
-          "id": "LbBjW7kvtwAtWj78swDo5D"
+          "id": "6vvj9ihMp4r8hdGNAyhFGV"
         },
         {
-          "uuid": "4MzRLT5fcjfxreS7daR2jt",
-          "span_id": "cFfGBdYiWqvwv9LDHjwSq2",
-          "timestamp": "2026-10-13T17:54:18.353013+00:00",
-          "working_start": 0.005796708166599274,
+          "uuid": "izzeRTtaoHw3Ea89WeKGtE",
+          "span_id": "BgDGNc35cLJ6xF7X3YmhRo",
+          "timestamp": "2026-11-07T10:35:03.576999+00:00",
+          "working_start": 0.008178582997061312,
           "event": "span_begin",
-          "id": "cFfGBdYiWqvwv9LDHjwSq2",
+          "id": "BgDGNc35cLJ6xF7X3YmhRo",
           "type": "solvers",
           "name": "solvers"
         },
         {
-          "uuid": "KWQZ9hcnNH7VUyhBxLzWfu",
-          "span_id": "PCEGjLgJxy2ByEgX5FF32Z",
-          "timestamp": "2026-10-13T17:54:18.353101+00:00",
-          "working_start": 0.005884625017642975,
+          "uuid": "JZPyd2rXWEqUqoXYkWynMq",
+          "span_id": "AYJUBLTEzjWSt4daKaiAwh",
+          "timestamp": "2026-11-07T10:35:03.577100+00:00",
+          "working_start": 0.008280082955025136,
           "event": "span_begin",
-          "id": "PCEGjLgJxy2ByEgX5FF32Z",
-          "parent_id": "cFfGBdYiWqvwv9LDHjwSq2",
+          "id": "AYJUBLTEzjWSt4daKaiAwh",
+          "parent_id": "BgDGNc35cLJ6xF7X3YmhRo",
           "type": "solver",
           "name": "replay_stored"
         },
         {
-          "uuid": "3fnczcFmkZLbd59XXJHaT8",
-          "span_id": "PCEGjLgJxy2ByEgX5FF32Z",
-          "timestamp": "2026-10-13T17:54:18.353311+00:00",
-          "working_start": 0.006094875279814005,
+          "uuid": "KvmvaY6MsTMSbCZWajcZhE",
+          "span_id": "AYJUBLTEzjWSt4daKaiAwh",
+          "timestamp": "2026-11-07T10:35:03.577357+00:00",
+          "working_start": 0.00853758305311203,
           "event": "state",
           "changes": [
             {
               "op": "add",
               "path": "/messages/1",
               "value": {
-                "id": "UBHexnoFTUZLEvK2Y7kDWt",
+                "id": "KVUDR9szDRoSDyamJZHC9w",
                 "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]",
                 "source": "generate",
                 "role": "assistant",
@@ -4227,7 +4273,7 @@
               "path": "/output/choices/0",
               "value": {
                 "message": {
-                  "id": "UBHexnoFTUZLEvK2Y7kDWt",
+                  "id": "KVUDR9szDRoSDyamJZHC9w",
                   "content": "Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]",
                   "source": "generate",
                   "role": "assistant",
@@ -4245,47 +4291,47 @@
           ]
         },
         {
-          "uuid": "gLFBwSaEUM87PVjbuyK74H",
-          "span_id": "PCEGjLgJxy2ByEgX5FF32Z",
-          "timestamp": "2026-10-13T17:54:18.353414+00:00",
-          "working_start": 0.0061980001628398895,
+          "uuid": "cY8qLY3vccevgbThTft3a6",
+          "span_id": "AYJUBLTEzjWSt4daKaiAwh",
+          "timestamp": "2026-11-07T10:35:03.577470+00:00",
+          "working_start": 0.008649833034723997,
           "event": "span_end",
-          "id": "PCEGjLgJxy2ByEgX5FF32Z"
+          "id": "AYJUBLTEzjWSt4daKaiAwh"
         },
         {
-          "uuid": "J8GiDas8qJAiAY6bh4Dtd6",
-          "span_id": "cFfGBdYiWqvwv9LDHjwSq2",
-          "timestamp": "2026-10-13T17:54:18.353499+00:00",
-          "working_start": 0.006283250171691179,
+          "uuid": "5QgBjBNn2y2a7pmwBLkqDQ",
+          "span_id": "BgDGNc35cLJ6xF7X3YmhRo",
+          "timestamp": "2026-11-07T10:35:03.577562+00:00",
+          "working_start": 0.008741833036765456,
           "event": "span_end",
-          "id": "cFfGBdYiWqvwv9LDHjwSq2"
+          "id": "BgDGNc35cLJ6xF7X3YmhRo"
         },
         {
-          "uuid": "V8ULkkXFAwyz3pfptbJkBb",
-          "span_id": "gxpniCNf5kpz6yviPc443f",
-          "timestamp": "2026-10-13T17:54:18.356961+00:00",
-          "working_start": 0.009744917042553425,
+          "uuid": "moC5HuFJnjuXgWG3vniBds",
+          "span_id": "K5237fJuokvuVP4HERg8Ze",
+          "timestamp": "2026-11-07T10:35:03.581822+00:00",
+          "working_start": 0.013002292020246387,
           "event": "span_begin",
-          "id": "gxpniCNf5kpz6yviPc443f",
+          "id": "K5237fJuokvuVP4HERg8Ze",
           "type": "scorers",
           "name": "scorers"
         },
         {
-          "uuid": "9EAppYJFMbwFsfVx89AL9E",
-          "span_id": "ZfBugdKYURdBc7MYxUPrPM",
-          "timestamp": "2026-10-13T17:54:18.357052+00:00",
-          "working_start": 0.00983570795506239,
+          "uuid": "awVEne98qDsJyda3Hyq4oW",
+          "span_id": "W2EYkdekzRtAEyAc7Dfsv9",
+          "timestamp": "2026-11-07T10:35:03.581931+00:00",
+          "working_start": 0.013111167005263269,
           "event": "span_begin",
-          "id": "ZfBugdKYURdBc7MYxUPrPM",
-          "parent_id": "gxpniCNf5kpz6yviPc443f",
+          "id": "W2EYkdekzRtAEyAc7Dfsv9",
+          "parent_id": "K5237fJuokvuVP4HERg8Ze",
           "type": "scorer",
           "name": "model_graded_qa"
         },
         {
-          "uuid": "SLzrkrczJ3m56FMWdNoHZ2",
-          "span_id": "ZfBugdKYURdBc7MYxUPrPM",
-          "timestamp": "2026-10-13T17:54:18.357180+00:00",
-          "working_start": 0.009964250028133392,
+          "uuid": "a5rjXaBTf79f4hmwFgrG2J",
+          "span_id": "W2EYkdekzRtAEyAc7Dfsv9",
+          "timestamp": "2026-11-07T10:35:03.582065+00:00",
+          "working_start": 0.01324533298611641,
           "event": "model",
           "model": "recording/fake-judge-old",
           "input": [],
@@ -4311,16 +4357,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 7,
-                      "callId": "dab38b92-60d0-4ebc-8b25-4cfa8513ea2e",
+                      "callId": "ba4480fb-f034-4e73-97f8-a958471e5ca0",
                       "promptSha256": "45690043a59a5d02ec91db20056b62e7cf9bd7b678095c6e7a19aaeb0fcb913e",
                       "sent": {
                         "system": "NOT_SENT",
@@ -4390,19 +4437,20 @@
               "output_tokens": 20,
               "total_tokens": 120
             },
-            "time": 0.5083977500908077,
+            "time": 0.4945427500642836,
             "metadata": {
               "graderEvidence": {
-                "schema": "example.grader-evidence/v7",
+                "schema": "example.grader-evidence/v8",
+                "wire": "anthropic-messages/v1",
                 "grader": {
                   "name": "anchorset-recording-grader",
                   "language": "python",
-                  "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                  "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                   "runtime": "python 3.13.1"
                 },
-                "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                 "callSeq": 7,
-                "callId": "dab38b92-60d0-4ebc-8b25-4cfa8513ea2e",
+                "callId": "ba4480fb-f034-4e73-97f8-a958471e5ca0",
                 "promptSha256": "45690043a59a5d02ec91db20056b62e7cf9bd7b678095c6e7a19aaeb0fcb913e",
                 "sent": {
                   "system": "NOT_SENT",
@@ -4461,14 +4509,14 @@
               }
             }
           },
-          "completed": "2026-10-13T17:54:18.870812+00:00",
-          "working_time": 0.5083977500908077
+          "completed": "2026-11-07T10:35:04.081831+00:00",
+          "working_time": 0.4945427500642836
         },
         {
-          "uuid": "M8683rMiDMvM3RyZ64TFiq",
-          "span_id": "ZfBugdKYURdBc7MYxUPrPM",
-          "timestamp": "2026-10-13T17:54:18.871395+00:00",
-          "working_start": 0.5190203324891627,
+          "uuid": "RJaykL7ck3gbirrvsxcYMf",
+          "span_id": "W2EYkdekzRtAEyAc7Dfsv9",
+          "timestamp": "2026-11-07T10:35:04.082124+00:00",
+          "working_start": 0.508146207081154,
           "event": "score",
           "score": {
             "value": "C",
@@ -4477,7 +4525,7 @@
             "metadata": {
               "grading": [
                 {
-                  "id": "7ckjUXERqKAUUJJcpXP5Td",
+                  "id": "UqbBp2QKURgHpCJuKF5EYc",
                   "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                   "role": "user"
                 },
@@ -4487,16 +4535,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 7,
-                      "callId": "dab38b92-60d0-4ebc-8b25-4cfa8513ea2e",
+                      "callId": "ba4480fb-f034-4e73-97f8-a958471e5ca0",
                       "promptSha256": "45690043a59a5d02ec91db20056b62e7cf9bd7b678095c6e7a19aaeb0fcb913e",
                       "sent": {
                         "system": "NOT_SENT",
@@ -4575,11 +4624,12 @@
               },
               "base_url": "http://127.0.0.1:18765",
               "model_args": {
+                "wire": "anthropic-messages/v1",
+                "effort": "high",
+                "max_reasks": 0,
                 "thinking": {
                   "type": "adaptive"
-                },
-                "effort": "high",
-                "max_reasks": 0
+                }
               }
             }
           },
@@ -4592,20 +4642,20 @@
           }
         },
         {
-          "uuid": "2Y69YVw4wSyay5JiUQ3FKL",
-          "span_id": "ZfBugdKYURdBc7MYxUPrPM",
-          "timestamp": "2026-10-13T17:54:18.871956+00:00",
-          "working_start": 0.5195803749375045,
+          "uuid": "Czud3iWQuLsdwSKPhXHeZa",
+          "span_id": "W2EYkdekzRtAEyAc7Dfsv9",
+          "timestamp": "2026-11-07T10:35:04.082403+00:00",
+          "working_start": 0.5084234570385888,
           "event": "span_end",
-          "id": "ZfBugdKYURdBc7MYxUPrPM"
+          "id": "W2EYkdekzRtAEyAc7Dfsv9"
         },
         {
-          "uuid": "ZkFwDUBJ6uQEeTAQR8gEri",
-          "span_id": "gxpniCNf5kpz6yviPc443f",
-          "timestamp": "2026-10-13T17:54:18.872269+00:00",
-          "working_start": 0.5198930408805609,
+          "uuid": "eTMkcM5tQrWYWUP9gr474q",
+          "span_id": "K5237fJuokvuVP4HERg8Ze",
+          "timestamp": "2026-11-07T10:35:04.082579+00:00",
+          "working_start": 0.508600166067481,
           "event": "span_end",
-          "id": "gxpniCNf5kpz6yviPc443f"
+          "id": "K5237fJuokvuVP4HERg8Ze"
         }
       ],
       "model_usage": {
@@ -4616,11 +4666,11 @@
         }
       },
       "role_usage": {},
-      "started_at": "2026-10-13T17:54:18.347217+00:00",
-      "completed_at": "2026-10-13T17:54:18.872927+00:00",
-      "total_time": 0.526,
-      "working_time": 0.521,
-      "uuid": "5dw9gDmYxupgg2UBBqypPr",
+      "started_at": "2026-11-07T10:35:03.568821+00:00",
+      "completed_at": "2026-11-07T10:35:04.082888+00:00",
+      "total_time": 0.514,
+      "working_time": 0.509,
+      "uuid": "LhJgcL42RNXXXFqEu42tha",
       "error_retries": [],
       "attachments": {
         "0c7b6da9fa696540df73ac9225bb5a50": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
@@ -4628,7 +4678,7 @@
       "events_data": {
         "messages": [
           {
-            "id": "7ckjUXERqKAUUJJcpXP5Td",
+            "id": "UqbBp2QKURgHpCJuKF5EYc",
             "content": "attachment://0c7b6da9fa696540df73ac9225bb5a50",
             "role": "user"
           }
@@ -4644,13 +4694,13 @@
       "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
       "messages": [
         {
-          "id": "eiNdSjfZ8YbMQMumPgUFBF",
+          "id": "Ae64UrDaHBLFVhrdXgq3hZ",
           "content": "I bought shoes 45 days ago and want a refund.",
           "source": "input",
           "role": "user"
         },
         {
-          "id": "H36gY6aSjr9ywksFbDCrwy",
+          "id": "3CE3iAYQF6jyTtt3GxafD8",
           "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
           "source": "generate",
           "role": "assistant",
@@ -4662,7 +4712,7 @@
         "choices": [
           {
             "message": {
-              "id": "H36gY6aSjr9ywksFbDCrwy",
+              "id": "3CE3iAYQF6jyTtt3GxafD8",
               "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
               "source": "generate",
               "role": "assistant",
@@ -4681,7 +4731,7 @@
           "metadata": {
             "grading": [
               {
-                "id": "TkoKZh64Hh9cTxWgFsCYTy",
+                "id": "i5XqMzRjbUSqENjHqUuN6s",
                 "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                 "role": "user"
               },
@@ -4691,16 +4741,17 @@
                 "source": "generate",
                 "metadata": {
                   "graderEvidence": {
-                    "schema": "example.grader-evidence/v7",
+                    "schema": "example.grader-evidence/v8",
+                    "wire": "anthropic-messages/v1",
                     "grader": {
                       "name": "anchorset-recording-grader",
                       "language": "python",
-                      "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                      "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                       "runtime": "python 3.13.1"
                     },
-                    "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                    "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                     "callSeq": 8,
-                    "callId": "09c0f98d-8ca0-43eb-85e8-54809a66fc0a",
+                    "callId": "4dd7e021-d99f-4736-8da5-976beb120497",
                     "promptSha256": "b55cce7af00b8e6f7dec02f432070772e169bf65fbf9d8c1af8499fedd388b9a",
                     "sent": {
                       "system": "NOT_SENT",
@@ -4769,20 +4820,20 @@
       "store": {},
       "events": [
         {
-          "uuid": "CwBqYLTwMdhPJReXGy8saC",
-          "span_id": "FJEKbKCu9JvE8xTwDcw9Q7",
-          "timestamp": "2026-10-13T17:54:18.347454+00:00",
-          "working_start": 3275274.127878666,
+          "uuid": "hsdn4kJpTgPeWuxUzVWcoe",
+          "span_id": "ED4sEB5YBasmkNuu5mAML8",
+          "timestamp": "2026-11-07T10:35:03.569217+00:00",
+          "working_start": 903960.361251125,
           "event": "span_begin",
-          "id": "FJEKbKCu9JvE8xTwDcw9Q7",
+          "id": "ED4sEB5YBasmkNuu5mAML8",
           "type": "init",
           "name": "init"
         },
         {
-          "uuid": "hLRjGv23tRnKpoW9MwNbPL",
-          "span_id": "FJEKbKCu9JvE8xTwDcw9Q7",
-          "timestamp": "2026-10-13T17:54:18.347627+00:00",
-          "working_start": 3275274.128051458,
+          "uuid": "QK8oGLNUpzfKsEByDSLp3Y",
+          "span_id": "ED4sEB5YBasmkNuu5mAML8",
+          "timestamp": "2026-11-07T10:35:03.569460+00:00",
+          "working_start": 903960.36149375,
           "event": "sample_init",
           "sample": {
             "input": "I bought shoes 45 days ago and want a refund.",
@@ -4792,7 +4843,7 @@
           "state": {
             "messages": [
               {
-                "id": "eiNdSjfZ8YbMQMumPgUFBF",
+                "id": "Ae64UrDaHBLFVhrdXgq3hZ",
                 "content": "I bought shoes 45 days ago and want a refund.",
                 "source": "input",
                 "role": "user"
@@ -4811,46 +4862,46 @@
           }
         },
         {
-          "uuid": "7gNHdmEFyv2T2vkvPggp6Y",
-          "span_id": "FJEKbKCu9JvE8xTwDcw9Q7",
-          "timestamp": "2026-10-13T17:54:18.347727+00:00",
-          "working_start": 3275274.128151541,
+          "uuid": "R6vHUvkRWzyioMePAYWzLc",
+          "span_id": "ED4sEB5YBasmkNuu5mAML8",
+          "timestamp": "2026-11-07T10:35:03.569596+00:00",
+          "working_start": 903960.361630083,
           "event": "span_end",
-          "id": "FJEKbKCu9JvE8xTwDcw9Q7"
+          "id": "ED4sEB5YBasmkNuu5mAML8"
         },
         {
-          "uuid": "9Xiz85eDxhogDb7wYjysCr",
-          "span_id": "VV6iRMXGFN8dCBRFB4FST5",
-          "timestamp": "2026-10-13T17:54:18.353641+00:00",
-          "working_start": 0.005831665825098753,
+          "uuid": "E3ykwtsvY8e8ds4fCYsXzm",
+          "span_id": "9kbwEbNpuW3dMKmV5BCEK7",
+          "timestamp": "2026-11-07T10:35:03.577718+00:00",
+          "working_start": 0.007841625018045306,
           "event": "span_begin",
-          "id": "VV6iRMXGFN8dCBRFB4FST5",
+          "id": "9kbwEbNpuW3dMKmV5BCEK7",
           "type": "solvers",
           "name": "solvers"
         },
         {
-          "uuid": "VqQDBNF3XnPRvThYrrCr6s",
-          "span_id": "CyY9wExq8oevZ4rQr7TjEz",
-          "timestamp": "2026-10-13T17:54:18.353729+00:00",
-          "working_start": 0.0059201656840741634,
+          "uuid": "gG66vZNS8wcVn7AghvVNkK",
+          "span_id": "AVFzHDPohy5affMsCfVAUS",
+          "timestamp": "2026-11-07T10:35:03.577815+00:00",
+          "working_start": 0.007938665919937193,
           "event": "span_begin",
-          "id": "CyY9wExq8oevZ4rQr7TjEz",
-          "parent_id": "VV6iRMXGFN8dCBRFB4FST5",
+          "id": "AVFzHDPohy5affMsCfVAUS",
+          "parent_id": "9kbwEbNpuW3dMKmV5BCEK7",
           "type": "solver",
           "name": "replay_stored"
         },
         {
-          "uuid": "Dt7iTZjKHQ83Y35ErmUKSL",
-          "span_id": "CyY9wExq8oevZ4rQr7TjEz",
-          "timestamp": "2026-10-13T17:54:18.353942+00:00",
-          "working_start": 0.006132999900728464,
+          "uuid": "6aMpVyzUuB4oAz7WDyyJWM",
+          "span_id": "AVFzHDPohy5affMsCfVAUS",
+          "timestamp": "2026-11-07T10:35:03.578047+00:00",
+          "working_start": 0.008171124965883791,
           "event": "state",
           "changes": [
             {
               "op": "add",
               "path": "/messages/1",
               "value": {
-                "id": "H36gY6aSjr9ywksFbDCrwy",
+                "id": "3CE3iAYQF6jyTtt3GxafD8",
                 "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
                 "source": "generate",
                 "role": "assistant",
@@ -4868,7 +4919,7 @@
               "path": "/output/choices/0",
               "value": {
                 "message": {
-                  "id": "H36gY6aSjr9ywksFbDCrwy",
+                  "id": "3CE3iAYQF6jyTtt3GxafD8",
                   "content": "Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.",
                   "source": "generate",
                   "role": "assistant",
@@ -4886,47 +4937,47 @@
           ]
         },
         {
-          "uuid": "bofqsyH7QvbFU3oKUUcJcU",
-          "span_id": "CyY9wExq8oevZ4rQr7TjEz",
-          "timestamp": "2026-10-13T17:54:18.354052+00:00",
-          "working_start": 0.006243415642529726,
+          "uuid": "DYHqLVuFfEVYNJ4ZhX5F9b",
+          "span_id": "AVFzHDPohy5affMsCfVAUS",
+          "timestamp": "2026-11-07T10:35:03.578162+00:00",
+          "working_start": 0.00828574993647635,
           "event": "span_end",
-          "id": "CyY9wExq8oevZ4rQr7TjEz"
+          "id": "AVFzHDPohy5affMsCfVAUS"
         },
         {
-          "uuid": "cEeEVsrspMY5QrWBnjyNzF",
-          "span_id": "VV6iRMXGFN8dCBRFB4FST5",
-          "timestamp": "2026-10-13T17:54:18.354138+00:00",
-          "working_start": 0.006328874733299017,
+          "uuid": "CwqXwsaUJffRYKTqUJjaX9",
+          "span_id": "9kbwEbNpuW3dMKmV5BCEK7",
+          "timestamp": "2026-11-07T10:35:03.578253+00:00",
+          "working_start": 0.008376790909096599,
           "event": "span_end",
-          "id": "VV6iRMXGFN8dCBRFB4FST5"
+          "id": "9kbwEbNpuW3dMKmV5BCEK7"
         },
         {
-          "uuid": "PkZktK6akYvv9QbdHnHBPk",
-          "span_id": "DQMqhenYtfuUPLkGRm75aj",
-          "timestamp": "2026-10-13T17:54:18.357229+00:00",
-          "working_start": 0.009420082904398441,
+          "uuid": "HdUPwPvGiFfyZZtfYKoX6E",
+          "span_id": "ikakmGcDvgG9WH6K5GuwWg",
+          "timestamp": "2026-11-07T10:35:03.582118+00:00",
+          "working_start": 0.012241999967955053,
           "event": "span_begin",
-          "id": "DQMqhenYtfuUPLkGRm75aj",
+          "id": "ikakmGcDvgG9WH6K5GuwWg",
           "type": "scorers",
           "name": "scorers"
         },
         {
-          "uuid": "7jYv5En5XMhhqT4qaueKu8",
-          "span_id": "6Bo2DAbU8YShRZ3ZTA6cT7",
-          "timestamp": "2026-10-13T17:54:18.357315+00:00",
-          "working_start": 0.009505999740213156,
+          "uuid": "7QPAyo7qsdpnojNLY3U5Si",
+          "span_id": "S84EiVNEnPd3DqTbK7rtSe",
+          "timestamp": "2026-11-07T10:35:03.582206+00:00",
+          "working_start": 0.012330249999649823,
           "event": "span_begin",
-          "id": "6Bo2DAbU8YShRZ3ZTA6cT7",
-          "parent_id": "DQMqhenYtfuUPLkGRm75aj",
+          "id": "S84EiVNEnPd3DqTbK7rtSe",
+          "parent_id": "ikakmGcDvgG9WH6K5GuwWg",
           "type": "scorer",
           "name": "model_graded_qa"
         },
         {
-          "uuid": "AgpZJyDSGroQhSLbTDzcnC",
-          "span_id": "6Bo2DAbU8YShRZ3ZTA6cT7",
-          "timestamp": "2026-10-13T17:54:18.357447+00:00",
-          "working_start": 0.009637499693781137,
+          "uuid": "kQWYWZSjLrudUyKAHDEJbn",
+          "span_id": "S84EiVNEnPd3DqTbK7rtSe",
+          "timestamp": "2026-11-07T10:35:03.582347+00:00",
+          "working_start": 0.01247108296956867,
           "event": "model",
           "model": "recording/fake-judge-old",
           "input": [],
@@ -4952,16 +5003,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 8,
-                      "callId": "09c0f98d-8ca0-43eb-85e8-54809a66fc0a",
+                      "callId": "4dd7e021-d99f-4736-8da5-976beb120497",
                       "promptSha256": "b55cce7af00b8e6f7dec02f432070772e169bf65fbf9d8c1af8499fedd388b9a",
                       "sent": {
                         "system": "NOT_SENT",
@@ -5030,19 +5082,20 @@
               "output_tokens": 20,
               "total_tokens": 120
             },
-            "time": 0.5913289575837553,
+            "time": 0.5485722919693217,
             "metadata": {
               "graderEvidence": {
-                "schema": "example.grader-evidence/v7",
+                "schema": "example.grader-evidence/v8",
+                "wire": "anthropic-messages/v1",
                 "grader": {
                   "name": "anchorset-recording-grader",
                   "language": "python",
-                  "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                  "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                   "runtime": "python 3.13.1"
                 },
-                "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                 "callSeq": 8,
-                "callId": "09c0f98d-8ca0-43eb-85e8-54809a66fc0a",
+                "callId": "4dd7e021-d99f-4736-8da5-976beb120497",
                 "promptSha256": "b55cce7af00b8e6f7dec02f432070772e169bf65fbf9d8c1af8499fedd388b9a",
                 "sent": {
                   "system": "NOT_SENT",
@@ -5100,14 +5153,14 @@
               }
             }
           },
-          "completed": "2026-10-13T17:54:18.955646+00:00",
-          "working_time": 0.5913289575837553
+          "completed": "2026-11-07T10:35:04.136086+00:00",
+          "working_time": 0.5485722919693217
         },
         {
-          "uuid": "jihgnWWgzVhHFBB4ZVftX4",
-          "span_id": "6Bo2DAbU8YShRZ3ZTA6cT7",
-          "timestamp": "2026-10-13T17:54:18.956697+00:00",
-          "working_start": 0.6021274165250361,
+          "uuid": "CYgzzUAW7fvU7KjV8Nf9vk",
+          "span_id": "S84EiVNEnPd3DqTbK7rtSe",
+          "timestamp": "2026-11-07T10:35:04.136325+00:00",
+          "working_start": 0.5613480830797926,
           "event": "score",
           "score": {
             "value": "C",
@@ -5116,7 +5169,7 @@
             "metadata": {
               "grading": [
                 {
-                  "id": "TkoKZh64Hh9cTxWgFsCYTy",
+                  "id": "i5XqMzRjbUSqENjHqUuN6s",
                   "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                   "role": "user"
                 },
@@ -5126,16 +5179,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 8,
-                      "callId": "09c0f98d-8ca0-43eb-85e8-54809a66fc0a",
+                      "callId": "4dd7e021-d99f-4736-8da5-976beb120497",
                       "promptSha256": "b55cce7af00b8e6f7dec02f432070772e169bf65fbf9d8c1af8499fedd388b9a",
                       "sent": {
                         "system": "NOT_SENT",
@@ -5213,11 +5267,12 @@
               },
               "base_url": "http://127.0.0.1:18765",
               "model_args": {
+                "wire": "anthropic-messages/v1",
+                "effort": "high",
+                "max_reasks": 0,
                 "thinking": {
                   "type": "adaptive"
-                },
-                "effort": "high",
-                "max_reasks": 0
+                }
               }
             }
           },
@@ -5230,20 +5285,20 @@
           }
         },
         {
-          "uuid": "KPMJxpkQmeXVfMwPS7Vs9o",
-          "span_id": "6Bo2DAbU8YShRZ3ZTA6cT7",
-          "timestamp": "2026-10-13T17:54:18.957479+00:00",
-          "working_start": 0.6029087086208165,
+          "uuid": "287ydSjh32Ang6bmrtCBZF",
+          "span_id": "S84EiVNEnPd3DqTbK7rtSe",
+          "timestamp": "2026-11-07T10:35:04.136546+00:00",
+          "working_start": 0.5615690000122413,
           "event": "span_end",
-          "id": "6Bo2DAbU8YShRZ3ZTA6cT7"
+          "id": "S84EiVNEnPd3DqTbK7rtSe"
         },
         {
-          "uuid": "W5kmSbj38QA9wGVGHM8DeT",
-          "span_id": "DQMqhenYtfuUPLkGRm75aj",
-          "timestamp": "2026-10-13T17:54:18.957939+00:00",
-          "working_start": 0.6033668336458504,
+          "uuid": "jmk2ZtRhd5n6dQYyhsTuxR",
+          "span_id": "ikakmGcDvgG9WH6K5GuwWg",
+          "timestamp": "2026-11-07T10:35:04.136662+00:00",
+          "working_start": 0.5616849170764908,
           "event": "span_end",
-          "id": "DQMqhenYtfuUPLkGRm75aj"
+          "id": "ikakmGcDvgG9WH6K5GuwWg"
         }
       ],
       "model_usage": {
@@ -5254,11 +5309,11 @@
         }
       },
       "role_usage": {},
-      "started_at": "2026-10-13T17:54:18.347810+00:00",
-      "completed_at": "2026-10-13T17:54:18.959602+00:00",
-      "total_time": 0.612,
-      "working_time": 0.605,
-      "uuid": "DycLp9bPwgLAzLbZrqWCrr",
+      "started_at": "2026-11-07T10:35:03.569878+00:00",
+      "completed_at": "2026-11-07T10:35:04.136893+00:00",
+      "total_time": 0.567,
+      "working_time": 0.562,
+      "uuid": "K2DtwDyT3A35KBe8T2X34r",
       "error_retries": [],
       "attachments": {
         "a62565467235aa6087533ab0ae3e0e89": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
@@ -5266,7 +5321,7 @@
       "events_data": {
         "messages": [
           {
-            "id": "TkoKZh64Hh9cTxWgFsCYTy",
+            "id": "i5XqMzRjbUSqENjHqUuN6s",
             "content": "attachment://a62565467235aa6087533ab0ae3e0e89",
             "role": "user"
           }
@@ -5282,13 +5337,13 @@
       "target": "The reply follows the refund policy (within 30 days or damaged goods, never more than once).",
       "messages": [
         {
-          "id": "2qEyjEVBSihPKK2cVRVdrp",
+          "id": "Qcr2cNV7h4JnYijZcQfMhi",
           "content": "Please refund my last order.",
           "source": "input",
           "role": "user"
         },
         {
-          "id": "5VUaNvFFfV4TQ69LGkGK9R",
+          "id": "jXz5VDGmRwkafZcEELZ6GK",
           "content": "Sure, I refunded it twice to be safe. [[thinking]]",
           "source": "generate",
           "role": "assistant",
@@ -5300,7 +5355,7 @@
         "choices": [
           {
             "message": {
-              "id": "5VUaNvFFfV4TQ69LGkGK9R",
+              "id": "jXz5VDGmRwkafZcEELZ6GK",
               "content": "Sure, I refunded it twice to be safe. [[thinking]]",
               "source": "generate",
               "role": "assistant",
@@ -5319,7 +5374,7 @@
           "metadata": {
             "grading": [
               {
-                "id": "LELnB95Cn2VFEAiCj4p9Nf",
+                "id": "m499vG5SbmbwU2ZEMWLqzC",
                 "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                 "role": "user"
               },
@@ -5329,16 +5384,17 @@
                 "source": "generate",
                 "metadata": {
                   "graderEvidence": {
-                    "schema": "example.grader-evidence/v7",
+                    "schema": "example.grader-evidence/v8",
+                    "wire": "anthropic-messages/v1",
                     "grader": {
                       "name": "anchorset-recording-grader",
                       "language": "python",
-                      "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                      "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                       "runtime": "python 3.13.1"
                     },
-                    "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                    "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                     "callSeq": 9,
-                    "callId": "cf6eac80-6761-45ae-bfc4-95ea6656b9a2",
+                    "callId": "7e2a2aa2-5abe-45f8-88d6-6892725803f7",
                     "promptSha256": "2c91b29062fed2e9b037f0b6bfb12d95b84a26117897374d5c51adce5725c5f0",
                     "sent": {
                       "system": "NOT_SENT",
@@ -5408,20 +5464,20 @@
       "store": {},
       "events": [
         {
-          "uuid": "gWMUMNbgWJnvdGK2RNbU4P",
-          "span_id": "YG7zs2Y6UtLgZ6LYEHiJXS",
-          "timestamp": "2026-10-13T17:54:18.348038+00:00",
-          "working_start": 3275274.128462458,
+          "uuid": "Zjjynw3WWnAAtGCa8UTeTU",
+          "span_id": "EN5J2htkAX2TVHtqoJQQfN",
+          "timestamp": "2026-11-07T10:35:03.570432+00:00",
+          "working_start": 903960.362466708,
           "event": "span_begin",
-          "id": "YG7zs2Y6UtLgZ6LYEHiJXS",
+          "id": "EN5J2htkAX2TVHtqoJQQfN",
           "type": "init",
           "name": "init"
         },
         {
-          "uuid": "k6nsgpzbAsVXxVsBRHhkaU",
-          "span_id": "YG7zs2Y6UtLgZ6LYEHiJXS",
-          "timestamp": "2026-10-13T17:54:18.348230+00:00",
-          "working_start": 3275274.128653833,
+          "uuid": "WYdUiGCb9fQLa78x3D7Ecu",
+          "span_id": "EN5J2htkAX2TVHtqoJQQfN",
+          "timestamp": "2026-11-07T10:35:03.570757+00:00",
+          "working_start": 903960.362791666,
           "event": "sample_init",
           "sample": {
             "input": "Please refund my last order.",
@@ -5431,7 +5487,7 @@
           "state": {
             "messages": [
               {
-                "id": "2qEyjEVBSihPKK2cVRVdrp",
+                "id": "Qcr2cNV7h4JnYijZcQfMhi",
                 "content": "Please refund my last order.",
                 "source": "input",
                 "role": "user"
@@ -5450,46 +5506,46 @@
           }
         },
         {
-          "uuid": "6SwjJWrLyU5yK3kGJCjYyq",
-          "span_id": "YG7zs2Y6UtLgZ6LYEHiJXS",
-          "timestamp": "2026-10-13T17:54:18.348331+00:00",
-          "working_start": 3275274.128755583,
+          "uuid": "M3NSWMuVUnELCwMTTNTaTs",
+          "span_id": "EN5J2htkAX2TVHtqoJQQfN",
+          "timestamp": "2026-11-07T10:35:03.570895+00:00",
+          "working_start": 903960.362928625,
           "event": "span_end",
-          "id": "YG7zs2Y6UtLgZ6LYEHiJXS"
+          "id": "EN5J2htkAX2TVHtqoJQQfN"
         },
         {
-          "uuid": "DAREiB5nhA59vnrNWGEoSQ",
-          "span_id": "cPHgahyxbf5p7WfuKut5HK",
-          "timestamp": "2026-10-13T17:54:18.354262+00:00",
-          "working_start": 0.005851374939084053,
+          "uuid": "TgfRmjKveBnepdfwd4oAmE",
+          "span_id": "jMbs3yzDrCMTM5fHdRzCac",
+          "timestamp": "2026-11-07T10:35:03.578388+00:00",
+          "working_start": 0.0074040829204022884,
           "event": "span_begin",
-          "id": "cPHgahyxbf5p7WfuKut5HK",
+          "id": "jMbs3yzDrCMTM5fHdRzCac",
           "type": "solvers",
           "name": "solvers"
         },
         {
-          "uuid": "8LnotPyEzBHvhFk5UVtyiM",
-          "span_id": "2yrEHSYtNmoBH5PbKPb9eP",
-          "timestamp": "2026-10-13T17:54:18.354360+00:00",
-          "working_start": 0.005950209219008684,
+          "uuid": "CYQidgmokCGzgMGroxDxNB",
+          "span_id": "TiaZYKR6gGXQoaL3DyvAhU",
+          "timestamp": "2026-11-07T10:35:03.578486+00:00",
+          "working_start": 0.007501333020627499,
           "event": "span_begin",
-          "id": "2yrEHSYtNmoBH5PbKPb9eP",
-          "parent_id": "cPHgahyxbf5p7WfuKut5HK",
+          "id": "TiaZYKR6gGXQoaL3DyvAhU",
+          "parent_id": "jMbs3yzDrCMTM5fHdRzCac",
           "type": "solver",
           "name": "replay_stored"
         },
         {
-          "uuid": "6TWY3KiAmwauoeZHXJSXdK",
-          "span_id": "2yrEHSYtNmoBH5PbKPb9eP",
-          "timestamp": "2026-10-13T17:54:18.354567+00:00",
-          "working_start": 0.006157000083476305,
+          "uuid": "SsFSs6qrbCnmY88V77eSSy",
+          "span_id": "TiaZYKR6gGXQoaL3DyvAhU",
+          "timestamp": "2026-11-07T10:35:03.578721+00:00",
+          "working_start": 0.0077364579774439335,
           "event": "state",
           "changes": [
             {
               "op": "add",
               "path": "/messages/1",
               "value": {
-                "id": "5VUaNvFFfV4TQ69LGkGK9R",
+                "id": "jXz5VDGmRwkafZcEELZ6GK",
                 "content": "Sure, I refunded it twice to be safe. [[thinking]]",
                 "source": "generate",
                 "role": "assistant",
@@ -5507,7 +5563,7 @@
               "path": "/output/choices/0",
               "value": {
                 "message": {
-                  "id": "5VUaNvFFfV4TQ69LGkGK9R",
+                  "id": "jXz5VDGmRwkafZcEELZ6GK",
                   "content": "Sure, I refunded it twice to be safe. [[thinking]]",
                   "source": "generate",
                   "role": "assistant",
@@ -5525,47 +5581,47 @@
           ]
         },
         {
-          "uuid": "b34WryzTie7iW8ucKuxnDS",
-          "span_id": "2yrEHSYtNmoBH5PbKPb9eP",
-          "timestamp": "2026-10-13T17:54:18.354684+00:00",
-          "working_start": 0.006273459177464247,
+          "uuid": "WNa7Bwn4ZTpzqXJTH8qe6z",
+          "span_id": "TiaZYKR6gGXQoaL3DyvAhU",
+          "timestamp": "2026-11-07T10:35:03.578854+00:00",
+          "working_start": 0.007869374938309193,
           "event": "span_end",
-          "id": "2yrEHSYtNmoBH5PbKPb9eP"
+          "id": "TiaZYKR6gGXQoaL3DyvAhU"
         },
         {
-          "uuid": "h2QagxkTaChkZFFfr8F75V",
-          "span_id": "cPHgahyxbf5p7WfuKut5HK",
-          "timestamp": "2026-10-13T17:54:18.354769+00:00",
-          "working_start": 0.0063587091863155365,
+          "uuid": "noMebTMdJG6sHCtwjRuXMo",
+          "span_id": "jMbs3yzDrCMTM5fHdRzCac",
+          "timestamp": "2026-11-07T10:35:03.578978+00:00",
+          "working_start": 0.007993249921128154,
           "event": "span_end",
-          "id": "cPHgahyxbf5p7WfuKut5HK"
+          "id": "jMbs3yzDrCMTM5fHdRzCac"
         },
         {
-          "uuid": "WUFzFVafaptB9NhJ8YdsW9",
-          "span_id": "kifkToPyai7xWGuejW4iJY",
-          "timestamp": "2026-10-13T17:54:18.357500+00:00",
-          "working_start": 0.009089916944503784,
+          "uuid": "jzPVdzrWH2tiFFqxYNrESs",
+          "span_id": "WxXptSwCqkzn9XEaMmFceW",
+          "timestamp": "2026-11-07T10:35:03.582401+00:00",
+          "working_start": 0.011419374961405993,
           "event": "span_begin",
-          "id": "kifkToPyai7xWGuejW4iJY",
+          "id": "WxXptSwCqkzn9XEaMmFceW",
           "type": "scorers",
           "name": "scorers"
         },
         {
-          "uuid": "VDxDebGd9wseHQaV4a6vrz",
-          "span_id": "gEnqxP5z7NZx8j6Ah8r2Ss",
-          "timestamp": "2026-10-13T17:54:18.357586+00:00",
-          "working_start": 0.009176041930913925,
+          "uuid": "Q28pjD499ZmbiRNcjbhMWY",
+          "span_id": "oCXBvYEjmgwszrzr4KEdgg",
+          "timestamp": "2026-11-07T10:35:03.582493+00:00",
+          "working_start": 0.011508540948852897,
           "event": "span_begin",
-          "id": "gEnqxP5z7NZx8j6Ah8r2Ss",
-          "parent_id": "kifkToPyai7xWGuejW4iJY",
+          "id": "oCXBvYEjmgwszrzr4KEdgg",
+          "parent_id": "WxXptSwCqkzn9XEaMmFceW",
           "type": "scorer",
           "name": "model_graded_qa"
         },
         {
-          "uuid": "KJkCjBktkNmXL3Un4PaC2G",
-          "span_id": "gEnqxP5z7NZx8j6Ah8r2Ss",
-          "timestamp": "2026-10-13T17:54:18.357713+00:00",
-          "working_start": 0.009302583988755941,
+          "uuid": "bpqcL7WtxRj88puSyGSxGa",
+          "span_id": "oCXBvYEjmgwszrzr4KEdgg",
+          "timestamp": "2026-11-07T10:35:03.582628+00:00",
+          "working_start": 0.011643874924629927,
           "event": "model",
           "model": "recording/fake-judge-old",
           "input": [],
@@ -5591,16 +5647,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 9,
-                      "callId": "cf6eac80-6761-45ae-bfc4-95ea6656b9a2",
+                      "callId": "7e2a2aa2-5abe-45f8-88d6-6892725803f7",
                       "promptSha256": "2c91b29062fed2e9b037f0b6bfb12d95b84a26117897374d5c51adce5725c5f0",
                       "sent": {
                         "system": "NOT_SENT",
@@ -5670,19 +5727,20 @@
               "output_tokens": 20,
               "total_tokens": 120
             },
-            "time": 0.6575742498971522,
+            "time": 0.6018866659142077,
             "metadata": {
               "graderEvidence": {
-                "schema": "example.grader-evidence/v7",
+                "schema": "example.grader-evidence/v8",
+                "wire": "anthropic-messages/v1",
                 "grader": {
                   "name": "anchorset-recording-grader",
                   "language": "python",
-                  "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                  "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                   "runtime": "python 3.13.1"
                 },
-                "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                 "callSeq": 9,
-                "callId": "cf6eac80-6761-45ae-bfc4-95ea6656b9a2",
+                "callId": "7e2a2aa2-5abe-45f8-88d6-6892725803f7",
                 "promptSha256": "2c91b29062fed2e9b037f0b6bfb12d95b84a26117897374d5c51adce5725c5f0",
                 "sent": {
                   "system": "NOT_SENT",
@@ -5741,14 +5799,14 @@
               }
             }
           },
-          "completed": "2026-10-13T17:54:19.021092+00:00",
-          "working_time": 0.6575742498971522
+          "completed": "2026-11-07T10:35:04.189702+00:00",
+          "working_time": 0.6018866659142077
         },
         {
-          "uuid": "4wD6kMYiqi97rs2oRuqBie",
-          "span_id": "gEnqxP5z7NZx8j6Ah8r2Ss",
-          "timestamp": "2026-10-13T17:54:19.021693+00:00",
-          "working_start": 0.6675510839559138,
+          "uuid": "m3Rjm8J5SMtNKVFsj9bncv",
+          "span_id": "oCXBvYEjmgwszrzr4KEdgg",
+          "timestamp": "2026-11-07T10:35:04.189956+00:00",
+          "working_start": 0.6138467489508912,
           "event": "score",
           "score": {
             "value": "C",
@@ -5757,7 +5815,7 @@
             "metadata": {
               "grading": [
                 {
-                  "id": "LELnB95Cn2VFEAiCj4p9Nf",
+                  "id": "m499vG5SbmbwU2ZEMWLqzC",
                   "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                   "role": "user"
                 },
@@ -5767,16 +5825,17 @@
                   "source": "generate",
                   "metadata": {
                     "graderEvidence": {
-                      "schema": "example.grader-evidence/v7",
+                      "schema": "example.grader-evidence/v8",
+                      "wire": "anthropic-messages/v1",
                       "grader": {
                         "name": "anchorset-recording-grader",
                         "language": "python",
-                        "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                        "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                         "runtime": "python 3.13.1"
                       },
-                      "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                      "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                       "callSeq": 9,
-                      "callId": "cf6eac80-6761-45ae-bfc4-95ea6656b9a2",
+                      "callId": "7e2a2aa2-5abe-45f8-88d6-6892725803f7",
                       "promptSha256": "2c91b29062fed2e9b037f0b6bfb12d95b84a26117897374d5c51adce5725c5f0",
                       "sent": {
                         "system": "NOT_SENT",
@@ -5855,11 +5914,12 @@
               },
               "base_url": "http://127.0.0.1:18765",
               "model_args": {
+                "wire": "anthropic-messages/v1",
+                "effort": "high",
+                "max_reasks": 0,
                 "thinking": {
                   "type": "adaptive"
-                },
-                "effort": "high",
-                "max_reasks": 0
+                }
               }
             }
           },
@@ -5872,20 +5932,20 @@
           }
         },
         {
-          "uuid": "Vx5jzGtUEBVfCDtbaaYXR7",
-          "span_id": "gEnqxP5z7NZx8j6Ah8r2Ss",
-          "timestamp": "2026-10-13T17:54:19.022278+00:00",
-          "working_start": 0.6681359587237239,
+          "uuid": "TPgPUaEcnhQjTgQC74fwtE",
+          "span_id": "oCXBvYEjmgwszrzr4KEdgg",
+          "timestamp": "2026-11-07T10:35:04.190189+00:00",
+          "working_start": 0.6140792908845469,
           "event": "span_end",
-          "id": "gEnqxP5z7NZx8j6Ah8r2Ss"
+          "id": "oCXBvYEjmgwszrzr4KEdgg"
         },
         {
-          "uuid": "bw3FUxQRjY3XYWPiP7FM6u",
-          "span_id": "kifkToPyai7xWGuejW4iJY",
-          "timestamp": "2026-10-13T17:54:19.022617+00:00",
-          "working_start": 0.6684741671197116,
+          "uuid": "C57ke767uz66hnKkC7zHh8",
+          "span_id": "WxXptSwCqkzn9XEaMmFceW",
+          "timestamp": "2026-11-07T10:35:04.190342+00:00",
+          "working_start": 0.6142317489720881,
           "event": "span_end",
-          "id": "kifkToPyai7xWGuejW4iJY"
+          "id": "WxXptSwCqkzn9XEaMmFceW"
         }
       ],
       "model_usage": {
@@ -5896,11 +5956,11 @@
         }
       },
       "role_usage": {},
-      "started_at": "2026-10-13T17:54:18.348411+00:00",
-      "completed_at": "2026-10-13T17:54:19.023324+00:00",
-      "total_time": 0.675,
-      "working_time": 0.669,
-      "uuid": "9z3nAQLSTbywRias69B8KA",
+      "started_at": "2026-11-07T10:35:03.570985+00:00",
+      "completed_at": "2026-11-07T10:35:04.190630+00:00",
+      "total_time": 0.62,
+      "working_time": 0.615,
+      "uuid": "fmRJov9xKG6JBYsJ9fhJu7",
       "error_retries": [],
       "attachments": {
         "1f9c7a0a4fb7c38a22e9d05714ba8926": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n"
@@ -5908,7 +5968,7 @@
       "events_data": {
         "messages": [
           {
-            "id": "LELnB95Cn2VFEAiCj4p9Nf",
+            "id": "m499vG5SbmbwU2ZEMWLqzC",
             "content": "attachment://1f9c7a0a4fb7c38a22e9d05714ba8926",
             "role": "user"
           }
@@ -5929,7 +5989,7 @@
           "metadata": {
             "grading": [
               {
-                "id": "F8SQKa72XaYi5efSpMmF8e",
+                "id": "WYCfrbDKwygayugHVJhubR",
                 "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: My blender arrived broken. Can I get my money back?\n***\n[Submission]: Your order arrived damaged, so you are eligible for a full refund. I have started it. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                 "role": "user"
               },
@@ -5939,16 +5999,17 @@
                 "source": "generate",
                 "metadata": {
                   "graderEvidence": {
-                    "schema": "example.grader-evidence/v7",
+                    "schema": "example.grader-evidence/v8",
+                    "wire": "anthropic-messages/v1",
                     "grader": {
                       "name": "anchorset-recording-grader",
                       "language": "python",
-                      "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                      "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                       "runtime": "python 3.13.1"
                     },
-                    "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                    "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                     "callSeq": 1,
-                    "callId": "87f91634-913f-419a-8f4b-4463f0f6ef1b",
+                    "callId": "146821f3-f164-4a2c-887c-d5fdd910e168",
                     "promptSha256": "45690043a59a5d02ec91db20056b62e7cf9bd7b678095c6e7a19aaeb0fcb913e",
                     "sent": {
                       "system": "NOT_SENT",
@@ -6021,7 +6082,7 @@
           "metadata": {
             "grading": [
               {
-                "id": "A6nqhRjkMbeBqWTR6iVucw",
+                "id": "MGsWwNGdcfTr36UYNRSxcT",
                 "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: I bought shoes 45 days ago and want a refund.\n***\n[Submission]: Refunds are only possible within 30 days. Your purchase was 45 days ago, so I cannot refund it.\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                 "role": "user"
               },
@@ -6031,16 +6092,17 @@
                 "source": "generate",
                 "metadata": {
                   "graderEvidence": {
-                    "schema": "example.grader-evidence/v7",
+                    "schema": "example.grader-evidence/v8",
+                    "wire": "anthropic-messages/v1",
                     "grader": {
                       "name": "anchorset-recording-grader",
                       "language": "python",
-                      "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                      "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                       "runtime": "python 3.13.1"
                     },
-                    "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                    "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                     "callSeq": 2,
-                    "callId": "59387c77-bc1e-45ff-9de9-3b953a4a1db9",
+                    "callId": "d7d6fa4d-1ae9-4127-a2b9-918ce50b4c08",
                     "promptSha256": "b55cce7af00b8e6f7dec02f432070772e169bf65fbf9d8c1af8499fedd388b9a",
                     "sent": {
                       "system": "NOT_SENT",
@@ -6112,7 +6174,7 @@
           "metadata": {
             "grading": [
               {
-                "id": "DfLBarWUkZMd7vrzYWr5io",
+                "id": "f77JycQbesSKC9dSysDh4s",
                 "content": "\nYou are assessing a submitted answer on a given task based on a criterion. Here is the data:\n\n[BEGIN DATA]\n***\n[Task]: Please refund my last order.\n***\n[Submission]: Sure, I refunded it twice to be safe. [[thinking]]\n***\n[Criterion]: The reply follows the refund policy (within 30 days or damaged goods, never more than once).\n***\n[END DATA]\n\nDoes the submission meet the criterion?\n\n\nAfter assessing the submitted answer, reply with 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.  Please choose ONE option for the grade: either \"C\" for correct answers, or \"I\" for incorrect answers.\n\nFor example, after reviewing a correct answer you might write 'GRADE: C' or after reviewing an incorrect answer you might write 'GRADE: I'.\n\nFirst, write out in a step by step manner your reasoning about the criterion to be sure that your conclusion is correct. Avoid simply stating the correct answers at the outset. Then, end with your answer formatted as 'GRADE: $LETTER' (without quotes) where LETTER is one of CI.\n\n",
                 "role": "user"
               },
@@ -6122,16 +6184,17 @@
                 "source": "generate",
                 "metadata": {
                   "graderEvidence": {
-                    "schema": "example.grader-evidence/v7",
+                    "schema": "example.grader-evidence/v8",
+                    "wire": "anthropic-messages/v1",
                     "grader": {
                       "name": "anchorset-recording-grader",
                       "language": "python",
-                      "sha256": "344da561b77d78c3e774e50e0a1da71bd8fd11bbb0e6a85daf04b89949b66694",
+                      "sha256": "532c6ae0c06717395a04dfbd1428af0ad770dcde3686caaee970117f2132257b",
                       "runtime": "python 3.13.1"
                     },
-                    "graderRunId": "d0a48d9d-fa93-4a27-b3aa-c96d18be2aef",
+                    "graderRunId": "7a237b36-7fd4-4bf6-b926-99f87fb8b482",
                     "callSeq": 3,
-                    "callId": "e51a402c-dabb-4428-bd3c-9b3d06fa14d6",
+                    "callId": "04fe01a1-1cba-4f6d-966d-fe63df6195a2",
                     "promptSha256": "2c91b29062fed2e9b037f0b6bfb12d95b84a26117897374d5c51adce5725c5f0",
                     "sent": {
                       "system": "NOT_SENT",

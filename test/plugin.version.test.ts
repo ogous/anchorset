@@ -4,11 +4,13 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { TOOL_VERSION } from '../src/index.ts';
 import { main } from '../src/cli.ts';
+import { PUBLIC_REPOSITORY_URL } from '../tools/release-tree-check.ts';
 import { assertNoRateBesideRepeatedReading } from './helpers.ts';
 
 const read = (p: string): string => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 
-// The plugin and this test travel together: the first tagged public tree holds neither, and a later commit adds both.
+// The plugin and this test travel together. Up to 0.3.0 the release tag held neither and a later commit added both; from
+// 0.4.0 on, the release commit holds both.
 // If this file is ever found in a tree that holds no plugin at all, the tests are skipped, with the reason printed, and
 // nothing else changes. The skip is allowed only when neither plugin folder exists; in any tree that holds one of the
 // two folders, a missing file is a failure, never a skip.
@@ -39,9 +41,27 @@ pluginTest('the skill puts no number on how often a repeated reading is called s
   assertNoRateBesideRepeatedReading(read('plugin/skills/anchorset/SKILL.md').replace(/\s+/g, ' '));
 });
 
-pluginTest('the marketplace file names the plugin folder and no other source', () => {
-  const market = JSON.parse(read('.claude-plugin/marketplace.json')) as { plugins: { name: string; source: string }[] };
-  assert.deepEqual(market.plugins.map((p) => [p.name, p.source]), [['anchorset', './plugin']]);
+// The catalog serves the plugin from one released commit, never from whatever the default branch holds: a release
+// commit carries the next version's plugin before that version is on npm, and a path source would hand it out at once.
+// The pin names the commit by its full hash (Claude Code checks out `sha` when both it and `ref` are given); `ref`, when
+// present, is the release tag. That the commit is on the pushed main, holds a version npm serves, and is the release tag's
+// own commit (or the reviewed commit that stands for a release whose tag holds no plugin) is checked by the release
+// process against the repository's history, which a copy of the files alone does not hold; this test holds the form, in
+// CI and in any copy of the files.
+pluginTest('the catalog pins the plugin to one commit of this repository', () => {
+  const market = JSON.parse(read('.claude-plugin/marketplace.json')) as { plugins: { name: string; source: unknown }[] };
+  assert.equal(market.plugins.length, 1);
+  const { name, source } = market.plugins[0] as { name: string; source: unknown };
+  assert.equal(name, 'anchorset');
+  assert.ok(source !== null && typeof source === 'object' && !Array.isArray(source), 'the source is a pin, not a path');
+  const pin = source as Record<string, unknown>;
+  assert.ok(PUBLIC_REPOSITORY_URL.startsWith('git+'));
+  assert.equal(pin.source, 'git-subdir');
+  assert.equal(pin.url, PUBLIC_REPOSITORY_URL.slice('git+'.length));
+  assert.equal(pin.path, 'plugin');
+  assert.match(String(pin.sha), /^[0-9a-f]{40}$/);
+  if ('ref' in pin) assert.match(String(pin.ref), /^v\d+\.\d+\.\d+$/);
+  assert.deepEqual(Object.keys(pin).filter((k) => !['source', 'url', 'path', 'sha', 'ref'].includes(k)), []);
 });
 
 pluginTest('the skill states each exit code as the CLI does', () => {

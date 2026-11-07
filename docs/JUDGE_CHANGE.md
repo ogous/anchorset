@@ -343,3 +343,5 @@ A refusal prints `REFUSED`, a code, the fields concerned and a sentence, and no 
 - One class per plan, with one cut, which every case of the class expects. The class is a floor class (higher
   labels are better) and not non-compensable.
 - All systems of a plan share one bar file, one set of cases and one number of draws.
+- Across two providers, the report measures the change of the grading path, not of the model alone. The `judge call
+  shape` line lists the settings whose recorded values differ; settings with equal values may still differ in effect.

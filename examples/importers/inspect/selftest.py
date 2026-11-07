@@ -21,6 +21,8 @@ from inspect_ai.model import ChatMessageAssistant, ChatMessageSystem, ChatMessag
 
 import recording_grader as rg  # noqa: E402
 
+WIRE = "anthropic-messages/v1"
+WIRE_OPENAI = "openai-responses/v1"
 KEY_ENV = "SELFTEST_KEY"
 KEY = "selftest-dummy-credential-0123456789"
 os.environ[KEY_ENV] = KEY
@@ -36,10 +38,52 @@ def sha(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 
+DEL = object()  # in a canned or a set reply: take this key out
+
+
+def omsg(text: str, status: str = "completed", **extra: Any) -> dict[str, Any]:
+    """A Responses message item with one output_text part."""
+    return {"type": "message", "id": "msg_selftest", "role": "assistant", "status": status, **extra, "content": [{"type": "output_text", "text": text, "annotations": []}]}
+
+
+def oreasoning() -> dict[str, Any]:
+    return {"type": "reasoning", "id": "rs_selftest", "summary": [], "encrypted_content": "ENCRYPTED-SELFTEST-TEXT", "status": "completed"}
+
+
+GOOD_TEXT = "Reasoning.\n\nGRADE: C"
+# Canned Responses replies by name, each a function of the request number: the keys they set replace the default reply's.
+OCANNED: dict[str, Any] = {
+    "cut": lambda n: {"id": f"resp_cut_{n:04d}", "status": "incomplete", "incomplete_details": {"reason": "max_output_tokens"}, "output": [omsg("CUT-REPLY-TEXT GRA", "incomplete")],
+                      "usage": {"input_tokens": 31, "output_tokens": 256, "output_tokens_details": {"reasoning_tokens": 7}}},
+    "cut-whole": lambda n: {"id": f"resp_cutw_{n:04d}", "status": "incomplete", "incomplete_details": {"reason": "max_output_tokens"}, "output": [omsg(GOOD_TEXT)]},
+    "cut-reasoning": lambda n: {"id": f"resp_cutr_{n:04d}", "status": "incomplete", "incomplete_details": {"reason": "max_output_tokens"}, "output": [oreasoning()]},
+    "cut-empty": lambda n: {"id": f"resp_cute_{n:04d}", "status": "incomplete", "incomplete_details": {"reason": "max_output_tokens"}, "output": []},
+    "content-filter": lambda n: {"status": "incomplete", "incomplete_details": {"reason": "content_filter"}, "output": [omsg(GOOD_TEXT)]},
+    "other-reason": lambda n: {"status": "incomplete", "incomplete_details": {"reason": "max_messages"}, "output": [omsg(GOOD_TEXT)]},
+    "refusal": lambda n: {"output": [{"type": "message", "id": "m", "role": "assistant", "status": "completed", "content": [{"type": "refusal", "refusal": "REFUSAL-TEXT"}]}]},
+    "refusal-after": lambda n: {"output": [{"type": "message", "id": "m", "role": "assistant", "status": "completed",
+                                           "content": [{"type": "output_text", "text": GOOD_TEXT, "annotations": []}, {"type": "refusal", "refusal": "REFUSAL-TEXT"}]}]},
+    "refusal-before": lambda n: {"output": [{"type": "message", "id": "m", "role": "assistant", "status": "completed",
+                                            "content": [{"type": "refusal", "refusal": "REFUSAL-TEXT"}, {"type": "output_text", "text": GOOD_TEXT, "annotations": []}]}]},
+    "reasoning": lambda n: {"output": [oreasoning(), omsg(GOOD_TEXT)], "usage": {"input_tokens": 10, "output_tokens": 30, "output_tokens_details": {"reasoning_tokens": 12}}},
+    "message-incomplete": lambda n: {"output": [omsg(GOOD_TEXT, "incomplete")]},
+    "phase": lambda n: {"output": [omsg(GOOD_TEXT, phase="final_answer")]},
+    "phase-commentary": lambda n: {"output": [omsg(GOOD_TEXT, phase="commentary")]},
+    "phase-other": lambda n: {"output": [omsg(GOOD_TEXT, phase="draft")]},
+    "empty-output": lambda n: {"output": []},
+    "empty-message": lambda n: {"output": [{"type": "message", "id": "m", "role": "assistant", "status": "completed", "content": []}, omsg(GOOD_TEXT)]},
+    "function-call": lambda n: {"output": [{"type": "function_call", "id": "fc", "call_id": "c", "name": "f", "arguments": "{}", "status": "completed"}]},
+    "two-messages": lambda n: {"output": [omsg("a"), omsg("b")]},
+    "no-counter": lambda n: {"usage": {"input_tokens": 10, "output_tokens": 5}},
+}
+
+
 class Server:
     """Records every request whole and answers by a mode that a check sets."""
 
-    def __init__(self) -> None:
+    def __init__(self, openai: bool = False) -> None:
+        # a stand-in for the Responses API (the route is the same for every path: only POST is answered), with canned replies named "r:<name>" in a script
+        self.openai = openai
         self.requests: list[dict[str, Any]] = []
         self.mode = "ok"
         # modes for the first requests, one each, used up in order; after them every request gets `mode`
@@ -62,7 +106,16 @@ class Server:
                 raw = self.rfile.read(n)
                 outer.requests.append({"method": "POST", "path": self.path, "headers": {k.lower(): v for k, v in self.headers.items()}, "raw": raw})
                 m = outer.script.pop(0) if outer.script else outer.mode
-                if m.isdigit() and m not in ("307", "400"):
+                if m.startswith("r:"):
+                    # a canned Responses reply, applied on the default one
+                    r = outer.reply(raw)
+                    for k, v in OCANNED[m[2:]](len(outer.requests)).items():
+                        if v is DEL:
+                            r.pop(k, None)
+                        else:
+                            r[k] = v
+                    self._send(200, json.dumps(r).encode())
+                elif m.isdigit() and m not in ("307", "400"):
                     # an error status; the body is one the grader must never record
                     headers = {"retry-after": "120"} if m == "429" else {}
                     self._send(int(m), b'{"type":"error","error":{"type":"some_error","message":"SECRET-BODY-TEXT"}}', headers)
@@ -189,6 +242,19 @@ class Server:
 
     def reply(self, raw: bytes) -> dict[str, Any]:
         body = json.loads(raw)
+        if self.openai:
+            r_o: dict[str, Any] = {
+                "id": f"resp_selftest_{len(self.requests):04d}", "object": "response", "status": "completed", "error": None, "incomplete_details": None,
+                "model": body["model"] + "-served", "truncation": "disabled", "store": False, "previous_response_id": None,
+                "output": [omsg("Reasoning.\n\nGRADE: C")],
+                "usage": {"input_tokens": 10, "output_tokens": 5, "output_tokens_details": {"reasoning_tokens": 0}, "total_tokens": 15},
+            }
+            for k, v in self.response.items():
+                if v is DEL:
+                    r_o.pop(k, None)
+                else:
+                    r_o[k] = v
+            return r_o
         r: dict[str, Any] = {
             "id": f"msg_selftest_{len(self.requests):04d}",
             "type": "message",
@@ -214,6 +280,7 @@ class Server:
 
 
 SERVER = Server()
+OSERVER = Server(openai=True)
 
 
 def make(max_tokens: int = 64, temperature: float | None = None, base_url: str | None = None, **args: Any) -> rg.RecordingGrader:
@@ -221,6 +288,7 @@ def make(max_tokens: int = 64, temperature: float | None = None, base_url: str |
     if temperature is not None:
         cfg["temperature"] = temperature
     args.setdefault("api_key_env", KEY_ENV)
+    args.setdefault("wire", WIRE)
     args.setdefault("thinking", "NOT_SENT")
     args.setdefault("effort", "NOT_SENT")
     # a bound of 0 re-asks is one ask per slot
@@ -294,8 +362,8 @@ def _():
     assert req["raw"] == json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
     assert ev["requestedModel"] == "fake-judge" and ev["promptSha256"] == sha(user)
     assert ev["sent"] == {"system": "NOT_SENT", "user": sha(user), "thinking": "NOT_SENT", "output_config": "NOT_SENT"}
-    assert ev["schema"] == "example.grader-evidence/v7" and "reading" not in ev
-    assert set(ev) == {"schema", "grader", "graderRunId", "callSeq", "callId", "promptSha256", "sent", "requestedModel", "servedModel", "responseId", "stopReason", "contentTypes", "thinkingTokens", "usage", "reply", "callShape", "reask"}, sorted(ev)
+    assert ev["schema"] == "example.grader-evidence/v8" and ev["wire"] == "anthropic-messages/v1" and "reading" not in ev
+    assert set(ev) == {"schema", "wire", "grader", "graderRunId", "callSeq", "callId", "promptSha256", "sent", "requestedModel", "servedModel", "responseId", "stopReason", "contentTypes", "thinkingTokens", "usage", "reply", "callShape", "reask"}, sorted(ev)
     assert ev["reask"] == {"max": 0, "earlier": []} and ev["usage"] == {"input_tokens": 10, "output_tokens": 5}
     assert b"reask" not in req["raw"] and "easks" not in json.dumps(ev["callShape"])
     cs = ev["callShape"]
@@ -362,7 +430,7 @@ def _():
 @check("construction refuses what the grader cannot send (settings, model args, key argument), no request")
 def _():
     SERVER.reset()
-    st = {"thinking": "NOT_SENT", "effort": "NOT_SENT", "max_reasks": 0}
+    st = {"wire": WIRE, "thinking": "NOT_SENT", "effort": "NOT_SENT", "max_reasks": 0}
     assert raises(lambda: rg.RecordingGrader("m", base_url=SERVER.url, config=GenerateConfig(max_tokens=8, top_p=0.5), **st))
     assert raises(lambda: rg.RecordingGrader("m", base_url=SERVER.url, config=GenerateConfig(), **st))
     assert raises(lambda: rg.RecordingGrader("m", base_url=SERVER.url, config=GenerateConfig(max_tokens=8), seed=1, **st))
@@ -412,7 +480,7 @@ def _():
         "https://h:80": ("h", 80, True, "https://h:80/v1/messages"),
     }
     for u, (host, port, secure, endpoint) in taken.items():
-        got_host, origin, got_port, got_secure, _prefix, posted = rg.parse_base_url(u)
+        got_host, origin, got_port, got_secure, _prefix, posted = rg.parse_base_url(u, rg.POSTED_PATH)
         assert (got_host, got_port, got_secure, origin + posted) == (host, port, secure, endpoint), (u, got_host, got_port, got_secure, origin + posted)
     refused = [
         # upper case, a closing dot, an empty label, a hyphen at an end, an underscore, a reserved label, a label too long
@@ -432,25 +500,25 @@ def _():
         "https://h\x00", "https://h/a\x00", "https://h:1\x00", "https://h\x7f", "https://h\x1f", "https://h\x85",
     ]
     for u in refused:
-        e = refusal_of(lambda u=u: rg.parse_base_url(u))
+        e = refusal_of(lambda u=u: rg.parse_base_url(u, rg.POSTED_PATH))
         assert str(e) in (rg.PLAIN_FORM_WORDS, "grader: base_url path must hold plain segments only"), (u, str(e))
         assert raises(lambda u=u: make(base_url=u)), u
     for u in ("\x00https://h", "https:h", "https:/h", "https://", "h"):
-        assert str(refusal_of(lambda u=u: rg.parse_base_url(u))) == "grader: base_url is not a URL", u
+        assert str(refusal_of(lambda u=u: rg.parse_base_url(u, rg.POSTED_PATH))) == "grader: base_url is not a URL", u
     for u in ("ftp://h", "file://h/etc/x", "wss://h"):
-        assert str(refusal_of(lambda u=u: rg.parse_base_url(u))) == "grader: base_url must be an http or https URL", u
+        assert str(refusal_of(lambda u=u: rg.parse_base_url(u, rg.POSTED_PATH))) == "grader: base_url must be an http or https URL", u
     # white space, a line end and a backslash keep their own wording; plain http to another host keeps its own
     for u in (" https://h", "https://h ", "https://h\t", "https://h\n", "\nhttps://h", "https://h\r\n", "https://h\x0b", "https://h\x0c", "https://h\\x", "https:\\\\h"):
-        assert str(refusal_of(lambda u=u: rg.parse_base_url(u))) == "grader: base_url must hold no whitespace, user information, query or fragment", u
+        assert str(refusal_of(lambda u=u: rg.parse_base_url(u, rg.POSTED_PATH))) == "grader: base_url must hold no whitespace, user information, query or fragment", u
     # plain http is taken for the two literal addresses and for nothing else: the name localhost is whatever the machine's resolver says it is
     for u in ("http://example.com", "http://127.0.0.2:1", "http://0.0.0.0:1", "http://localhost.example:1", "http://localhost", "http://localhost:1", "http://localhost:18765", f"http://localhost:{p}",
               "http://localhost:18765/p", "http://localhost.localdomain:1", "http://ip6-localhost:1", "http://127.1.2.3:1"):
-        assert str(refusal_of(lambda u=u: rg.parse_base_url(u))) == "grader: base_url must be https (http only for 127.0.0.1 and [::1])", u
+        assert str(refusal_of(lambda u=u: rg.parse_base_url(u, rg.POSTED_PATH))) == "grader: base_url must be https (http only for 127.0.0.1 and [::1])", u
         assert raises(lambda u=u: make(base_url=u)), u
     assert rg.LOOPBACK == {"127.0.0.1", "[::1]"}, rg.LOOPBACK
     # no refusal shows the address
     for u in ("https://SECRET-token.example", "https://secret-token.example:443", "https://[secret-token]", "https://h:secret-token"):
-        assert "secret" not in str(refusal_of(lambda u=u: rg.parse_base_url(u))).lower(), u
+        assert "secret" not in str(refusal_of(lambda u=u: rg.parse_base_url(u, rg.POSTED_PATH))).lower(), u
     assert make(base_url=f"http://127.0.0.1:{p}").url == f"http://127.0.0.1:{p}/v1/messages" and make(base_url="https://localhost").url == "https://localhost/v1/messages"
     assert len(SERVER.requests) == 0
 
@@ -546,7 +614,7 @@ def _():
 @check("NOT_SENT sends nothing: neither key is in the body, and the record says so")
 def _():
     SERVER.reset()
-    out = call(make(thinking="NOT_SENT", effort="NOT_SENT"))
+    out = call(make(wire=WIRE, thinking="NOT_SENT", effort="NOT_SENT"))
     raw = SERVER.requests[0]["raw"]
     assert b"thinking" not in raw and b"output_config" not in raw
     ev = out.metadata["graderEvidence"]
@@ -557,7 +625,7 @@ def _():
 def _():
     SERVER.reset()
     for missing in ["thinking", "effort"]:
-        args: dict[str, Any] = {"thinking": "NOT_SENT", "effort": "NOT_SENT", "max_reasks": 0, "api_key_env": KEY_ENV}
+        args: dict[str, Any] = {"wire": WIRE, "thinking": "NOT_SENT", "effort": "NOT_SENT", "max_reasks": 0, "api_key_env": KEY_ENV}
         del args[missing]
         try:
             rg.RecordingGrader("m", base_url=SERVER.url, config=GenerateConfig(max_tokens=8), **args)
@@ -651,7 +719,7 @@ def _():
 
     import regrade
 
-    base = ["--log", "no-such-log.json", "--epochs", "1", "--judge-model", "m", "--max-tokens", "5", "--out-dir", "no-such-dir", "--base-url", "http://127.0.0.1:1"]
+    base = ["--log", "no-such-log.json", "--epochs", "1", "--judge-model", "m", "--max-tokens", "5", "--out-dir", "no-such-dir", "--base-url", "http://127.0.0.1:1", "--wire", WIRE]
 
     def code(extra: list[str]) -> tuple[int, str]:
         err = io.StringIO()
@@ -669,7 +737,7 @@ def _():
         assert c == 64 and "--thinking" in msg, (bad, c, msg)
     err = io.StringIO()
     with redirect_stderr(err):
-        c = regrade.main(["--log", "x.json", "--epochs", "1", "--check", "--thinking", "NOT_SENT"])
+        c = regrade.main(["--log", "x.json", "--epochs", "1", "--check", "--wire", WIRE, "--thinking", "NOT_SENT"])
     assert c == 64 and "--check" in err.getvalue()
     err = io.StringIO()
     with redirect_stderr(err):
@@ -692,7 +760,7 @@ def _():
         err = io.StringIO()
         with redirect_stderr(err):
             c = regrade.main(["--log", source, "--epochs", "1", "--judge-model", "m", "--max-tokens", "5", "--out-dir", tmp, "--base-url", SERVER.url,
-                              "--api-key-env", KEY_ENV, "--thinking", "NOT_SENT", "--effort", "", "--max-reasks", "0"])
+                              "--api-key-env", KEY_ENV, "--wire", WIRE, "--thinking", "NOT_SENT", "--effort", "", "--max-reasks", "0"])
         assert c != 0 and len(SERVER.requests) == 0, (c, err.getvalue())
     assert regrade.thinking_from_text("NOT_SENT") == "NOT_SENT"
     assert regrade.thinking_from_text('{"type": "enabled", "budget_tokens": 2048}') == {"type": "enabled", "budget_tokens": 2048}
@@ -857,7 +925,7 @@ UUID = r"[0-9a-f-]{36}"
 def _():
     SERVER.reset()
     try:
-        rg.RecordingGrader("m", base_url=SERVER.url, config=GenerateConfig(max_tokens=8), thinking="NOT_SENT", effort="NOT_SENT", api_key_env=KEY_ENV)
+        rg.RecordingGrader("m", base_url=SERVER.url, config=GenerateConfig(max_tokens=8), wire=WIRE, thinking="NOT_SENT", effort="NOT_SENT", api_key_env=KEY_ENV)
         raise AssertionError("constructed")
     except ValueError as e:
         assert 'model arg "max_reasks" is required (no default)' in str(e), str(e)
@@ -1213,7 +1281,7 @@ def _():
     for name, value in [("max_retries", 2), ("timeout", 30), ("attempt_timeout", 30)]:
         # at construction: the grader cannot be built with it
         try:
-            rg.RecordingGrader("m", base_url=SERVER.url, config=GenerateConfig(max_tokens=8, **{name: value}), thinking="NOT_SENT", effort="NOT_SENT", max_reasks=0, api_key_env=KEY_ENV)
+            rg.RecordingGrader("m", base_url=SERVER.url, config=GenerateConfig(max_tokens=8, **{name: value}), wire=WIRE, thinking="NOT_SENT", effort="NOT_SENT", max_reasks=0, api_key_env=KEY_ENV)
             raise AssertionError(f"{name}: constructed")
         except ValueError as e:
             assert name in str(e) and "does not send" in str(e), (name, str(e))
@@ -1231,7 +1299,7 @@ def _():
 
     import regrade
 
-    base = ["--log", "no-such-log.json", "--epochs", "1", "--judge-model", "m", "--max-tokens", "5", "--out-dir", "no-such-dir", "--base-url", "http://127.0.0.1:1", "--thinking", "NOT_SENT", "--effort", "NOT_SENT"]
+    base = ["--log", "no-such-log.json", "--epochs", "1", "--judge-model", "m", "--max-tokens", "5", "--out-dir", "no-such-dir", "--base-url", "http://127.0.0.1:1", "--wire", WIRE, "--thinking", "NOT_SENT", "--effort", "NOT_SENT"]
 
     def code(args: list[str]) -> tuple[int, str]:
         err = io.StringIO()
@@ -1421,7 +1489,7 @@ def _():
     gaps = ["UNKNOWN", "unknown", "N/A", "none", "null", "NOT_SENT", "not-sent", "Undefined"]
     not_a_line = ["judge\nforged line", "judge\r", "judge\u001b[2J", "judge\tid", "judge  id", " judge", "judge ", "judg\u00e9", "j" * 201]
     for name in gaps + not_a_line:
-        e = error_of(lambda name=name: rg.RecordingGrader(name, base_url=SERVER.url, config=GenerateConfig(max_tokens=8), thinking="NOT_SENT", effort="NOT_SENT", max_reasks=0, api_key_env=KEY_ENV))
+        e = error_of(lambda name=name: rg.RecordingGrader(name, base_url=SERVER.url, config=GenerateConfig(max_tokens=8), wire=WIRE, thinking="NOT_SENT", effort="NOT_SENT", max_reasks=0, api_key_env=KEY_ENV))
         assert isinstance(e, ValueError) and str(e).startswith("grader: the model name must be one printable line"), (name, str(e))
         if name not in gaps:
             assert name not in str(e), name
@@ -1440,7 +1508,7 @@ def _():
     assert len(SERVER.requests) == 0
     # a plain id, one with single spaces and one of 200 characters are taken; so is a plain API version
     for name in ["judge-requested", "claude-judge 2026", "j" * 200]:
-        rg.RecordingGrader(name, base_url=SERVER.url, config=GenerateConfig(max_tokens=8), thinking="NOT_SENT", effort="NOT_SENT", max_reasks=0, api_key_env=KEY_ENV)
+        rg.RecordingGrader(name, base_url=SERVER.url, config=GenerateConfig(max_tokens=8), wire=WIRE, thinking="NOT_SENT", effort="NOT_SENT", max_reasks=0, api_key_env=KEY_ENV)
     make(api_version="2024-01-01")
     # the grader's gap spellings are the library's list (src/identity.ts, GAP_SPELLINGS)
     assert rg.GAP_SPELLINGS == {"unknown", "na", "none", "null", "nil", "undefined", "notsent"}
@@ -1467,7 +1535,7 @@ def _regrade_main(extra: list[str], source: str | None = None, out_dir: str | No
 
     src = source or os.path.join(HERE, "fixtures", "source.json")
     args = ["--log", src, "--epochs", "1"] if check else ["--log", src, "--epochs", "1", "--judge-model", "fake-judge", "--max-tokens", "64", "--api-key-env", KEY_ENV,
-                                                          "--thinking", "NOT_SENT", "--effort", "NOT_SENT", "--max-reasks", str(reasks)]
+                                                          "--wire", WIRE, "--thinking", "NOT_SENT", "--effort", "NOT_SENT", "--max-reasks", str(reasks)]
     if out_dir is not None:
         args += ["--out-dir", out_dir]
     # a flag that `extra` states is taken out of the helper's own list with its value: the script takes every flag once
@@ -1757,7 +1825,7 @@ def _():
 def _():
     SERVER.reset()
     for value in (True, False):
-        e = error_of(lambda value=value: rg.RecordingGrader("m", base_url=SERVER.url, config=GenerateConfig(max_tokens=8, cache=value), thinking="NOT_SENT", effort="NOT_SENT", max_reasks=0, api_key_env=KEY_ENV))
+        e = error_of(lambda value=value: rg.RecordingGrader("m", base_url=SERVER.url, config=GenerateConfig(max_tokens=8, cache=value), wire=WIRE, thinking="NOT_SENT", effort="NOT_SENT", max_reasks=0, api_key_env=KEY_ENV))
         assert "generation settings the grader does not send" in str(e) and "cache" in str(e), str(e)
     assert len(SERVER.requests) == 0
 
@@ -1781,7 +1849,7 @@ def _regrade_plain(args: list[str]) -> tuple[int, str, str]:
 @check("regrade.py: every flag is taken at most once, by its whole name; a second one and a shortened one are usage errors")
 def _():
     values = {"--log": "x.json", "--epochs": "1", "--template-file": "t.txt", "--instructions-file": "i.txt", "--judge-model": "m", "--out-dir": "o", "--base-url": "http://127.0.0.1:1",
-              "--max-tokens": "5", "--temperature": "0", "--timeout-ms": "1000", "--api-version": "2023-06-01", "--api-key-env": KEY_ENV, "--thinking": "NOT_SENT", "--effort": "NOT_SENT", "--max-reasks": "0"}
+              "--max-tokens": "5", "--temperature": "0", "--timeout-ms": "1000", "--api-version": "2023-06-01", "--api-key-env": KEY_ENV, "--wire": WIRE, "--thinking": "NOT_SENT", "--effort": "NOT_SENT", "--max-reasks": "0"}
     run = [x for k, v in values.items() for x in (k, v)]
     for flag, value in values.items():
         c, _out, err = _regrade_plain(run + [flag, value])
@@ -1806,7 +1874,7 @@ def _():
         with tempfile.TemporaryDirectory() as tmp:
             out_dir = os.path.join(tmp, "o")
             base = ["--log", os.path.join(HERE, "fixtures", "source.json"), "--epochs", "1", "--judge-model", "fake-judge", "--max-tokens", "64", "--api-key-env", KEY_ENV,
-                    "--thinking", "NOT_SENT", "--effort", "NOT_SENT", "--max-reasks", "0", "--base-url", SERVER.url, "--out-dir", out_dir]
+                    "--wire", WIRE, "--thinking", "NOT_SENT", "--effort", "NOT_SENT", "--max-reasks", "0", "--base-url", SERVER.url, "--out-dir", out_dir]
             # the flag's own pair is taken out, and the flag is stated once, empty
             args = [x for i, x in enumerate(base) if not (x == flag or (i > 0 and base[i - 1] == flag))] + [flag, ""]
             c, _out, err = _regrade_plain(args)
@@ -1830,7 +1898,7 @@ def _():
         with tempfile.TemporaryDirectory() as tmp:
             out_dir = os.path.join(tmp, "o")
             base = ["--log", os.path.join(HERE, "fixtures", "source.json"), "--epochs", "1", "--judge-model", "fake-judge", "--max-tokens", "64", "--api-key-env", KEY_ENV,
-                    "--thinking", "NOT_SENT", "--effort", "NOT_SENT", "--max-reasks", "0", "--base-url", SERVER.url, "--out-dir", out_dir]
+                    "--wire", WIRE, "--thinking", "NOT_SENT", "--effort", "NOT_SENT", "--max-reasks", "0", "--base-url", SERVER.url, "--out-dir", out_dir]
             args = [x for i, x in enumerate(base) if not (x == extra[0] or (i > 0 and base[i - 1] == extra[0]))] + extra
             c, _out, err = _regrade_plain(args)
             assert c == 64, (extra, c, err)
@@ -2101,7 +2169,7 @@ def regrade_module() -> Any:
 
 def _run_args(out_dir: str, **over: str) -> list[str]:
     flags = {"--log": os.path.join(HERE, "fixtures", "source.json"), "--epochs": "1", "--judge-model": "fake-judge", "--max-tokens": "64", "--api-key-env": KEY_ENV,
-             "--thinking": "NOT_SENT", "--effort": "NOT_SENT", "--max-reasks": "0", "--base-url": SERVER.url, "--out-dir": out_dir}
+             "--wire": WIRE, "--thinking": "NOT_SENT", "--effort": "NOT_SENT", "--max-reasks": "0", "--base-url": SERVER.url, "--out-dir": out_dir}
     flags.update({"--" + k.replace("_", "-"): v for k, v in over.items()})
     return [x for pair in flags.items() for x in pair]
 
@@ -2281,6 +2349,514 @@ def _():
     assert "nothing was sent, or the eval did not succeed" not in rp and "the response cache off" not in rp
 
 
+# ---------------------------------------------------------------------------------------------------------------
+# The OpenAI Responses wire (the counterpart of the JavaScript grader's tests of that wire)
+# ---------------------------------------------------------------------------------------------------------------
+
+OKEY_ENV = "SELFTEST_OPENAI_KEY"
+OKEY = "selftest-openai-dummy-credential-9876543210"
+os.environ[OKEY_ENV] = OKEY
+OPENAI_CALL_SHAPE_KEYS = CALL_SHAPE_KEYS
+
+
+def omake(max_tokens: int = 64, temperature: float | None = None, base_url: str | None = None, **args: Any) -> rg.RecordingGrader:
+    cfg: dict[str, Any] = {"max_tokens": max_tokens}
+    if temperature is not None:
+        cfg["temperature"] = temperature
+    args.setdefault("api_key_env", OKEY_ENV)
+    args.setdefault("wire", WIRE_OPENAI)
+    args.setdefault("effort", "NOT_SENT")
+    args.setdefault("verbosity", "NOT_SENT")
+    args.setdefault("max_reasks", 0)
+    return rg.RecordingGrader("fake-judge", base_url=OSERVER.url if base_url is None else base_url, config=GenerateConfig(**cfg), **args)
+
+
+def ocall(g: rg.RecordingGrader, script: list[str] | None = None, response: dict[str, Any] | None = None) -> Any:
+    OSERVER.reset(script=script, response=response)
+    return call(g)
+
+
+@check("OpenAI wire: the whole received request equals the record (store, truncation, effort, verbosity and a temperature sent)")
+def _():
+    OSERVER.reset()
+    user = "Question: refund?\nCRITERION: be kind. éè ☃"
+    out = call(omake(temperature=0.7, effort="high", verbosity="low"), user)
+    assert len(OSERVER.requests) == 1
+    req = OSERVER.requests[0]
+    ev = out.metadata["graderEvidence"]
+    assert req["method"] == "POST" and req["path"] == "/responses", req["path"]
+    h = req["headers"]
+    assert set(h) == {"host", "accept-encoding", "content-length", "content-type", "authorization"}, sorted(h)
+    assert h["authorization"] == f"Bearer {OKEY}" and h["content-type"] == "application/json" and h["accept-encoding"] == "identity"
+    body = json.loads(req["raw"])
+    assert list(body) == ["model", "input", "max_output_tokens", "store", "truncation", "temperature", "reasoning", "text"], list(body)
+    assert body == {"model": "fake-judge", "input": [{"role": "user", "content": user}], "max_output_tokens": 64, "store": False, "truncation": "disabled",
+                    "temperature": 0.7, "reasoning": {"effort": "high"}, "text": {"verbosity": "low"}}
+    assert req["raw"] == json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    assert ev["schema"] == "example.grader-evidence/v8" and ev["wire"] == "openai-responses/v1" and "reading" not in ev
+    assert set(ev) == {"schema", "wire", "grader", "graderRunId", "callSeq", "callId", "promptSha256", "sent", "requestedModel", "servedModel", "responseId", "stopReason",
+                       "incompleteReason", "contentTypes", "thinkingTokens", "usage", "reply", "callShape", "reask"}, sorted(ev)
+    assert ev["sent"] == {"system": "NOT_SENT", "user": sha(user), "reasoning": {"effort": "high"}, "text": {"verbosity": "low"}, "store": False, "truncation": "disabled"}
+    assert ev["stopReason"] == "completed" and ev["incompleteReason"] == "ABSENT" and ev["contentTypes"] == ["message/output_text"]
+    assert ev["thinkingTokens"] == 0 and ev["usage"] == {"input_tokens": 10, "output_tokens": 5} and ev["reply"] == GOOD_TEXT
+    assert ev["servedModel"] == "fake-judge-served" and ev["requestedModel"] == "fake-judge" and ev["promptSha256"] == sha(user)
+    cs = ev["callShape"]
+    assert cs["endpoint"] == OSERVER.url + "/responses" and cs["apiVersion"] == "NOT_SENT" and cs["thinkingMode"] == "NOT_SENT" and cs["thinkingBudgetTokens"] == "NOT_SENT"
+    assert cs["effort"] == "high" and cs["temperature"] == 0.7 and cs["maxOutputTokens"] == 64 and cs["contextPolicy"] == "none" and cs["timeoutMs"] == 60000
+    assert cs["extras"] == {"openai.store": False, "openai.verbosity": "low"}
+    assert set(cs) == {"schema", "extras", *CALL_SHAPE_KEYS}
+    assert not has_null(ev)
+    # a model's reply is the text of the output_text parts: the default reply reaches the tool whole
+    assert out.choices[0].message.content == GOOD_TEXT and out.choices[0].stop_reason == "stop"
+
+
+@check("OpenAI wire: nothing sent is in the request when it is not stated (no temperature, effort or verbosity), and the extras hold store only")
+def _():
+    OSERVER.reset()
+    out = call(omake())
+    body = json.loads(OSERVER.requests[0]["raw"])
+    assert list(body) == ["model", "input", "max_output_tokens", "store", "truncation"], list(body)
+    ev = out.metadata["graderEvidence"]
+    assert ev["sent"]["reasoning"] == "NOT_SENT" and ev["sent"]["text"] == "NOT_SENT" and ev["callShape"]["effort"] == "NOT_SENT" and ev["callShape"]["temperature"] == "NOT_SENT"
+    assert ev["callShape"]["extras"] == {"openai.store": False}
+
+
+@check("OpenAI wire: the base URL path comes before /responses, and the default address is https://api.openai.com/v1 (no call is made)")
+def _():
+    p = OSERVER.port
+    assert omake(base_url=f"http://127.0.0.1:{p}/proxy/").url == f"http://127.0.0.1:{p}/proxy/responses"
+    assert rg.parse_base_url("https://api.openai.com/v1", rg.OPENAI_POSTED_PATH)[1:] == ("https://api.openai.com", 443, True, "/v1", "/v1/responses")
+    default = rg.RecordingGrader("m", config=GenerateConfig(max_tokens=16), wire=WIRE_OPENAI, effort="NOT_SENT", verbosity="NOT_SENT", max_reasks=0, api_key_env=OKEY_ENV)
+    assert default.url == "https://api.openai.com/v1/responses" and default.key_env == OKEY_ENV
+    other = rg.RecordingGrader("m", config=GenerateConfig(max_tokens=16), wire=WIRE_OPENAI, effort="NOT_SENT", verbosity="NOT_SENT", max_reasks=0)
+    assert other.key_env == "OPENAI_API_KEY"
+    anthropic = rg.RecordingGrader("m", config=GenerateConfig(max_tokens=16), wire=WIRE, thinking="NOT_SENT", effort="NOT_SENT", max_reasks=0)
+    assert anthropic.url == "https://api.anthropic.com/v1/messages" and anthropic.key_env == "ANTHROPIC_API_KEY"
+
+
+@check("wire: required with no default, one of the two names; the settings are the wire's own, before any request")
+def _():
+    OSERVER.reset()
+    SERVER.reset()
+    base = {"effort": "NOT_SENT", "max_reasks": 0, "api_key_env": OKEY_ENV}
+
+    def build(max_tokens: int | None = 64, temperature: float | None = None, **args: Any) -> rg.RecordingGrader:
+        cfg: dict[str, Any] = {} if max_tokens is None else {"max_tokens": max_tokens}
+        if temperature is not None:
+            cfg["temperature"] = temperature
+        return rg.RecordingGrader("m", base_url=OSERVER.url, config=GenerateConfig(**cfg), **args)
+
+    for wire in [None, "", "openai", "anthropic-messages/v2", "OPENAI-RESPONSES/V1", 5, ["openai-responses/v1"]]:
+        args = {**base, "verbosity": "NOT_SENT", "thinking": "NOT_SENT"}
+        if wire is not None:
+            args["wire"] = wire
+        e = error_of(lambda args=args: build(**args))
+        assert "wire" in str(e), (wire, str(e))
+    ok = {**base, "wire": WIRE_OPENAI, "verbosity": "NOT_SENT"}
+    assert build(**ok).wire == WIRE_OPENAI
+    for k, v in [("thinking", "NOT_SENT"), ("api_version", "2023-06-01"), ("top_p", 1), ("seed", 1), ("store", False), ("truncation", "disabled"), ("service_tier", "auto"), ("stream", True)]:
+        e = error_of(lambda k=k, v=v: build(**{**ok, k: v}))
+        assert f'model arg "{k}" is not one the grader sends on the openai-responses/v1 wire' in str(e), (k, str(e))
+    for k in ("effort", "verbosity", "max_reasks"):
+        e = error_of(lambda k=k: build(**{a: b for a, b in ok.items() if a != k}))
+        assert k in str(e) and "required" in str(e), (k, str(e))
+    # the other wire's settings are refused on the Anthropic wire too
+    aok = {**base, "wire": WIRE, "thinking": "NOT_SENT"}
+    assert build(**aok).wire == WIRE
+    for k, v in [("verbosity", "low"), ("store", False)]:
+        e = error_of(lambda k=k, v=v: build(**{**aok, k: v}))
+        assert f'model arg "{k}" is not one the grader sends on the anthropic-messages/v1 wire' in str(e), (k, str(e))
+    # the cap: an integer of at least 16 below 2^53 on the OpenAI wire, a positive integer below 2^53 on the Anthropic one
+    for cap in [None, 0, 15, -1, 2**53, 10**21]:
+        assert raises(lambda cap=cap: build(max_tokens=cap, **ok)), cap
+    for cap in [None, 0, -1, 2**53, 10**21]:
+        assert raises(lambda cap=cap: build(max_tokens=cap, **aok)), cap
+    assert build(max_tokens=16, **ok).max_tokens == 16 and build(max_tokens=1, **aok).max_tokens == 1 and build(max_tokens=2**53 - 1, **ok).max_tokens == 2**53 - 1
+    # the temperature range is [0, 2] on the OpenAI wire and [0, 1] on the Anthropic wire
+    assert build(temperature=2, **ok).temperature == 2 and raises(lambda: build(temperature=2.1, **ok)) and raises(lambda: build(temperature=-0.1, **ok))
+    assert build(temperature=1, **aok).temperature == 1 and raises(lambda: build(temperature=1.5, **aok))
+    # effort: any of the seven words of the OpenAI wire, and verbosity one of three
+    for e in ["none", "minimal", "low", "medium", "high", "xhigh", "max", "NOT_SENT"]:
+        assert build(**{**ok, "effort": e}).effort == e, e
+    for e in ["HIGH", "", "highest", None, 3, ["low"], " low"]:
+        assert raises(lambda e=e: build(**{**ok, "effort": e})), e
+    for v in ["low", "medium", "high", "NOT_SENT"]:
+        assert build(**{**ok, "verbosity": v}).verbosity == v, v
+    for v in ["LOW", "", "verbose", None, 3]:
+        assert raises(lambda v=v: build(**{**ok, "verbosity": v})), v
+    for e in ["none", "minimal"]:
+        assert raises(lambda e=e: build(**{**aok, "effort": e})), e
+    assert len(OSERVER.requests) == 0 and len(SERVER.requests) == 0
+
+
+@check("OpenAI wire: each of the four address variables set, with no base URL or another one, refuses the grader before any call, naming the variable and showing no value; equal to the base URL it is taken; the Anthropic wire is not stopped by them")
+def _():
+    OSERVER.reset()
+    secret = "https://secret-gateway.example.com/v1"
+    names = ("OPENAI_BASE_URL", "OPENAI_API_BASE_URL", "OPENAI_API_HOST", "OPENAI_HOST")
+    assert rg.OPENAI_ADDRESS_VARIABLES == names
+    try:
+        for name in names:
+            os.environ[name] = secret
+            try:
+                for base in (None, OSERVER.url):
+                    e = error_of(lambda base=base: rg.RecordingGrader("m", base_url=base, config=GenerateConfig(max_tokens=16), wire=WIRE_OPENAI, effort="NOT_SENT", verbosity="NOT_SENT", max_reasks=0))
+                    assert f"the environment variable {name} is set, and this grader never reads it" in str(e) and secret not in str(e), (name, str(e))
+                    # the wire is looked at first, then the gateway, before any other setting
+                    e = error_of(lambda base=base: rg.RecordingGrader("m", base_url=base, config=GenerateConfig(), wire=WIRE_OPENAI))
+                    assert name in str(e), (name, str(e))
+                assert rg.RecordingGrader("m", base_url=secret, config=GenerateConfig(max_tokens=16), wire=WIRE_OPENAI, effort="NOT_SENT", verbosity="NOT_SENT", max_reasks=0).url == secret + "/responses"
+                # it is the other wire's business: an Anthropic grader is not stopped by it
+                assert make().wire == WIRE
+            finally:
+                del os.environ[name]
+            os.environ[name] = ""
+            try:
+                assert omake().wire == WIRE_OPENAI
+            finally:
+                del os.environ[name]
+    finally:
+        for name in names:
+            os.environ.pop(name, None)
+    os.environ["ANTHROPIC_BASE_URL"] = secret
+    try:
+        assert omake().wire == WIRE_OPENAI
+        assert "ANTHROPIC_BASE_URL" in str(error_of(lambda: make()))
+    finally:
+        del os.environ["ANTHROPIC_BASE_URL"]
+    assert len(OSERVER.requests) == 0
+
+
+@check("OpenAI wire: the key is read from the variable named, goes in the authorization header only, and is not in the record or the output")
+def _():
+    out = ocall(omake())
+    assert OKEY not in json.dumps(out.metadata) and OKEY not in out.model_dump_json()
+    h = OSERVER.requests[0]["headers"]
+    assert [k for k, v in h.items() if OKEY in v] == ["authorization"], h
+    saved = os.environ.pop(OKEY_ENV)
+    try:
+        OSERVER.reset()
+        assert raises(lambda: call(omake()))
+        assert len(OSERVER.requests) == 0
+    finally:
+        os.environ[OKEY_ENV] = saved
+
+
+# A body that is malformed on the OpenAI wire ends the slot at once: one request, nothing recorded, never asked again (a bound of 2 re-asks is stated).
+MALFORMED = {
+    "not a Responses object (object is chat.completion)": {"object": "chat.completion"},
+    "no object": {"object": DEL},
+    "object null": {"object": None},
+    "error set": {"error": {"message": "m", "type": "t", "param": None, "code": None}},
+    "error empty object": {"error": {}},
+    "error false": {"error": False},
+    "status failed": {"status": "failed"},
+    "status in_progress": {"status": "in_progress"},
+    "status cancelled": {"status": "cancelled"},
+    "status queued": {"status": "queued"},
+    "status missing": {"status": DEL},
+    "status null": {"status": None},
+    "completed with incomplete_details": {"incomplete_details": {"reason": "max_output_tokens"}},
+    "completed with empty incomplete_details": {"incomplete_details": {}},
+    "incomplete without incomplete_details": {"status": "incomplete", "incomplete_details": None},
+    "incomplete with no reason": {"status": "incomplete", "incomplete_details": {}},
+    "incomplete with a null reason": {"status": "incomplete", "incomplete_details": {"reason": None}},
+    "incomplete with a reason that is not one line": {"status": "incomplete", "incomplete_details": {"reason": "two\nlines"}},
+    "incomplete with a reason that reads as unknown": {"status": "incomplete", "incomplete_details": {"reason": "unknown"}},
+    "incomplete with the reason ABSENT": {"status": "incomplete", "incomplete_details": {"reason": "ABSENT"}},
+    "truncation auto echoed": {"truncation": "auto"},
+    "truncation null echoed": {"truncation": None},
+    "store true echoed": {"store": True},
+    "store null echoed": {"store": None},
+    "store 0 echoed": {"store": 0},
+    "no id": {"id": DEL},
+    "id with a space": {"id": "resp 1"},
+    "id that reads as unknown": {"id": "UNKNOWN"},
+    "no model": {"model": DEL},
+    "model with a space": {"model": "bad id"},
+    "no output": {"output": DEL},
+    "output not a list": {"output": "text"},
+    "output item without a type": {"output": [{"id": "x"}]},
+    "output item type upper case": {"output": [{"type": "Message"}]},
+    "output item type with a slash": {"output": [{"type": "message/output_text"}]},
+    "output item not an object": {"output": ["x"]},
+    "message without a status": {"output": [{"type": "message", "content": []}]},
+    "message status with a bracket": {"output": [{"type": "message", "status": "x]/y", "content": []}]},
+    "message phase null": {"output": [omsg(GOOD_TEXT, phase=None)]},
+    "message phase not plain": {"output": [omsg(GOOD_TEXT, phase="Final Answer")]},
+    "message content not a list": {"output": [{"type": "message", "status": "completed", "content": "text"}]},
+    "part without a type": {"output": [{"type": "message", "status": "completed", "content": [{"text": "x"}]}]},
+    "part type not plain": {"output": [{"type": "message", "status": "completed", "content": [{"type": "output text", "text": "x"}]}]},
+    "output_text part without text": {"output": [{"type": "message", "status": "completed", "content": [{"type": "output_text"}]}]},
+    "usage not an object": {"usage": 5},
+    "usage with one counter": {"usage": {"input_tokens": 10}},
+    "usage counter negative": {"usage": {"input_tokens": -1, "output_tokens": 5}},
+    "usage counter a string": {"usage": {"input_tokens": "10", "output_tokens": 5}},
+    "reasoning counter negative": {"usage": {"input_tokens": 1, "output_tokens": 1, "output_tokens_details": {"reasoning_tokens": -1}}},
+    "reasoning counter a float": {"usage": {"input_tokens": 1, "output_tokens": 1, "output_tokens_details": {"reasoning_tokens": 1.5}}},
+    "reasoning counter null": {"usage": {"input_tokens": 1, "output_tokens": 1, "output_tokens_details": {"reasoning_tokens": None}}},
+    "output_tokens_details null": {"usage": {"input_tokens": 1, "output_tokens": 1, "output_tokens_details": None}},
+}
+
+
+@check("OpenAI wire: a malformed 200 body (every form of the checks, in order) ends the slot with no record: one request, never asked again, nothing of the body shown")
+def _():
+    for what, over in MALFORMED.items():
+        OSERVER.reset(response=over)
+        try:
+            e = error_of(lambda: call(omake(max_reasks=2)))
+        except AssertionError:
+            raise AssertionError(f"{what}: the call returned a record")
+        assert isinstance(e, ValueError) and "no reply after" not in str(e) and "the slot ends with no record" not in str(e), (what, str(e))
+        assert len(OSERVER.requests) == 1, (what, len(OSERVER.requests))
+        assert "SECRET" not in str(e) and "bad id" not in str(e) and "two\nlines" not in str(e), (what, str(e))
+
+
+@check("OpenAI wire: the checks run in a fixed order (object, then error, then status, then incomplete_details, then the echoes, then the ids), so a body with two faults is refused for the first")
+def _():
+    over = {"object": "chat.completion", "error": {"message": "m"}, "status": "failed", "truncation": "auto", "id": DEL}
+    expected = ["Responses object", "holds an error", "neither", "incomplete_details", "truncation", "lacks id"]
+    order = ["object", "error", "status", "incomplete_details", "truncation", "id"]
+    for i, key in enumerate(order):
+        bad = {"object": "chat.completion", "error": {"message": "m"}, "status": "failed", "incomplete_details": {"reason": "x"}, "truncation": "auto", "id": DEL}
+        for earlier in order[:i]:
+            bad.pop(earlier)
+        if key == "incomplete_details":
+            bad["status"] = "completed"
+        OSERVER.reset(response=bad)
+        e = error_of(lambda: call(omake()))
+        assert expected[i] in str(e), (key, str(e))
+
+
+@check("OpenAI wire: null is taken in error and incomplete_details, and nowhere else; an absent error, incomplete_details, truncation and store are taken")
+def _():
+    out = ocall(omake(), response={"error": None, "incomplete_details": None})
+    assert out.metadata["graderEvidence"]["stopReason"] == "completed"
+    out = ocall(omake(), response={"error": DEL, "incomplete_details": DEL, "truncation": DEL, "store": DEL, "previous_response_id": DEL})
+    assert out.metadata["graderEvidence"]["incompleteReason"] == "ABSENT"
+    out = ocall(omake(), response={"truncation": "disabled", "store": False, "metadata": {"a": None}, "unread": [None]})
+    assert out.metadata["graderEvidence"]["contentTypes"] == ["message/output_text"]
+
+
+@check("OpenAI wire: contentTypes lists the output items in order (reasoning, message parts, the bracketed forms, an empty message, any other item), and the reply is the text of the output_text parts only")
+def _():
+    cases = [
+        ("reasoning", ["reasoning", "message/output_text"], GOOD_TEXT, 12),
+        ("message-incomplete", ["message[status=incomplete]/output_text"], GOOD_TEXT, 0),
+        ("phase", ["message[phase=final_answer]/output_text"], GOOD_TEXT, 0),
+        ("phase-commentary", ["message[phase=commentary]/output_text"], GOOD_TEXT, 0),
+        ("empty-output", [], "", 0),
+        ("empty-message", ["message", "message/output_text"], GOOD_TEXT, 0),
+        ("function-call", ["function_call"], "", 0),
+        ("two-messages", ["message/output_text", "message/output_text"], "ab", 0),
+        ("refusal", ["message/refusal"], "", 0),
+        ("refusal-after", ["message/output_text", "message/refusal"], GOOD_TEXT, 0),
+        ("refusal-before", ["message/refusal", "message/output_text"], GOOD_TEXT, 0),
+    ]
+    for name, types, reply, tokens in cases:
+        out = ocall(omake(), script=[f"r:{name}"])
+        ev = out.metadata["graderEvidence"]
+        assert ev["contentTypes"] == types and ev["reply"] == reply and ev["thinkingTokens"] == tokens, (name, ev["contentTypes"], ev["reply"], ev["thinkingTokens"])
+        assert ev["stopReason"] == "completed" and ev["reask"]["earlier"] == [], name
+        assert "ENCRYPTED-SELFTEST-TEXT" not in json.dumps(ev) and "REFUSAL-TEXT" not in json.dumps(ev), name
+    out = ocall(omake(), script=["r:no-counter"])
+    assert out.metadata["graderEvidence"]["thinkingTokens"] == "ABSENT"
+    out = ocall(omake(), response={"usage": DEL})
+    ev = out.metadata["graderEvidence"]
+    assert ev["thinkingTokens"] == "ABSENT" and ev["usage"] == "ABSENT" and out.usage is None
+
+
+@check("OpenAI wire: a cut is exactly status incomplete with the reason max_output_tokens: asked again within the bound with the same bytes, the earlier ask carries incompleteReason, its text only as a sha256 and a length")
+def _():
+    with Waits() as w:
+        OSERVER.reset(script=["r:cut", "ok"])
+        out = call(omake(max_reasks=2))
+    reqs = OSERVER.requests
+    assert len(reqs) == 2 and reqs[0]["raw"] == reqs[1]["raw"] and w.seen == []
+    ev = out.metadata["graderEvidence"]
+    cut = ev["reask"]["earlier"][0]
+    assert ev["stopReason"] == "completed" and ev["reask"]["max"] == 2 and len(ev["reask"]["earlier"]) == 1
+    assert list(cut) == ["reason", "callSeq", "callId", "httpStatus", "responseId", "servedModel", "stopReason", "incompleteReason", "contentTypes", "thinkingTokens", "usage", "replySha256", "replyUtf8Bytes"], list(cut)
+    assert cut["reason"] == "truncated" and cut["stopReason"] == "incomplete" and cut["incompleteReason"] == "max_output_tokens" and cut["httpStatus"] == 200
+    assert cut["contentTypes"] == ["message[status=incomplete]/output_text"] and cut["thinkingTokens"] == 7 and cut["usage"] == {"input_tokens": 31, "output_tokens": 256}
+    assert cut["replySha256"] == sha("CUT-REPLY-TEXT GRA") and cut["replyUtf8Bytes"] == len("CUT-REPLY-TEXT GRA")
+    assert "CUT-REPLY-TEXT" not in json.dumps(ev) and cut["callSeq"] != ev["callSeq"] and cut["callId"] != ev["callId"]
+    assert not has_null(ev)
+    # a cut with no message at all, and one with an empty output, are cuts too
+    for name in ("cut-reasoning", "cut-empty", "cut-whole"):
+        with Waits():
+            out = ocall(omake(max_reasks=1), script=[f"r:{name}", "ok"])
+        ev = out.metadata["graderEvidence"]
+        assert len(OSERVER.requests) == 2 and ev["reask"]["earlier"][0]["reason"] == "truncated" and ev["reask"]["earlier"][0]["incompleteReason"] == "max_output_tokens", name
+    # the bound used up: the last ask is the slot's last, recorded whole, and states why it was incomplete
+    with Waits():
+        out = ocall(omake(max_reasks=1), script=["r:cut", "r:cut-whole"])
+    ev = out.metadata["graderEvidence"]
+    assert len(OSERVER.requests) == 2 and ev["stopReason"] == "incomplete" and ev["incompleteReason"] == "max_output_tokens" and ev["reply"] == GOOD_TEXT
+    assert out.choices[0].stop_reason == "max_tokens"
+    out = ocall(omake(max_reasks=0), script=["r:cut"])
+    assert len(OSERVER.requests) == 1 and out.metadata["graderEvidence"]["reask"] == {"max": 0, "earlier": []}
+
+
+@check("OpenAI wire: every other incomplete reason, and every completed reply whatever it holds, is final: one request, recorded, never asked again")
+def _():
+    for name, reason in (("content-filter", "content_filter"), ("other-reason", "max_messages")):
+        out = ocall(omake(max_reasks=3), script=[f"r:{name}"])
+        ev = out.metadata["graderEvidence"]
+        assert len(OSERVER.requests) == 1 and ev["stopReason"] == "incomplete" and ev["incompleteReason"] == reason and ev["reask"]["earlier"] == [], name
+    assert ocall(omake(max_reasks=3), script=["r:content-filter"]).choices[0].stop_reason == "content_filter"
+    assert ocall(omake(max_reasks=3), script=["r:other-reason"]).choices[0].stop_reason == "unknown"
+    for name in ("refusal", "refusal-after", "refusal-before", "message-incomplete", "phase-commentary", "phase-other", "empty-output", "function-call", "two-messages"):
+        out = ocall(omake(max_reasks=3), script=[f"r:{name}"])
+        assert len(OSERVER.requests) == 1 and out.metadata["graderEvidence"]["reask"]["earlier"] == [], name
+    for text in ("", "not json", "GRADE:", "```json\n{}\n```"):
+        out = ocall(omake(max_reasks=3), response={"output": [omsg(text)]})
+        assert len(OSERVER.requests) == 1 and out.metadata["graderEvidence"]["reply"] == text
+
+
+@check("OpenAI wire: the other asks that are asked again (a deadline, a failed connection, 5xx, 429) and those that are not (4xx, a redirect, a content encoding), with the waits 2, 4 and 8 s")
+def _():
+    with Waits() as w:
+        out = ocall(omake(max_reasks=3), script=["503", "429", "500", "ok"])
+    ev = out.metadata["graderEvidence"]
+    assert w.seen == [2, 4, 8] and [a["reason"] for a in ev["reask"]["earlier"]] == ["server-error", "rate-limited", "server-error"], (w.seen, ev["reask"])
+    assert [a["httpStatus"] for a in ev["reask"]["earlier"]] == [503, 429, 500] and set(ev["reask"]["earlier"][0]) == {"reason", "callSeq", "callId", "httpStatus", "detail"}
+    with Waits():
+        out = ocall(omake(max_reasks=2), script=["drop", "ok"])
+    assert out.metadata["graderEvidence"]["reask"]["earlier"][0]["reason"] == "transport"
+    for status in ("400", "401", "403", "404", "422", "307", "301"):
+        with Waits() as w:
+            e = error_of(lambda status=status: ocall(omake(max_reasks=3), script=[status]))
+        assert len(OSERVER.requests) == 1 and w.seen == [] and "SECRET-BODY-TEXT" not in str(e) and f"status {status}" in str(e), (status, str(e))
+    with Waits():
+        e = error_of(lambda: ocall(omake(max_reasks=1), script=["429", "429"]))
+    assert len(OSERVER.requests) == 2 and "no reply after 2 asks, the bound of 1 re-ask(s) is used up" in str(e) and "SECRET-BODY-TEXT" not in str(e)
+    e = error_of(lambda: ocall(omake(max_reasks=0), script=["503"]))
+    assert len(OSERVER.requests) == 1 and str(e) == "grader: the endpoint answered status 503"
+    # the cut ask then an ask with no reply: the wait is the second value
+    with Waits() as w:
+        out = ocall(omake(max_reasks=3), script=["r:cut", "503", "ok"])
+    assert w.seen == [4] and [a["reason"] for a in out.metadata["graderEvidence"]["reask"]["earlier"]] == ["truncated", "server-error"], w.seen
+
+
+@check("OpenAI wire: the call numbers of a slot are distinct, and a call that fails uses its number up")
+def _():
+    OSERVER.reset(script=["r:cut", "ok"])
+    with Waits():
+        a = call(omake(max_reasks=1)).metadata["graderEvidence"]
+    assert a["reask"]["earlier"][0]["callSeq"] + 1 == a["callSeq"]
+    OSERVER.reset(script=["400"])
+    assert raises(lambda: call(omake()))
+    OSERVER.reset()
+    b = call(omake()).metadata["graderEvidence"]
+    assert b["callSeq"] >= a["callSeq"] + 2 and b["graderRunId"] == a["graderRunId"] and b["callId"] != a["callId"]
+
+
+@check("OpenAI wire: the status comes before the content (the importer's order): a cut or filtered reply whose message is completed, and a refusal beside a readable part in either order, are never graded")
+def _():
+    import regrade
+
+    def refusal_of_mode(name: str | None, over: dict[str, Any] | None = None, reasks: int = 0) -> str | None:
+        OSERVER.reset(script=None if name is None else [f"r:{name}"], response=over)
+        with Waits():
+            ev = call(omake(max_reasks=reasks)).metadata["graderEvidence"]
+        return regrade.importer_refusal(ev)
+
+    assert refusal_of_mode(None) is None
+    why = refusal_of_mode("cut-whole")
+    assert why is not None and 'status "incomplete" (max_output_tokens)' in why and "not \"completed\"" in why, why
+    why = refusal_of_mode("content-filter")
+    assert why is not None and 'status "incomplete" (content_filter)' in why, why
+    why = refusal_of_mode("other-reason")
+    assert why is not None and "(max_messages)" in why, why
+    for name in ("refusal", "refusal-after", "refusal-before"):
+        why = refusal_of_mode(name)
+        assert why is not None and "refusal part" in why, (name, why)
+    for name in ("message-incomplete", "phase-commentary", "phase-other", "empty-output", "function-call", "two-messages", "empty-message"):
+        why = refusal_of_mode(name)
+        assert why is not None and "not zero or more reasoning items followed by exactly one completed message with one output_text part" in why, (name, why)
+    assert refusal_of_mode("reasoning") is None
+    assert refusal_of_mode("phase") is None  # phase final_answer is read like an absent phase
+    why = refusal_of_mode(None, {"output": [omsg("a reply with no grade line")]})
+    assert why is not None and "no strict reading" in why
+    # a cut that is the last ask of a bound used up is the slot's stop, not its content
+    why = refusal_of_mode("cut-whole", reasks=0)
+    assert why is not None and "incomplete" in why
+
+
+@check("OpenAI wire: the stop and content tables, and the importer's tests of a record, are the same words on both wires")
+def _():
+    import regrade
+
+    assert regrade.STOP_MAP == {"anthropic-messages/v1": {"end_turn": "end"}, "openai-responses/v1": {"completed": "end"}}
+    assert regrade.OPENAI_INCOMPLETE_MAP == {"max_output_tokens": "cut", "content_filter": "content-filter"}
+    assert regrade.judge_stop_of("openai-responses/v1", "completed") == "end"
+    assert regrade.judge_stop_of("openai-responses/v1", "incomplete", "content_filter") == "content-filter"
+    assert regrade.judge_stop_of("openai-responses/v1", "incomplete", "max_output_tokens") is None
+    assert regrade.judge_stop_of("openai-responses/v1", "incomplete", "max_messages") is None
+    assert regrade.judge_stop_of("openai-responses/v1", "end_turn") is None
+    assert regrade.judge_stop_of("anthropic-messages/v1", "end_turn") == "end"
+    assert regrade.judge_stop_of("anthropic-messages/v1", "completed") is None
+    assert regrade.judge_stop_of("anthropic-messages/v1", "incomplete", "content_filter") is None
+    assert regrade.judge_stop_of("anthropic-messages/v1", "max_tokens") is None
+    for wire, types, ok in [
+        ("openai-responses/v1", ["message/output_text"], True), ("openai-responses/v1", ["reasoning", "reasoning", "message/output_text"], True),
+        ("openai-responses/v1", [], False), ("openai-responses/v1", ["reasoning"], False), ("openai-responses/v1", ["message/output_text", "reasoning"], False),
+        ("openai-responses/v1", ["message[status=incomplete]/output_text"], False), ("openai-responses/v1", ["message[phase=final_answer]/output_text"], True),
+        ("openai-responses/v1", ["reasoning", "message[phase=final_answer]/output_text"], True), ("openai-responses/v1", ["message[phase=commentary]/output_text"], False),
+        ("openai-responses/v1", ["message[phase=final_answer]/refusal"], False), ("openai-responses/v1", ["message[phase=final_answer]/output_text", "reasoning"], False),
+        ("openai-responses/v1", ["message[phase=null]/output_text"], False), ("anthropic-messages/v1", ["message[phase=final_answer]/output_text"], False),
+        ("openai-responses/v1", ["message/output_text", "message/output_text"], False), ("openai-responses/v1", ["text"], False), ("openai-responses/v1", ["thinking", "message/output_text"], False),
+        ("anthropic-messages/v1", ["text"], True), ("anthropic-messages/v1", ["thinking", "redacted_thinking", "text"], True), ("anthropic-messages/v1", [], False),
+        ("anthropic-messages/v1", ["reasoning", "text"], False), ("anthropic-messages/v1", ["message/output_text"], False), ("anthropic-messages/v1", ["text", "text"], False),
+    ]:
+        assert regrade.content_is_readable(wire, types) is ok, (wire, types)
+    assert "wire" in (regrade.importer_refusal({"wire": "other", "stopReason": "completed"}) or "")
+
+
+@check("regrade.py: --wire is required for a run and selects the flags; a flag of the other wire is a usage error; --check takes no wire")
+def _():
+    import io
+    from contextlib import redirect_stderr
+
+    import regrade
+
+    def code(args: list[str]) -> tuple[int, str]:
+        err = io.StringIO()
+        with redirect_stderr(err):
+            return regrade.main(args), err.getvalue()
+
+    common = ["--log", "no-such-log.json", "--epochs", "1", "--judge-model", "m", "--max-tokens", "16", "--out-dir", "no-such-dir", "--base-url", "http://127.0.0.1:1", "--effort", "NOT_SENT", "--max-reasks", "0"]
+    c, msg = code(common + ["--thinking", "NOT_SENT"])
+    assert c == 64 and "--wire" in msg, (c, msg)
+    c, msg = code(common + ["--wire", "openai", "--verbosity", "NOT_SENT"])
+    assert c == 64 and "--wire must be one of" in msg, (c, msg)
+    c, msg = code(common + ["--wire", WIRE_OPENAI])
+    assert c == 64 and "--verbosity" in msg and "a run needs" in msg, (c, msg)
+    c, msg = code(common + ["--wire", WIRE])
+    assert c == 64 and "--thinking" in msg and "a run needs" in msg, (c, msg)
+    for extra in (["--thinking", "NOT_SENT"], ["--api-version", "2023-06-01"]):
+        c, msg = code(common + ["--wire", WIRE_OPENAI, "--verbosity", "NOT_SENT"] + extra)
+        assert c == 64 and f"{extra[0]} is a flag of the anthropic-messages/v1 wire only" in msg, (extra, c, msg)
+    c, msg = code(common + ["--wire", WIRE, "--thinking", "NOT_SENT", "--verbosity", "low"])
+    assert c == 64 and "--verbosity is a flag of the openai-responses/v1 wire only" in msg, (c, msg)
+    c, msg = code(common + ["--wire", WIRE_OPENAI, "--wire", WIRE_OPENAI, "--verbosity", "NOT_SENT"])
+    assert c == 64 and "given twice" in msg, (c, msg)
+    c, msg = code(common + ["--wire", "", "--verbosity", "NOT_SENT"])
+    assert c == 64 and "empty value" in msg, (c, msg)
+    c, msg = code(["--log", "x.json", "--epochs", "1", "--check", "--wire", WIRE_OPENAI])
+    assert c == 64 and "--check" in msg, (c, msg)
+    # the OpenAI gateway variables: each stops a run that states another address
+    for name in rg.OPENAI_ADDRESS_VARIABLES:
+        os.environ[name] = "https://secret-gateway.example.com/v1"
+        try:
+            c, msg = code(common + ["--wire", WIRE_OPENAI, "--verbosity", "NOT_SENT"])
+        finally:
+            del os.environ[name]
+        assert c == 64 and f"the environment variable {name} is set, and this grader never reads it" in msg and "secret-gateway" not in msg, (name, c, msg)
+    assert regrade.OPENAI_ADDRESS_VARIABLES == rg.OPENAI_ADDRESS_VARIABLES
+
+
 def main() -> int:
     failed = 0
     for name, ok, why in RESULTS:
@@ -2288,6 +2864,7 @@ def main() -> int:
         failed += 0 if ok else 1
     print(f"{len(RESULTS) - failed} passed, {failed} failed")
     SERVER.close()
+    OSERVER.close()
     return 1 if failed else 0
 
 

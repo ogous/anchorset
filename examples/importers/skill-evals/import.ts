@@ -75,12 +75,12 @@ import {
   READINGS,
   runImporter,
   runImporterAsProcess,
-  thinkingRepliesLine,
+  reasoningLine,
   typeName,
   ungradedRefusal,
   valueTypeProblems,
 } from '../shared.ts';
-import type { CasesFile, GraderRecord, ImportRefusalCode, Io, Reading, RecordedSlot } from '../shared.ts';
+import type { CasesFile, GraderRecord, ImportRefusalCode, Io, Reading, RecordedSlot, Wire } from '../shared.ts';
 import { byCodeUnit, flowSlotCount, flowSlotsWords, HEADER_COUNT_BOUND, isPathSafeId, readFlow, ROW_PROFILE, slotLabel, variantNameProblem, wholeRepSlots } from './flow.ts';
 import type { FlowRead } from './flow.ts';
 import { GRADER_FILE, REGRADE_SCHEMA, SCRIPT, SCRIPT_FILES } from './regrade.ts';
@@ -520,7 +520,10 @@ export type ConvertResult = {
   reps: number;
   /** The cases the flow held and the cases file left out, as the re-grade declares them. */
   excludedCaseIds: string[];
-    thinkingReplies: string;
+    wire: Wire;
+    requestedModel: string;
+    servedModel: string;
+    reasoning: string;
   reasks: string;
   /** The reading rule the replies were read under, as stated by the caller. */
   readingRule: Reading;
@@ -859,7 +862,10 @@ function convertLines(lines: ReturnType<typeof readLines>, sourceSha256: string,
     sourceRep: header.sourceRep,
     reps: header.reps,
     excludedCaseIds: [...header.excludedCaseIds],
-    thinkingReplies: thinkingRepliesLine(table.map((r) => r.record)),
+    wire: rec0.wire,
+    requestedModel: rec0.requestedModel,
+    servedModel: rec0.servedModel,
+    reasoning: reasoningLine(table.map((r) => r.record)),
     reasks: reasksLine(table.map((r) => r.record)),
     readingRule: reading,
   };

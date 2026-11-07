@@ -18,6 +18,10 @@
 // another comparison, a system side that cannot be compared) is printed with its code and its fields, and no plan is written. So a
 // plan is written only when `judge-change` would read it. `--out` is never overwritten.
 //
+// When the two runs were graded through two wires, or when only one of their `judgeHarnessVersion` strings names a wire (a run
+// imported before the wire was named; the wire of an older run is never inferred), it prints one note to standard error before it
+// writes the plan (`wireNote`). The note does not stop the plan.
+//
 // Exit codes: 0 written, 2 refused (the library's refusal, or a run with no known value for a field a plan fixes), 64 usage,
 // 65 invalid input (a file that does not parse, or a plan the library's parser rejects), 70 an unforeseen error.
 import { closeSync, existsSync, openSync, readFileSync, writeSync } from 'node:fs';
@@ -81,8 +85,28 @@ function judgeOf(run: RunArtifact, side: string): Record<JudgeField, string> {
   return judge;
 }
 
+/** What the note prints for a side whose harness string names no wire. */
+const WIRE_UNNAMED = 'not named in the run file';
+
+/** The wire a `judgeHarnessVersion` string names (its `; wire <name>` component), or undefined when it names none. */
+export function wireOfHarness(harness: string): string | undefined {
+  const part = harness.split('; ').find((c) => c.startsWith('wire '));
+  return part === undefined ? undefined : part.slice('wire '.length);
+}
+
+/**
+ * The cross-wire note, or undefined when there is none to print: the two strings name different wires, or exactly one of them
+ * names one. Two strings that name the same wire, or neither, get no note.
+ */
+export function wireNote(oldHarness: string, newHarness: string): string | undefined {
+  const a = wireOfHarness(oldHarness);
+  const b = wireOfHarness(newHarness);
+  if (a === b) return undefined;
+  return `The two run files were graded through two APIs (\`${a ?? WIRE_UNNAMED}\` and \`${b ?? WIRE_UNNAMED}\`). The report measures the change of the whole grading path: the model, the provider's API, the provider's defaults for every setting not sent, and how the reply is taken from the response. It does not separate the model from the rest. A setting with the same value in both files is the same text in the record, not the same setting: \`effort\`, \`temperature\`, the output cap and \`NOT_SENT\` mean different things to the two providers. Compare the two imports' reasoning and re-ask lines.`;
+}
+
 /** The plan for the two runs, or the library's refusal of it. Pure but for the files it reads. */
-export function planFor(flags: Record<(typeof FLAGS)[number], string>): { plan: Record<string, unknown>; oldSha: string; newSha: string } {
+export function planFor(flags: Record<(typeof FLAGS)[number], string>): { plan: Record<string, unknown>; oldSha: string; newSha: string; note: string | undefined } {
   const oldRead = readJson(flags['--old'], '--old');
   const newRead = readJson(flags['--new'], '--new');
   const old = parseRunArtifact(oldRead.json);
@@ -138,7 +162,7 @@ export function planFor(flags: Record<(typeof FLAGS)[number], string>): { plan: 
     bar,
     written,
   );
-  return { plan, oldSha, newSha };
+  return { plan, oldSha, newSha, note: wireNote(judges.old.judgeHarnessVersion, judges.new.judgeHarnessVersion) };
 }
 
 export function main(argv: readonly string[], given: Io): number {
@@ -149,7 +173,8 @@ export function main(argv: readonly string[], given: Io): number {
     const flags = parseFlags(argv);
     const out = flags['--out'];
     if (existsSync(out)) throw new Usage(`${out} exists; this tool never overwrites --out`);
-    const { plan } = planFor(flags);
+    const { plan, note } = planFor(flags);
+    if (note !== undefined) io.err(note);
     const fd = openSync(out, 'wx');
     try {
       writeSync(fd, `${JSON.stringify(plan, null, 2)}\n`);

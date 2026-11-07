@@ -286,3 +286,34 @@ export function refundRun(o: RefundRunOptions): RunArtifact {
 export function judgeRetry(caseId: string, reason: 'timeout' | 'rate-limited' | 'server-error' | 'transport' | 'truncated', answer = `Your refund for order ${caseId} is on its way.`): Attempt {
   return { kind: 'unmeasured', role: 'judge', reason, detail: '', outputHash: outputHashOf(answer), systemStop: 'end', packetHash: sha256Hex(`packet ${caseId} ${answer}`) } as Attempt;
 }
+
+// ---- the environment of a test that runs a grader as a subprocess (the paid-API guard) --------------------------------
+
+/** The sentinel keys every such environment holds. Neither is a key of any account: a request that carried one would be refused by any real host. */
+export const SENTINEL_KEYS = Object.freeze({ ANTHROPIC_API_KEY: 'sentinel-anthropic-key-not-a-real-key', OPENAI_API_KEY: 'sentinel-openai-key-not-a-real-key' });
+
+/**
+ * An environment for a subprocess that runs a recording grader, built from scratch: the machine's PATH, the two sentinel keys, and
+ * what `extra` adds. Nothing else of this process's environment comes along, so a real key, a gateway address (`*_BASE_URL`,
+ * `*_HOST`) or a proxy setting on the machine that runs the tests cannot reach a grader. A test that sets an address variable on
+ * purpose, to see the grader refuse it, passes it in `extra`.
+ */
+export function scratchEnv(extra: Readonly<Record<string, string>> = {}): Record<string, string> {
+  return { PATH: process.env['PATH'] ?? '', ...SENTINEL_KEYS, ...extra };
+}
+
+/** ANCHORSET_REQUIRE_INSPECT=1 (the importers job of CI, the release check): a test that needs Python or inspect_ai fails instead of being skipped. */
+export const REQUIRE_INSPECT = process.env['ANCHORSET_REQUIRE_INSPECT'] === '1';
+
+/** Inside a test: skip for this reason, or fail with it when the Python tier is required. */
+export function skipOrFail(t: { skip: (reason?: string) => void }, reason: string): void {
+  if (REQUIRE_INSPECT) assert.fail(`${reason} (ANCHORSET_REQUIRE_INSPECT=1: a skip is a failure)`);
+  t.skip(reason);
+}
+
+/** For a describe() options object: the skip reason, or false when there is none. Under the require switch a missing tool throws at load, so the file fails. */
+export function skipUnlessFound(found: unknown, reason: string): string | false {
+  if (found !== undefined) return false;
+  if (REQUIRE_INSPECT) throw new Error(`${reason} (ANCHORSET_REQUIRE_INSPECT=1: a skip is a failure)`);
+  return reason;
+}

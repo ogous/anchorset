@@ -336,7 +336,8 @@ test('usage errors exit 64 and print the usage line', () => {
 });
 
 test('one of each: the check and the re-grade script read their flags with the shared parser and their counts with the one count reader, and agree on --select ""', () => {
-  const regradeArgs = REQUIRED_FLAGS.flatMap((f) => [f, 'x']);
+  // `--wire` stands last: it selects the flags the rest must hold, and a first pair taken out must still leave a wire to read.
+  const regradeArgs = [...REQUIRED_FLAGS['anthropic-messages/v1'].filter((f) => f !== '--wire').flatMap((f) => [f, 'x']), '--wire', 'anthropic-messages/v1'];
   // The same value, the same answer, in the shared parser's own words.
   const words = (fn: () => unknown): string => {
     try {
@@ -351,7 +352,7 @@ test('one of each: the check and the re-grade script read their flags with the s
   // Each parser is the shared one over the file's own flag lists: the same messages for the same mistakes.
   for (const [parse, args, usage, required, optional] of [
     [parseCheckFlags, base(exampleFlow), USAGE, ['--flow', '--variant', '--cases', '--reps'], ['--select', '--bar']],
-    [parseRegradeFlags, regradeArgs, REGRADE_USAGE, [...REQUIRED_FLAGS], [...OPTIONAL_FLAGS]],
+    [parseRegradeFlags, regradeArgs, REGRADE_USAGE, [...REQUIRED_FLAGS['anthropic-messages/v1']], [...OPTIONAL_FLAGS['anthropic-messages/v1']]],
   ] as const) {
     const mistakes: string[][] = [[...args, '--retry', '3'], [...args, args[0] as string, 'again'], [...args, optional[0] as string], args.slice(2), [...args, optional[0] as string, '--x']];
     for (const argv of mistakes) {

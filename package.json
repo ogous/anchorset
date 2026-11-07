@@ -1,6 +1,6 @@
 {
   "name": "anchorset",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "license": "Apache-2.0",
   "author": "Ogous Chan Ali",
   "description": "Regression tests for your LLM evals, and checks on the judge that grades them.",
@@ -35,6 +35,7 @@
     "docs/IMPORTERS.md",
     "docs/JUDGE_CHANGE.md",
     "docs/MIGRATIONS.md",
+    "docs/PROMPTFOO.md",
     "docs/RATINGS_FORMAT.md",
     "docs/RUN_FORMAT.md",
     "examples/refund-bot/*.json",

@@ -1,7 +1,9 @@
-// A local stand-in for a hosted Messages API, for rehearsals and fixture generation. Standard library only.
+// A local stand-in for two hosted APIs, for rehearsals and fixture generation. Standard library only.
 //
-// Wire format: POST /v1/messages with a JSON body { model, max_tokens, messages, system? }; the answer is a
-// Messages-shaped response { id, type, role, model, content, stop_reason, stop_sequence, usage }.
+// Route 1, the Messages route: POST /v1/messages with a JSON body { model, max_tokens, messages, system? }; the answer is
+// a Messages-shaped response { id, type, role, model, content, stop_reason, stop_sequence, usage }.
+// Route 2, the Responses route: POST /v1/responses with a JSON body { model, input, instructions?, ... } where input is
+// a string or a list of { role, content } messages; the answer is a Responses-shaped object (see THE RESPONSES ROUTE).
 // Any other method or path is answered 404. Nothing here checks a key; the log redacts the value of the headers `x-api-key`, `authorization`, `proxy-authorization`, `cookie` and `api-key`.
 //
 // THE VERDICT RULE (deterministic, from the prompt text only). The prompt text is the system text, a newline,
@@ -14,8 +16,9 @@
 // [[strict:fail]], and no verdict ever depends on time, a counter or chance. A failure mode depends on a per-body
 // counter under the [[times:...]] marker only (below).
 //
-// THE SERVED ID is the requested id plus "-served-20260101", so it never equals the requested one. The response
-// id is "msg_fake_<seq>", seq counting this server's requests from 1, four digits.
+// THE SERVED ID (Messages route) is the requested id plus "-served-20260101", so it never equals the requested one. The
+// response id is "msg_fake_<seq>", seq counting this server's requests from 1, four digits (the Responses route counts
+// in the same sequence and names its response "resp_fake_<seq>").
 //
 // REPLY FORMAT: "json" gives {"pass": <bool>, "score": 1|0, "reason": "..."}; "grade" gives a sentence, a blank
 // line and "GRADE: C" (pass) or "GRADE: I" (fail). Set by --reply-format, or per request by [[format:grade]] /
@@ -62,6 +65,44 @@
 // Without a thinking marker the counter is 0. The request keys `thinking` and `output_config` are accepted and, like
 // the whole body, logged as sent; nothing here checks them and no reply depends on them.
 //
+// THE RESPONSES ROUTE. The prompt text is the `instructions` text, a newline, then the text of the input (the string,
+// or every message's content in order); the verdict rule, the formats and the markers above work on it unchanged. The
+// answer is { id: "resp_fake_<seq>", object: "response", status, error: null, incomplete_details: null | { reason },
+// model, truncation: "disabled", store: false, previous_response_id: null, output: [...], usage: { input_tokens: 100,
+// output_tokens: 20, output_tokens_details: { reasoning_tokens }, total_tokens: 120 } }. A reasoning item is
+// { type: "reasoning", id, summary: [], encrypted_content: <a fixed string>, status: "completed" }; a message item is
+// { type: "message", id, role: "assistant", status: "completed", content: [{ type: "output_text", text, annotations: [] }] }.
+// Errors are { error: { message, type, param: null, code: null } }. Nothing here checks the request body beyond a model
+// id and an input, and the whole body is logged as sent.
+//   THE SERVED ID on this route echoes the requested id by default; the marker [[served:dated]] gives
+//   "<requested>-served-20260101". (The Messages route keeps its suffix; it answers [[served:dated]] with 400.)
+//   REASONING: [[thinking]] puts a reasoning item before the message and sets reasoning_tokens to 12; without it the
+//   counter is 0. [[no-counter]] drops output_tokens_details. [[redacted-thinking]] has no counterpart: answered 400.
+//   MODES that answer here as on the Messages route, with the Responses meaning of each: normal, no-verdict, prose,
+//   empty, not-json (the same text in one output_text part); truncated (status "incomplete", reason "max_output_tokens",
+//   the verdict cut in the middle, the message item "incomplete"); refusal (status "completed", one refusal part);
+//   tool-use (a function_call item, no text); non-text (a reasoning item, then the message; reasoning_tokens 12);
+//   http-500, http-429, http-400, redirect (307 to /v1/responses), encoded, stall, drop.
+//   PHASE: on this route every message item carries "phase": "final_answer" by default, as the real API did on 2026-11-06.
+//   The two modes below change that.
+//   MODES that exist on this route only (each is answered 400 on the Messages route):
+//     truncated-verdict-whole  "incomplete" + "max_output_tokens", with an output_text holding a whole verdict a reading
+//                              rule accepts (the message item "completed": only the response status says it was cut)
+//     truncated-reasoning      "incomplete" + "max_output_tokens", one reasoning item and no message; reasoning_tokens 20
+//     refusal-after-text       "completed", one message item: an accepted output_text part, then a refusal part
+//     refusal-before-text      "completed", one message item: a refusal part, then an accepted output_text part
+//     content-filter           "incomplete" + "content_filter", with an accepted output_text (the message "completed")
+//     message-incomplete       "completed", but the message item's status is "incomplete"
+//     phase-absent             "completed", but the message item carries no "phase" at all
+//     phase-commentary         "completed", but the message item carries "phase": "commentary"
+//     http-503                 status 503 and an error body (service_unavailable_error)
+//     status-failed            status 200 with "status": "failed", error null, no output
+//     error-set                status 200, "completed", and "error" holding an error object
+//     bad-object               status 200 and "object": "chat.completion"
+//     echo-truncation-auto     a "completed" reply that echoes "truncation": "auto"
+//     echo-store-true          a "completed" reply that echoes "store": true
+//   MODES with no counterpart on this route, answered 400 here: stop-seq and http-529.
+//
 // LONG REPLY: --long-reply <chars> (or [[long-reply]] for 20000) puts that many filler characters before the
 // verdict, in the reply's text.
 //
@@ -81,7 +122,17 @@ export const MODES = [
   'normal', 'truncated', 'no-verdict', 'prose', 'empty', 'not-json', 'refusal', 'stop-seq', 'tool-use', 'non-text', 'http-500', 'redirect',
   'http-529', 'http-429', 'http-400', 'stall', 'drop', 'encoded',
 ] as const;
-export type Mode = (typeof MODES)[number];
+// The modes that exist on the Responses route only. The Messages route answers each of them 400.
+export const OPENAI_ONLY_MODES = [
+  'truncated-verdict-whole', 'truncated-reasoning', 'refusal-after-text', 'refusal-before-text', 'content-filter', 'message-incomplete', 'phase-absent', 'phase-commentary',
+  'http-503', 'status-failed', 'error-set', 'bad-object', 'echo-truncation-auto', 'echo-store-true',
+] as const;
+// The modes that exist on the Messages route only. The Responses route answers each of them 400.
+export const MESSAGES_ONLY_MODES = ['stop-seq', 'http-529'] as const;
+/** Every mode the Responses route answers: the shared ones, then its own. */
+export const OPENAI_ROUTE_MODES: readonly string[] = [...MODES.filter((m) => !(MESSAGES_ONLY_MODES as readonly string[]).includes(m)), ...OPENAI_ONLY_MODES];
+export const SERVED_DATED_MARKER = '[[served:dated]]';
+export type Mode = (typeof MODES)[number] | (typeof OPENAI_ONLY_MODES)[number];
 export type ReplyFormat = 'json' | 'grade';
 export interface FakeEndpointOptions {
   host?: string;
@@ -100,7 +151,98 @@ export interface RunningEndpoint {
 
 const CREDENTIAL_HEADERS = new Set(['x-api-key', 'authorization', 'proxy-authorization', 'cookie', 'api-key']);
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
-const isMode = (x: string): x is Mode => (MODES as readonly string[]).includes(x);
+const isMode = (x: string): x is Mode => (MODES as readonly string[]).includes(x) || (OPENAI_ONLY_MODES as readonly string[]).includes(x);
+const ENCRYPTED_FIXED = 'ZmFrZS1lbmNyeXB0ZWQ=';
+
+type Built =
+  | { kind: 'fail'; code: number; type: string; message: string }
+  | { kind: 'redirect' }
+  | { kind: 'silent'; how: 'stall' | 'drop' }
+  | { kind: 'ok'; payload: Record<string, unknown>; gzip: boolean };
+
+/** The answer of the Responses route for one request whose mode is already known to be answered here. */
+function responsesAnswer(model: string, prompt: string, mode: string, format: ReplyFormat, long: number, seq: number): Built {
+  const n = String(seq).padStart(4, '0');
+  switch (mode) {
+    case 'http-500': return { kind: 'fail', code: 500, type: 'server_error', message: 'local fake: internal error' };
+    case 'http-503': return { kind: 'fail', code: 503, type: 'service_unavailable_error', message: 'local fake: unavailable' };
+    case 'http-429': return { kind: 'fail', code: 429, type: 'rate_limit_error', message: 'local fake: rate limited' };
+    case 'http-400': return { kind: 'fail', code: 400, type: 'invalid_request_error', message: 'local fake: the request is rejected' };
+    case 'redirect': return { kind: 'redirect' };
+    case 'stall': return { kind: 'silent', how: 'stall' };
+    case 'drop': return { kind: 'silent', how: 'drop' };
+  }
+  const v = verdictOf(prompt, model);
+  const plain = prompt.includes('[[grade:p]]') ? 'Local fake judge reasoning.\n\nGRADE: P' : verdictReply(format, v);
+  const clean = prompt.includes('[[fence]]') ? `\`\`\`json\n${plain}\n\`\`\`` : plain;
+  const thinking = prompt.includes('[[thinking]]') || mode === 'non-text';
+  const reasoning = { type: 'reasoning', id: `rs_fake_${n}`, summary: [], encrypted_content: ENCRYPTED_FIXED, status: 'completed' };
+  const lead: unknown[] = thinking ? [reasoning] : [];
+  const textPart = (t: string): Record<string, unknown> => ({ type: 'output_text', text: t, annotations: [] });
+  const refusalPart = { type: 'refusal', refusal: 'Local fake judge: declined.' };
+  const phase: Record<string, unknown> = mode === 'phase-absent' ? {} : { phase: mode === 'phase-commentary' ? 'commentary' : 'final_answer' };
+  const message = (content: unknown[], status = 'completed'): Record<string, unknown> => ({ type: 'message', id: `msg_fake_${n}`, role: 'assistant', status, ...phase, content });
+  let text = clean;
+  let status = 'completed';
+  let incompleteReason: string | null = null;
+  let itemStatus = 'completed';
+  let output: unknown[] | undefined;
+  let reasoningTokens = thinking ? 12 : 0;
+  let object = 'response';
+  let error: unknown = null;
+  let truncation = 'disabled';
+  let store = false;
+  let gzip = false;
+  switch (mode) {
+    case 'normal': break;
+    case 'truncated': text = clean.slice(0, Math.max(1, Math.floor(clean.length / 2))); status = 'incomplete'; incompleteReason = 'max_output_tokens'; itemStatus = 'incomplete'; break;
+    case 'truncated-verdict-whole': status = 'incomplete'; incompleteReason = 'max_output_tokens'; break;
+    case 'truncated-reasoning': status = 'incomplete'; incompleteReason = 'max_output_tokens'; output = [reasoning]; reasoningTokens = 20; break;
+    case 'no-verdict': text = format === 'json' ? JSON.stringify({ reason: 'Local fake judge: no verdict given.' }) : 'Local fake judge reasoning with no grade line.'; break;
+    case 'prose': text = `Here is my verdict: ${clean} I hope that helps.`; break;
+    case 'empty': text = ''; break;
+    case 'not-json': text = 'I cannot put this in the requested form, but the reply seems fine.'; break;
+    case 'refusal': output = [...lead, message([refusalPart])]; break;
+    case 'refusal-after-text': output = [...lead, message([textPart(clean), refusalPart])]; break;
+    case 'refusal-before-text': output = [...lead, message([refusalPart, textPart(clean)])]; break;
+    case 'content-filter': status = 'incomplete'; incompleteReason = 'content_filter'; break;
+    case 'message-incomplete': itemStatus = 'incomplete'; break;
+    case 'phase-absent': case 'phase-commentary': break;
+    case 'tool-use': output = [...lead, { type: 'function_call', id: `fc_fake_${n}`, call_id: `call_fake_${n}`, name: 'fake_tool', arguments: '{}', status: 'completed' }]; break;
+    case 'non-text': break;
+    case 'encoded': gzip = true; break;
+    case 'status-failed': status = 'failed'; output = []; break;
+    case 'error-set': error = { code: 'server_error', message: 'local fake: an error object on a 200', param: null, type: 'server_error' }; break;
+    case 'bad-object': object = 'chat.completion'; break;
+    case 'echo-truncation-auto': truncation = 'auto'; break;
+    case 'echo-store-true': store = true; break;
+    default: return { kind: 'fail', code: 400, type: 'invalid_request_error', message: `local fake: unknown mode "${mode}"` };
+  }
+  if (long > 0 && output === undefined) text = `${'x'.repeat(long)}\n\n${text}`;
+  output ??= [...lead, message([textPart(text)], itemStatus)];
+  return {
+    kind: 'ok',
+    gzip,
+    payload: {
+      id: `resp_fake_${n}`,
+      object,
+      status,
+      error,
+      incomplete_details: incompleteReason === null ? null : { reason: incompleteReason },
+      model: prompt.includes(SERVED_DATED_MARKER) ? model + SERVED_SUFFIX : model,
+      truncation,
+      store,
+      previous_response_id: null,
+      output,
+      usage: {
+        input_tokens: 100,
+        output_tokens: 20,
+        ...(prompt.includes('[[no-counter]]') ? {} : { output_tokens_details: { reasoning_tokens: reasoningTokens } }),
+        total_tokens: 120,
+      },
+    },
+  };
+}
 
 /** The verdict of the documented rule. */
 export function verdictOf(promptText: string, requestedModel: string): 'pass' | 'fail' {
@@ -129,6 +271,14 @@ const promptTextOf = (body: Record<string, unknown>): string => {
   }
   return parts.join('\n');
 };
+
+const inputTextOf = (input: unknown): string => {
+  if (typeof input === 'string') return input;
+  if (!Array.isArray(input)) return '';
+  return input.map((m) => (typeof m === 'object' && m !== null ? textOf((m as { content?: unknown }).content) : '')).join('\n');
+};
+
+const responsesPromptOf = (body: Record<string, unknown>): string => [textOf(body['instructions']), inputTextOf(body['input'])].join('\n');
 
 const verdictReply = (format: ReplyFormat, verdict: 'pass' | 'fail'): string =>
   format === 'json'
@@ -184,22 +334,24 @@ export function startFakeEndpoint(options: FakeEndpointOptions = {}): Promise<Ru
     let gzip = false;
     const path = (req.url ?? '').split('?', 1)[0];
 
+    const route: 'messages' | 'responses' | 'none' = req.method !== 'POST' ? 'none' : path === '/v1/messages' ? 'messages' : path === '/v1/responses' ? 'responses' : 'none';
     const fail = (code: number, type: string, message: string): void => {
       status = code;
-      payload = { type: 'error', error: { type, message } };
+      payload = route === 'responses' ? { error: { message, type, param: null, code: null } } : { type: 'error', error: { type, message } };
     };
 
-    if (req.method !== 'POST' || path !== '/v1/messages') {
+    if (route === 'none') {
       fail(404, 'not_found_error', 'local fake: unknown route');
     } else if (typeof bodyJson !== 'object' || bodyJson === null || Array.isArray(bodyJson)) {
       fail(400, 'invalid_request_error', 'local fake: body is not a JSON object');
     } else {
       const body = bodyJson as Record<string, unknown>;
       const model = body['model'];
-      if (typeof model !== 'string' || model === '' || !Array.isArray(body['messages'])) {
-        fail(400, 'invalid_request_error', 'local fake: model and messages are required');
+      const shaped = route === 'messages' ? Array.isArray(body['messages']) : typeof body['input'] === 'string' || Array.isArray(body['input']);
+      if (typeof model !== 'string' || model === '' || !shaped) {
+        fail(400, 'invalid_request_error', route === 'messages' ? 'local fake: model and messages are required' : 'local fake: model and input are required');
       } else {
-        const prompt = promptTextOf(body);
+        const prompt = route === 'messages' ? promptTextOf(body) : responsesPromptOf(body);
         const modeMarker = /\[\[mode:([a-z0-9-]+)\]\]/.exec(prompt)?.[1];
         usedMode = modeMarker ?? defaultMode;
         // The one stateful marker. It must stand once and whole; anything else that opens like it is refused below.
@@ -220,6 +372,27 @@ export function startFakeEndpoint(options: FakeEndpointOptions = {}): Promise<Ru
           fail(400, 'invalid_request_error', 'local fake: a [[times:<n>:<mode>]] marker must stand once in a prompt, with n from 1 to 9 and a known mode');
         } else if (!isMode(usedMode)) {
           fail(400, 'invalid_request_error', `local fake: unknown mode "${usedMode}"`);
+        } else if (route === 'messages' && (OPENAI_ONLY_MODES as readonly string[]).includes(usedMode)) {
+          fail(400, 'invalid_request_error', `local fake: mode "${usedMode}" has no counterpart on this route`);
+        } else if (route === 'messages' && prompt.includes(SERVED_DATED_MARKER)) {
+          fail(400, 'invalid_request_error', `local fake: the marker ${SERVED_DATED_MARKER} has no counterpart on this route`);
+        } else if (route === 'responses' && (MESSAGES_ONLY_MODES as readonly string[]).includes(usedMode)) {
+          fail(400, 'invalid_request_error', `local fake: mode "${usedMode}" has no counterpart on this route`);
+        } else if (route === 'responses' && prompt.includes('[[redacted-thinking]]')) {
+          fail(400, 'invalid_request_error', 'local fake: the marker [[redacted-thinking]] has no counterpart on this route');
+        } else if (route === 'responses') {
+          verdict = verdictOf(prompt, model);
+          const built = responsesAnswer(model, prompt, usedMode, format, long, mySeq);
+          switch (built.kind) {
+            case 'fail': fail(built.code, built.type, built.message); break;
+            case 'redirect':
+              status = 307;
+              extraHeaders = { location: '/v1/responses' };
+              payload = { error: { message: 'local fake: redirected', type: 'redirect', param: null, code: null } };
+              break;
+            case 'silent': noResponse = built.how; break;
+            case 'ok': payload = built.payload; gzip = built.gzip; break;
+          }
         } else {
           const v = verdictOf(prompt, model);
           verdict = v;
@@ -354,7 +527,7 @@ async function main(argv: string[]): Promise<void> {
   const known = new Set(['--port', '--host', '--log', '--mode', '--reply-format', '--long-reply']);
   for (let i = 0; i < argv.length; i += 2) {
     if (!known.has(argv[i] ?? '') || argv[i + 1] === undefined) {
-      console.error(`usage: node examples/importers/fake-endpoint.ts [--port N] [--host 127.0.0.1] [--log FILE] [--mode ${MODES.join('|')}] [--reply-format json|grade] [--long-reply CHARS]`);
+      console.error(`usage: node examples/importers/fake-endpoint.ts [--port N] [--host 127.0.0.1] [--log FILE] [--mode ${[...MODES, ...OPENAI_ONLY_MODES].join('|')}] [--reply-format json|grade] [--long-reply CHARS]`);
       process.exit(64);
     }
   }

@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { afterEach, describe, it } from 'node:test';
 import { gatewayVariableProblem } from '../examples/importers/shared.ts';
 import { loadTestedVersions } from '../examples/importers/shared.ts';
+import { scratchEnv, skipOrFail } from './helpers.ts';
 
 // Two guards of the paid step, on every path, in the grader files themselves and in `regrade.py`:
 //   1. the gateway variable (ANTHROPIC_BASE_URL): the tools' own Anthropic providers honour it, the recording graders never
@@ -31,7 +32,7 @@ function loadGrader(): ProviderClass {
   delete require.cache[GRADER_PATH];
   return require(GRADER_PATH) as ProviderClass;
 }
-const CONFIG = { model: 'judge-requested', max_tokens: 256, baseUrl: 'http://127.0.0.1:18765', thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0 };
+const CONFIG = { wire: 'anthropic-messages/v1', model: 'judge-requested', max_tokens: 256, baseUrl: 'http://127.0.0.1:18765', thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0 };
 const make = (config: Record<string, unknown> = {}): unknown => new (loadGrader())({ id: 'file://grader-provider.cjs', config: { ...CONFIG, ...config } });
 
 const savedGateway = process.env['ANTHROPIC_BASE_URL'];
@@ -58,7 +59,7 @@ describe('the JavaScript recording grader: the gateway variable', () => {
           assert.ok(!m.includes('gateway.invalid'), 'the value is never printed');
           // The first half is the other scripts' own words; the tail is the grader's own, true when the tool runs the file: nothing
           // is said to be unwritten (the tool writes its error rows), and the setting is named as the config key it is.
-          const shared = gatewayVariableProblem(GATEWAY, baseUrl) as string;
+          const shared = gatewayVariableProblem(GATEWAY, baseUrl, 'ANTHROPIC_BASE_URL') as string;
           assert.ok(m.slice('grader: '.length).startsWith(shared.slice(0, shared.indexOf(' State the same address'))), "the first half is the other scripts' words");
           assert.ok(m.endsWith(PROMPTFOO_TAIL), m);
           assert.ok(!m.includes('Nothing was written') && !m.includes('--base-url'), 'no statement that is untrue under the tool');
@@ -165,18 +166,18 @@ describe('the JavaScript recording grader: the tool version, when promptfoo runs
 
 /** The first Python of 3.10 or later on this machine (regrade.py's annotations need it), or undefined. */
 function python(): string | undefined {
-  return ['python3.13', 'python3.12', 'python3.11', 'python3.10', 'python3', 'python'].find((p) => spawnSync(p, ['-c', 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)']).status === 0);
+  return ['python3.13', 'python3.12', 'python3.11', 'python3.10', 'python3', 'python'].find((p) => spawnSync(p, ['-c', 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)'], { env: { PATH: process.env['PATH'] ?? '' } }).status === 0);
 }
 /** A Python that has inspect_ai (the venv named by ANCHORSET_INSPECT_VENV first), or undefined. */
 function pythonWithInspect(): string | undefined {
   const venv = process.env['ANCHORSET_INSPECT_VENV'];
-  return [...(venv === undefined ? [] : [join(venv, 'bin', 'python')]), 'python3.13', 'python3.12', 'python3.11', 'python3.10', 'python3', 'python'].find((p) => spawnSync(p, ['-c', 'import inspect_ai']).status === 0);
+  return [...(venv === undefined ? [] : [join(venv, 'bin', 'python')]), 'python3.13', 'python3.12', 'python3.11', 'python3.10', 'python3', 'python'].find((p) => spawnSync(p, ['-c', 'import inspect_ai'], { env: { PATH: process.env['PATH'] ?? '' } }).status === 0);
 }
 
 describe('regrade.py: the tool version, before any call', () => {
   // The driver stands in for the installed package's metadata and keeps the package itself out of reach, so that what ends the run is the script's own check.
   const driver = (version: string): string => `import runpy, sys, importlib.metadata as m; m.version = lambda n: ${JSON.stringify(version)}; sys.modules["inspect_ai"] = None; sys.exit(runpy.run_path(${JSON.stringify(REGRADE_PY)}, run_name="not_main")["main"](sys.argv[1:]))`;
-  const RUN = ['--log', 'no-such-log.json', '--epochs', '1', '--judge-model', 'm', '--max-tokens', '16', '--out-dir', 'o', '--thinking', 'NOT_SENT', '--effort', 'NOT_SENT', '--max-reasks', '0', '--base-url', 'http://127.0.0.1:18765'];
+  const RUN = ['--log', 'no-such-log.json', '--epochs', '1', '--judge-model', 'm', '--max-tokens', '16', '--out-dir', 'o', '--wire', 'anthropic-messages/v1', '--thinking', 'NOT_SENT', '--effort', 'NOT_SENT', '--max-reasks', '0', '--base-url', 'http://127.0.0.1:18765'];
   const CHECK = ['--log', 'no-such-log.json', '--epochs', '1', '--check'];
   const runWith = (py: string, version: string, args: string[]) => spawnSync(py, ['-c', driver(version), ...args], { encoding: 'utf8', env: { PATH: process.env['PATH'] ?? '' } });
 
@@ -189,7 +190,7 @@ describe('regrade.py: the tool version, before any call', () => {
   it('exits 64 on another inspect_ai version, in a check and in a run, naming the version, the whole set and the install line, and writes nothing', (t) => {
     const py = python();
     if (py === undefined) {
-      t.skip('no Python 3.10 or later on this machine');
+      skipOrFail(t, 'no Python 3.10 or later on this machine');
       return;
     }
     for (const version of ['0.3.276', '0.3.274', '0.4.0', '0.3.275.post1']) {
@@ -207,7 +208,7 @@ describe('regrade.py: the tool version, before any call', () => {
   it('goes on under each tested version (here it ends on the blocked import, which is the next thing it does)', (t) => {
     const py = python();
     if (py === undefined) {
-      t.skip('no Python 3.10 or later on this machine');
+      skipOrFail(t, 'no Python 3.10 or later on this machine');
       return;
     }
     for (const version of INSPECT_SET) {
@@ -223,11 +224,11 @@ describe('regrade.py: the tool version, before any call', () => {
   it('a missing package that is not inspect_ai is not answered with the inspect_ai install line alone: the module is named', (t) => {
     const py = python();
     if (py === undefined) {
-      t.skip('no Python 3.10 or later on this machine');
+      skipOrFail(t, 'no Python 3.10 or later on this machine');
       return;
     }
     const d = `import runpy, sys; m = runpy.run_path(${JSON.stringify(REGRADE_PY)}, run_name="not_main"); sys.exit(m["missing_package"](ModuleNotFoundError("x", name="tiktoken")))`;
-    const r = spawnSync(py, ['-c', d], { encoding: 'utf8' });
+    const r = spawnSync(py, ['-c', d], { env: scratchEnv(), encoding: 'utf8' });
     assert.equal(r.status, 64, r.stderr);
     assert.match(r.stderr, /'tiktoken'/);
     assert.match(r.stderr, /dependency of inspect_ai/);
@@ -238,7 +239,7 @@ describe('recording_grader.py: the gateway variable', () => {
   it('refuses at construction, before any call, when the variable is set and no base URL is stated, or another one is; the same address, an empty variable and none are accepted', (t) => {
     const py = pythonWithInspect();
     if (py === undefined) {
-      t.skip('no Python with inspect_ai on this machine (set ANCHORSET_INSPECT_VENV)');
+      skipOrFail(t, 'no Python with inspect_ai on this machine (set ANCHORSET_INSPECT_VENV)');
       return;
     }
     const d = `
@@ -247,7 +248,7 @@ sys.path.insert(0, ${JSON.stringify(join(root, 'examples', 'importers', 'inspect
 from inspect_ai.model import GenerateConfig
 import recording_grader as rg
 def build(base_url):
-    return rg.RecordingGrader("m", base_url=base_url, config=GenerateConfig(max_tokens=8), thinking="NOT_SENT", effort="NOT_SENT", max_reasks=0)
+    return rg.RecordingGrader("m", base_url=base_url, config=GenerateConfig(max_tokens=8), wire="anthropic-messages/v1", thinking="NOT_SENT", effort="NOT_SENT", max_reasks=0)
 GATEWAY = "http://127.0.0.1:4000"
 os.environ["ANTHROPIC_BASE_URL"] = GATEWAY
 for url in (None, "http://127.0.0.1:18765", GATEWAY + "/"):
@@ -276,10 +277,12 @@ print("ok")
   // Needs no Python: the guard is in the shipped file, in the grader's own words (not the scripts' tail, which says "nothing was written"
   // and names a flag a bare Inspect run does not have).
   it('holds the guard in its source, with a tail that is true when Inspect runs the file', () => {
-    const tail = ", and the key would go there instead of to the address your other tools use. State the same address as the grader's base URL, or unset the variable. No call was made.";
+    const tail = ", and the key would go there instead of to the address your other tools use. {hint} No call was made.";
     const source = readFileSync(GRADER_PY, 'utf8');
-    assert.ok(source.includes('the environment variable ANTHROPIC_BASE_URL is set, and this grader never reads it: ') && source.includes(tail), 'the words');
-    assert.ok(source.includes('os.environ.get("ANTHROPIC_BASE_URL")'), 'the variable is read at construction');
+    assert.ok(source.includes('the environment variable {name} is set, and this grader never reads it: ') && source.includes(tail), 'the words');
+    assert.ok(source.includes('"State the same address as the grader\'s base URL, or unset the variable."') && source.includes('hint = "Unset the variable." if name.endswith("_HOST")'), 'the remedies: a bare host is only ever unset');
+    assert.ok(source.includes('for name in OPENAI_ADDRESS_VARIABLES if openai else ("ANTHROPIC_BASE_URL",):') && source.includes('os.environ.get(name)'), 'the variables are read at construction, one list for each wire');
+    assert.ok(source.includes('OPENAI_ADDRESS_VARIABLES = ("OPENAI_BASE_URL", "OPENAI_API_BASE_URL", "OPENAI_API_HOST", "OPENAI_HOST")'), 'the four OpenAI variables');
     assert.ok(!source.includes('Nothing was written'), 'nothing is said to be unwritten');
   });
 });

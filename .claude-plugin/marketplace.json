@@ -6,7 +6,12 @@
     {
       "name": "anchorset",
       "description": "Run the anchorset CLI from Claude Code: regression tests for your LLM evals, and checks on the judge that grades them.",
-      "source": "./plugin",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/ogous/anchorset.git",
+        "path": "plugin",
+        "sha": "f3afad22a036fa2f884f40eec56a1b4eb8d3a74d"
+      },
       "license": "Apache-2.0"
     }
   ]

@@ -24,12 +24,17 @@ You need:
   other version is refused. The log of your system's own run may come from any version: see
   [What is and is not pinned](#what-is-and-is-not-pinned).
 - For the skill's result folder: no tool.
-- An Anthropic API key, for the paid step only.
+- An API key for the judge's provider, for the paid step only: `ANTHROPIC_API_KEY` for Anthropic's Messages API,
+  `OPENAI_API_KEY` for OpenAI's Responses API.
 
 Before you pay for a call:
 
-- The grading scripts speak the Anthropic Messages API only. A judge from another provider cannot be used through
-  them.
+- The grading scripts speak two APIs: Anthropic's Messages API (`anthropic-messages/v1`) and OpenAI's own Responses
+  API (`openai-responses/v1`). A judge from any other provider cannot be used through them. The settings of each, and
+  what to know before you switch from one to the other, are under [Two APIs, and a switch between
+  them](#two-apis-and-a-switch-between-them).
+- Every OpenAI request sends `store: false` and `truncation: "disabled"`. What those mean for your data and for a long
+  input is stated in that section.
 - The importers never read labels you already have. Both judges grade again, and you pay for those calls with your
   own key: at least one call per draw, for each judge.
 - The old judge is whatever its model name serves today. It may not be the judge that gave your earlier labels.
@@ -39,11 +44,13 @@ Before you pay for a call:
 - Imported run files work with `judge-change` only. `gate` and `flips` refuse them.
 - The scripts were run against Anthropic's API on 2026-10-13, on the small example of each source, with promptfoo
   0.123.1 and `inspect_ai` 0.3.275. Six of seven imports succeeded; one promptfoo import was refused because five of its
-  nine replies were not a single JSON object. Since then the JavaScript grader has changed only in where it reads the
-  tested versions. The Inspect script `regrade.py` has since gained checks made before any call (the tested-versions list,
-  the stated answer count) and a record of the system log, run against the stand-in only. Promptfoo 0.125.1 and `inspect_ai` 0.3.286 have also run against the stand-in only. Not tried there: a
-  re-ask, a rate limit, a server error, a timeout, a model that rejects a thinking or effort setting, or `judge-change`
-  on real imported files.
+  nine replies were not a single JSON object. Since then the JavaScript grader has changed in where it reads the
+  tested versions and, in this version, gained OpenAI's wire and a record that names the wire. Its Anthropic requests are
+  built as before. The Inspect script `regrade.py` has since gained checks made before any call (the tested-versions
+  list, the stated answer count) and a record of the system log. On Anthropic's wire, these changes, promptfoo 0.125.1
+  and `inspect_ai` 0.3.286 have run against the stand-in only. Not tried against Anthropic's API: a re-ask, a rate limit, a server error, a timeout, a
+  model that rejects a thinking or effort setting, or `judge-change` on real imported files. OpenAI's wire ran against
+  OpenAI's API on 2026-11-06 in two short checks ([what ran](#two-apis-and-a-switch-between-them)).
 
 ## Try it first, at no cost
 
@@ -82,13 +89,19 @@ results you want to keep, name a folder of your own in place of `mktemp`:
 OUT="$(mktemp -d)"
 ```
 
-Every grading script takes the same settings: the judge's model name, the API address, `max_tokens` (the cap on
-the judge's reply), `temperature`, `thinking` and `effort` (`NOT_SENT` sends no such setting), and the number of
-re-asks, 0 to 3. A re-ask is one more try after a call got no reply or a reply cut at the cap. The scripts call one
-case and draw a slot. Between the two judges, change only what you mean to measure. Usually that is the model name.
+Every grading script takes the same kinds of setting: `wire` (which API: `anthropic-messages/v1` or
+`openai-responses/v1`), the judge's model name, the API address, the cap on the judge's output, `temperature`,
+`effort` (`NOT_SENT` sends no such setting), `thinking` on Anthropic's API or `verbosity` on OpenAI's, and the number
+of re-asks, 0 to 3. `wire`, the model, the output cap, `effort`, `thinking` or `verbosity` and the number of re-asks
+have no default. A re-ask is one more try after a call got no reply or a reply cut at the cap. The scripts call
+one case and draw a slot. Between the two judges, change only what you mean to measure. Usually that is the model
+name. The settings of each API are in the table under [Two APIs](#two-apis-and-a-switch-between-them); the commands
+below use Anthropic's.
 
 If `ANTHROPIC_BASE_URL` is set in your shell and differs from the address you give, no grading script makes a
-call, and promptfoo reports every row as an error. Unset it.
+call, and promptfoo reports every row as an error. Unset it. For an OpenAI judge the variables are `OPENAI_BASE_URL`,
+`OPENAI_API_BASE_URL`, `OPENAI_API_HOST` and `OPENAI_HOST`: each one that is set and differs from the address you
+give, or is set when you give none, stops the grader the same way.
 
 An importer never overwrites its `--out`. Use a new name to import again.
 
@@ -100,14 +113,15 @@ bound and runtime, and list those two fields as the moves. The report shows that
 inside them, so keeping the rest the same is up to you. A second draw set of one judge (`drawSets.reask`) shows how far
 the judge differs from itself.
 
-For a real judge, the address is `https://api.anthropic.com`. Export `ANTHROPIC_API_KEY` once in your shell, from
-your secret store, and drop the inline `ANTHROPIC_API_KEY=dummy` from the commands below. Do not type a key into a
+For a real judge, the address is `https://api.anthropic.com`, or `https://api.openai.com/v1` for OpenAI. Export
+`ANTHROPIC_API_KEY` (or `OPENAI_API_KEY`) once in your shell, from your secret store, and drop the inline
+`ANTHROPIC_API_KEY=dummy` from the commands below. Do not type a key into a
 command: it would stay in your shell history.
 
 ### promptfoo
 
-You start from your stored answers, one per case. You write `stored.json` by hand; no script fills it from an
-earlier promptfoo result.
+You start from your stored answers, one per case. `stored-from-result.ts` writes `stored.json` from the result file of
+an earlier run of your system ([PROMPTFOO.md](PROMPTFOO.md), step 1); or you write it by hand.
 
 1. Copy the example folder. The `export` line keeps promptfoo's data in the scratch folder and turns off its
    telemetry, update check and sharing.
@@ -122,9 +136,10 @@ With your own data, now replace the example's values in four files of the copy, 
 
 - `stored.json`: one JSON object from case id to answer text, `{ "c1": "the answer", … }`.
 - `promptfooconfig.yaml`: your tests, each with a `case_id`; your rubric, as the `value` of the one `llm-rubric`
-  check; the old judge's settings on the `config:` line (`model`, `baseUrl`, `max_tokens`, `temperature`,
-  `thinking`, `effort`, `maxReasks`). With no `baseUrl`, the grading script sends your key to
-  `https://api.anthropic.com`.
+  check; the old judge's settings on the `config:` line (`wire`, `model`, `baseUrl`, `max_tokens`, `temperature`,
+  `thinking`, `effort`, `maxReasks`; on OpenAI's API `max_output_tokens` and `verbosity` in place of `max_tokens`
+  and `thinking`). With no `baseUrl`, the grading script sends your key to `https://api.anthropic.com`, or to
+  `https://api.openai.com/v1` on the OpenAI wire.
 - `cases.json`: each case id, its class (`klass`) and the label you expect (`expect`).
 - `bar.json`: the labels, the classes and the pass bar of each.
 
@@ -211,8 +226,8 @@ python examples/importers/inspect/regrade.py --log examples/importers/inspect/fi
    its `--out-dir` and prints `status: success`. Give every run a new `--out-dir`: step 3 expects one log in each.
 
 ```bash
-ANTHROPIC_API_KEY=dummy python examples/importers/inspect/regrade.py --log examples/importers/inspect/fixtures/source.json --epochs 3 --judge-model fake-judge-old --max-tokens 256 --temperature 0 --thinking NOT_SENT --effort NOT_SENT --max-reasks 0 --base-url http://127.0.0.1:18765 --out-dir "$OUT/in-old"
-ANTHROPIC_API_KEY=dummy python examples/importers/inspect/regrade.py --log examples/importers/inspect/fixtures/source.json --epochs 3 --judge-model fake-judge-strict-new --max-tokens 256 --temperature 0 --thinking NOT_SENT --effort NOT_SENT --max-reasks 0 --base-url http://127.0.0.1:18765 --out-dir "$OUT/in-new"
+ANTHROPIC_API_KEY=dummy python examples/importers/inspect/regrade.py --wire anthropic-messages/v1 --log examples/importers/inspect/fixtures/source.json --epochs 3 --judge-model fake-judge-old --max-tokens 256 --temperature 0 --thinking NOT_SENT --effort NOT_SENT --max-reasks 0 --base-url http://127.0.0.1:18765 --out-dir "$OUT/in-old"
+ANTHROPIC_API_KEY=dummy python examples/importers/inspect/regrade.py --wire anthropic-messages/v1 --log examples/importers/inspect/fixtures/source.json --epochs 3 --judge-model fake-judge-strict-new --max-tokens 256 --temperature 0 --thinking NOT_SENT --effort NOT_SENT --max-reasks 0 --base-url http://127.0.0.1:18765 --out-dir "$OUT/in-new"
 ```
 
 3. Import each log. This importer takes no `--reading`: the last non-empty line of the judge's reply must be
@@ -232,8 +247,9 @@ node src/cli.ts judge-change --plan "$OUT/in-plan.json" --bar examples/importers
 ```
 
 **With your own data and a real judge:** give your log to `--log`, with your own `cases.json` and `bar.json`. Set
-`--judge-model`, `--base-url`, `--max-tokens`, `--temperature`, `--thinking`, `--effort` and `--max-reasks`. For
-your own grading prompt, add `--template-file` and `--instructions-file`.
+`--wire`, `--judge-model`, `--base-url`, `--max-tokens`, `--temperature`, `--thinking`, `--effort` and `--max-reasks`
+(on the OpenAI wire `--verbosity` in place of `--thinking`). For your own grading prompt, add `--template-file` and
+`--instructions-file`.
 
 **If it stops:**
 
@@ -244,7 +260,8 @@ your own grading prompt, add `--template-file` and `--instructions-file`.
   one question, one target and one answer, each as plain text, and the log must state how many answers it holds:
   it is refused when it does not state `results.total_samples`, or when that number differs from what is read.
 - `REFUSED the re-grade stopped at the first slot the importer will refuse` → usually a reply was cut or did not
-  end in a grade line. No later call was made. Raise `--max-tokens` or fix the instructions, and grade again with
+  end in a grade line. `regrade.py` stops there and exits 2, unless you pass `--go-on-and-count`, which goes on and
+  counts such slots instead. No later call was made. Raise `--max-tokens` or fix the instructions, and grade again with
   a new `--out-dir`.
 - `IMPORT_NO_RECORD`, or `IMPORT_SHAPE` naming `/eval/scorers` → the log was not graded through the example
   grading script. Grade again with `regrade.py`.
@@ -267,7 +284,7 @@ The run's `packetSource` ends with what it knows of the system log:
 | `; system log sha256:<hash>, stated version inspect_ai <version>` | `regrade.py` read the log, which states that version |
 | `; system log sha256:<hash>, stated version UNKNOWN` | The log states none, or one that is unprintable, holds `;` or `,`, or spells a gap |
 | `; system log UNKNOWN` | A graded Inspect file with no marker |
-| `; no system log` | promptfoo, where there is none: you write the stored answers by hand |
+| `; no system log` | promptfoo: the run does not record where the stored answers came from, whether `stored-from-result.ts` wrote them or you did |
 
 A malformed or duplicate marker refuses. A file with no marker records `; system log UNKNOWN`. A marker does not show who wrote it: a hand-written file can carry one, which stays a stated limit.
 
@@ -313,8 +330,8 @@ node examples/importers/skill-evals/check.ts --flow examples/importers/skill-eva
 2. Grade with the old judge, then with the new one. `--rep 0` picks the rep and `--draws 3` asks for three draws.
 
 ```bash
-ANTHROPIC_API_KEY=dummy node examples/importers/skill-evals/regrade.ts --flow examples/importers/skill-evals/example-flow --variant baseline --cases examples/importers/skill-evals/cases.json --reps 2 --rep 0 --draws 3 --template examples/importers/skill-evals/template.txt --criterion examples/importers/skill-evals/criterion.txt --system examples/importers/skill-evals/system.txt --select /reply --model fake-judge-old --max-tokens 256 --temperature 0 --thinking NOT_SENT --effort NOT_SENT --max-reasks 0 --base-url http://127.0.0.1:18765 --reading one-json-object-boolean-pass/v1 --out "$OUT/sk-old.regrade.jsonl"
-ANTHROPIC_API_KEY=dummy node examples/importers/skill-evals/regrade.ts --flow examples/importers/skill-evals/example-flow --variant baseline --cases examples/importers/skill-evals/cases.json --reps 2 --rep 0 --draws 3 --template examples/importers/skill-evals/template.txt --criterion examples/importers/skill-evals/criterion.txt --system examples/importers/skill-evals/system.txt --select /reply --model fake-judge-strict-new --max-tokens 256 --temperature 0 --thinking NOT_SENT --effort NOT_SENT --max-reasks 0 --base-url http://127.0.0.1:18765 --reading one-json-object-boolean-pass/v1 --out "$OUT/sk-new.regrade.jsonl"
+ANTHROPIC_API_KEY=dummy node examples/importers/skill-evals/regrade.ts --wire anthropic-messages/v1 --flow examples/importers/skill-evals/example-flow --variant baseline --cases examples/importers/skill-evals/cases.json --reps 2 --rep 0 --draws 3 --template examples/importers/skill-evals/template.txt --criterion examples/importers/skill-evals/criterion.txt --system examples/importers/skill-evals/system.txt --select /reply --model fake-judge-old --max-tokens 256 --temperature 0 --thinking NOT_SENT --effort NOT_SENT --max-reasks 0 --base-url http://127.0.0.1:18765 --reading one-json-object-boolean-pass/v1 --out "$OUT/sk-old.regrade.jsonl"
+ANTHROPIC_API_KEY=dummy node examples/importers/skill-evals/regrade.ts --wire anthropic-messages/v1 --flow examples/importers/skill-evals/example-flow --variant baseline --cases examples/importers/skill-evals/cases.json --reps 2 --rep 0 --draws 3 --template examples/importers/skill-evals/template.txt --criterion examples/importers/skill-evals/criterion.txt --system examples/importers/skill-evals/system.txt --select /reply --model fake-judge-strict-new --max-tokens 256 --temperature 0 --thinking NOT_SENT --effort NOT_SENT --max-reasks 0 --base-url http://127.0.0.1:18765 --reading one-json-object-boolean-pass/v1 --out "$OUT/sk-new.regrade.jsonl"
 ```
 
 Each run prints `slots graded: 9 of 9` and `slots the importer will refuse: 0`.
@@ -335,8 +352,8 @@ node src/cli.ts judge-change --plan "$OUT/sk-plan.json" --bar examples/importers
 ```
 
 **With your own data and a real judge:** point `--flow`, `--variant`, `--reps` and `--rep` at your folder, and give
-your own template, criterion, `cases.json` and bar. Set `--model`, `--base-url`, `--max-tokens`, `--temperature`,
-`--thinking`, `--effort` and `--max-reasks`. In the example each stored answer is a JSON object, and
+your own template, criterion, `cases.json` and bar. Set `--wire`, `--model`, `--base-url`, `--max-tokens`, `--temperature`,
+`--thinking`, `--effort` and `--max-reasks` (on the OpenAI wire `--verbosity` in place of `--thinking`). In the example each stored answer is a JSON object, and
 `--select /reply` shows the judge its `reply` text. Leave `--select` out to show the whole answer. A case you leave
 out of `cases.json` is not graded: the result is on fewer cases, and the re-grade file records which ones were
 left out.
@@ -358,10 +375,129 @@ left out.
 - `UNSUPPORTED_DESIGN`, naming `cut` → `--cut` must be one of the labels of your bar file.
 - `HASH_MISMATCH` → the `--inputs` folder holds a file the plan does not name. Keep only the two run files there.
 
+## Two APIs, and a switch between them
+
+A grading script talks to Anthropic's Messages API (`wire: anthropic-messages/v1`) or to OpenAI's own Responses API
+(`wire: openai-responses/v1`). The wire is a required setting with no default. Every importer prints the wire it read,
+`wire: <name>`, and one file holds one wire. The settings of each:
+
+| Setting | `anthropic-messages/v1` | `openai-responses/v1` |
+|---|---|---|
+| Address | `baseUrl` (`--base-url`; posts to `/v1/messages`). In promptfoo the default is `https://api.anthropic.com`; `regrade.py` and `regrade.ts` require `--base-url` | `baseUrl` (`--base-url`; posts to `/responses`). In promptfoo the default is `https://api.openai.com/v1`; `regrade.py` and `regrade.ts` require `--base-url` |
+| Key variable | `ANTHROPIC_API_KEY` | `OPENAI_API_KEY` |
+| Address variables that stop the grader | `ANTHROPIC_BASE_URL` | `OPENAI_BASE_URL`, `OPENAI_API_BASE_URL`, `OPENAI_API_HOST`, `OPENAI_HOST` |
+| Output cap | `max_tokens` (`--max-tokens`) | `max_output_tokens` (`--max-tokens`), 16 or more |
+| `temperature` | optional, 0 to 1 | optional, 0 to 2 |
+| `thinking` (`--thinking`) | required: `NOT_SENT` or a thinking object | not accepted |
+| `effort` | required: `NOT_SENT`, or `low`, `medium`, `high`, `xhigh`, `max` | required: `NOT_SENT`, or `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` |
+| `verbosity` (`--verbosity`) | not accepted | required: `NOT_SENT`, `low`, `medium` or `high` |
+| `apiVersion` (`--api-version`) | optional | not accepted |
+| `maxReasks` | required, 0 to 3 | required, 0 to 3 |
+| `timeoutMs` (`--timeout-ms`) | optional, default 60000, at most 3600000 | optional, default 60000, at most 3600000 |
+| `apiKeyEnv` (`--api-key-env`) | optional, default `ANTHROPIC_API_KEY` | optional, default `OPENAI_API_KEY` |
+
+A setting of the other API, or one that is not in the table (`top_p`, `seed`, `tools`, `stream` and the like), is
+refused before any call. `--wire` is required by `regrade.py` and `regrade.ts`; a flag of the other wire is a usage
+error (exit 64). Nothing checks an `effort` word against a model: a model that refuses the word rejects the first call,
+and that draw ends with no record.
+
+Grade a judge on OpenAI's API like this, with the skill's folder and the stand-in (start it as in the skill's section,
+`node examples/importers/fake-endpoint.ts`). It imports the old judge from the Anthropic steps above and the new one
+from OpenAI's wire, then measures the change. The OpenAI address ends in `/v1`. The `--max-tokens 256` in the commands suits the stand-in only; for a real OpenAI
+reasoning model use a much larger cap (see the cap under "Settings across providers" below).
+
+```bash
+mkdir "$OUT/sk-x-runs" && cp "$OUT/sk-runs/old.json" "$OUT/sk-x-runs/old.json"
+OPENAI_API_KEY=dummy node examples/importers/skill-evals/regrade.ts --wire openai-responses/v1 --flow examples/importers/skill-evals/example-flow --variant baseline --cases examples/importers/skill-evals/cases.json --reps 2 --rep 0 --draws 3 --template examples/importers/skill-evals/template.txt --criterion examples/importers/skill-evals/criterion.txt --system examples/importers/skill-evals/system.txt --select /reply --model fake-judge-strict-new --max-tokens 256 --temperature 0 --verbosity NOT_SENT --effort NOT_SENT --max-reasks 0 --base-url http://127.0.0.1:18765/v1 --reading one-json-object-boolean-pass/v1 --out "$OUT/sk-gpt.regrade.jsonl"
+node examples/importers/skill-evals/import.ts --in "$OUT/sk-gpt.regrade.jsonl" --cases examples/importers/skill-evals/cases.json --bar examples/importers/skill-evals/bar.json --out "$OUT/sk-x-runs/new.json" --reading one-json-object-boolean-pass/v1 --flow examples/importers/skill-evals/example-flow
+node examples/importers/make-plan.ts --old "$OUT/sk-x-runs/old.json" --new "$OUT/sk-x-runs/new.json" --bar examples/importers/skill-evals/bar.json --out "$OUT/sk-x-plan.json" --system refund-bot --stored-outputs system-side-not-compared --measured-class refund_policy --cut pass --label-rule majority --pooling items-equal --estimate-draws 0,1,2 --judge-moves judgeModelRequested,judgeModelServed,judgeCallShapeHash,judgeHarnessVersion
+node src/cli.ts judge-change --plan "$OUT/sk-x-plan.json" --bar examples/importers/skill-evals/bar.json --inputs "$OUT/sk-x-runs"
+```
+
+The same for an Inspect log. The old judge is the one you graded in the Inspect steps above; stop the stand-in and
+start it again with `node examples/importers/fake-endpoint.ts --reply-format grade`, then:
+
+```bash
+mkdir "$OUT/in-x-runs" && cp "$OUT/in-runs/old.json" "$OUT/in-x-runs/old.json"
+OPENAI_API_KEY=dummy python examples/importers/inspect/regrade.py --wire openai-responses/v1 --log examples/importers/inspect/fixtures/source.json --epochs 3 --judge-model fake-judge-strict-new --max-tokens 256 --temperature 0 --verbosity NOT_SENT --effort NOT_SENT --max-reasks 0 --base-url http://127.0.0.1:18765/v1 --out-dir "$OUT/in-gpt"
+node examples/importers/inspect/import.ts --in "$(ls "$OUT"/in-gpt/*.json)" --cases examples/importers/inspect/cases.json --bar examples/importers/inspect/bar.json --out "$OUT/in-x-runs/new.json"
+node examples/importers/make-plan.ts --old "$OUT/in-x-runs/old.json" --new "$OUT/in-x-runs/new.json" --bar examples/importers/inspect/bar.json --out "$OUT/in-x-plan.json" --system refund-bot --stored-outputs system-side-not-compared --measured-class refund_policy --cut C --label-rule majority --pooling items-equal --estimate-draws 0,1,2 --judge-moves judgeModelRequested,judgeModelServed,judgeCallShapeHash,judgeHarnessVersion
+node src/cli.ts judge-change --plan "$OUT/in-x-plan.json" --bar examples/importers/inspect/bar.json --inputs "$OUT/in-x-runs"
+```
+
+For a switch from a Claude judge to a GPT judge the moves are `judgeModelRequested`, `judgeModelServed`,
+`judgeCallShapeHash` and `judgeHarnessVersion`; [PROMPTFOO.md](PROMPTFOO.md) says why each moves. `judgeDefinitionHash`
+does not move when the template, the reading rule and the re-ask bound are the same text.
+
+The helper `make-plan.ts` reads the `wire` part of the two runs' `judgeHarnessVersion`. When the two differ, or when
+one run file does not name a wire (a file imported before the wire was recorded), it prints this note on standard error
+before it writes the plan. The note does not stop the plan:
+
+> The two run files were graded through two APIs (`<wire old>` and `<wire new>`). The report measures the change of the
+> whole grading path: the model, the provider's API, the provider's defaults for every setting not sent, and how the
+> reply is taken from the response. It does not separate the model from the rest. A setting with the same value in both
+> files is the same text in the record, not the same setting: `effort`, `temperature`, the output cap and `NOT_SENT`
+> mean different things to the two providers. Compare the two imports' reasoning and re-ask lines.
+
+When one run file names no wire, `<wire …>` prints as `not named in the run file`.
+
+What to know when you grade on OpenAI's API:
+
+- **Storage.** Every OpenAI request sends `store: false`. OpenAI's pages, as read on 2026-11-06, say that a response
+  sent with `store: true` (the default) is kept for at least 30 days. They do not say whether `store: false` is honoured
+  for every model. They also say that abuse-monitoring logs are kept for up to 30 days unless your organisation has Zero
+  Data Retention or Modified Abuse Monitoring, and that prompt caching may keep data for up to 24 hours. Nothing here
+  has checked what OpenAI keeps.
+- **Input.** Every OpenAI request sends `truncation: "disabled"`, so an input longer than the model's context window is not cut to fit:
+  OpenAI's API reference, as read on 2026-11-06, says such a request fails with status 400. The draw then ends with no
+  record.
+- **The model name in the run file.** `judgeModelServed` is the model name in the provider's reply, copied as given. It
+  records what the provider said, not which model graded. OpenAI's API reference, as read on 2026-11-06, does not say
+  whether a request by a name without a date returns a dated name, and the GPT-6 and GPT-5.6 names listed there have no
+  dated form. When the served name is the requested name, the run file cannot show which version of the model graded
+  it: two files with the same served name may come from different versions, and `judge-change` then shows no move of
+  the model, so a change of labels between them is reported against the fields that did move. Grade both judges close
+  together. Each import prints which of the two cases holds.
+- **Settings across providers.** On OpenAI's API the output cap counts the model's reasoning tokens as well as the
+  reply. The same number on the two APIs is not the same room for the reply. With `effort` or `thinking` not sent, each
+  provider applies its own defaults, which this page does not describe; an OpenAI reasoning model may reason at its own
+  default effort. The cap in an OpenAI config is not the Anthropic example's: OpenAI's reasoning guide, as read on
+  2026-11-06, advises reserving at least 25,000 tokens for reasoning and output, which is why [PROMPTFOO.md](PROMPTFOO.md)
+  uses 25000. It is OpenAI's advice, not a figure measured on your judge.
+- **Counters.** `thinkingTokens` and the `replies with reasoning` line hold each provider's own count, in its own
+  tokens; they are not comparable across providers as amounts.
+- **Re-asks.** A re-ask is made only after a call that got no reply, or a reply cut at the cap (on OpenAI's API, status
+  `incomplete` with the reason `max_output_tokens`), and never after a finished reply, whatever it says. If the two
+  judges' re-ask lines differ, part of the label change may come from which replies were kept.
+- **Cut and filtered replies.** On OpenAI's API a reply that is `incomplete` for any other reason (for example
+  `content_filter`), or that holds a refusal part, is never graded and never asked again; the import refuses the file
+  and names the draw.
+- **What ran against OpenAI's API, on 2026-11-06.** Two short checks, one draw per call: 13 requests through the
+  JavaScript grading script (12 on gpt-6-luna, gpt-6-astra, gpt-5.5 and gpt-5.5-2026-04-23, one to a model name that
+  does not exist, answered 404) and 2 through the Python one, with `inspect_ai` 0.3.286. In the first check the grading
+  scripts recorded each message's phase, `final_answer`, but the importers then read only a message with no phase, so
+  its two imports were refused; the second, through the shipped importers, and through grading scripts that differ
+  from the shipped ones in comments only, imported one case on each of the eval-skill and Inspect paths. A cut at the
+  output cap was asked again once, with the same request bytes, and a wrong key was answered 401. Each reply that held a message (six through the JavaScript
+  script, two through the Python one) carried `phase: "final_answer"` on it. The importers read a completed message whose
+  phase is absent or exactly that value, and refuse any other phase. A request for `gpt-5.5` returned the model name
+  `gpt-5.5-2026-04-23`; `gpt-6-luna` and `gpt-6-astra` returned their own names. `gpt-6-luna` refused `temperature: 0`,
+  and `gpt-6-astra` refused `effort: "none"`, each with status 400. Not run against the API: a `promptfoo eval` run, a
+  comparison of two judges, more than one draw, and the rate-limit, server-error and timeout paths.
+
+Each import also prints the served-name statement above, the reasoning line (how many asks got a reply with reasoning,
+and the total, median and largest reasoning-token count), and the re-ask line.
+
+**From an earlier version.** Grader records move from v7 to v8, which adds `wire`. This version refuses a v7
+grader result at import: grade again, or, before you upgrade, import the file with the checkout whose grader wrote it. A run file
+already imported stays valid and unaffected. A run imported before and one imported after differ in `judgeHarnessVersion`, as after any change of the
+grading script. `regrade.py` and `regrade.ts` now require `--wire`, and the promptfoo grader config requires `wire`:
+add it to commands and configs you saved.
+
 ## Reading the result
 
 [JUDGE_CHANGE.md](JUDGE_CHANGE.md) explains each number of the report. In these reports the line
-`labels that differ between two sets of one judge` reads `not declared`. To get it, grade six draws, and
+`labels that differ between two sets of one judge` reads `not measured (the plan declares no re-ask set)`. To get it, grade six draws, and
 give the helper `--label-rule worst --estimate-draws 0,1,2,3,4,5`. Then set two keys in the plan by hand:
 `"labelRule": "majority"` and `"drawSets": { "estimate": [0, 1, 2], "reask": [3, 4, 5] }`.
 
@@ -369,6 +505,9 @@ give the helper `--label-rule worst --estimate-draws 0,1,2,3,4,5`. Then set two 
 
 - promptfoo: one `llm-rubric` check per test. Inspect: one scorer, `model_graded_qa`, and JSON logs only at import.
 - The skill's result folder: one question and one answer per case. Tool turns and attachments are refused.
+- Anthropic's Messages API and OpenAI's own Responses API only. Other servers that speak OpenAI's format are not
+  tested. OpenAI's pages, as read on 2026-11-06, do not say which models reject or ignore `temperature` or an effort
+  word; the record says what was sent.
 - The API address: `https`, or `http` to `127.0.0.1` (not `localhost`), written in its plain form, as in
   `https://gateway.example/anthropic`. An unusual spelling of a host or a port is refused, and so is a user name, a
   query, `..` or a `%` escape. A reply the server compresses is refused too.

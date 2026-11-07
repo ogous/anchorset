@@ -17,7 +17,7 @@ import { byCodeUnit, HEADER_COUNT_BOUND as FLOW_COUNT_BOUND, readFlow } from '..
 import { convertRegrade, HEADER_COUNT_BOUND, headerCountBound, main, ROW_PROFILE_NOTE, TOOL, USAGE } from '../examples/importers/skill-evals/import.ts';
 import type { FlowAgain } from '../examples/importers/skill-evals/import.ts';
 import { GRADER_FILE, SCRIPT, SCRIPT_FILES } from '../examples/importers/skill-evals/regrade.ts';
-import { ownStderr } from './helpers.ts';
+import { ownStderr, scratchEnv } from './helpers.ts';
 
 const root = join(import.meta.dirname, '..');
 const dir = join(root, 'examples', 'importers', 'skill-evals');
@@ -41,7 +41,7 @@ const slotsOf = (id: string): string[] => [0, 1, 2].map((d) => `${id}#${d}`);
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type J = any;
 type File = { header: J; rows: J[] };
-type Fixture = 'old-judge' | 'new-judge' | 'new-judge-rep1' | 'reask' | 'reask-new-judge';
+type Fixture = 'old-judge' | 'new-judge' | 'new-judge-rep1' | 'reask' | 'reask-new-judge' | 'openai-old-judge' | 'openai-new-judge';
 const fixtureBytes = (name: Fixture): Buffer => readFileSync(join(dir, 'fixtures', `${name}.regrade.jsonl`));
 const badBytes = (name: string): Buffer => readFileSync(join(dir, 'bad-fixtures', `${name}.regrade.jsonl`));
 function parse(bytes: Buffer): File {
@@ -190,7 +190,8 @@ const labelsOf = (r: RunArtifact): string[] => r.draws.map((d) => `${d.caseId}#$
 // ---- the fixtures are what the test takes them for ---------------------------------------------------------------
 
 test('the fixtures are re-grades of one source rep of the example flow, each stored output graded three times, with no key, the reading rule in the header alone and no path of a machine', () => {
-  const reps: Record<Fixture, number> = { 'old-judge': 0, 'new-judge': 0, 'new-judge-rep1': 1, reask: 0, 'reask-new-judge': 0 };
+  const reps: Record<Fixture, number> = { 'old-judge': 0, 'new-judge': 0, 'new-judge-rep1': 1, reask: 0, 'reask-new-judge': 0, 'openai-old-judge': 0, 'openai-new-judge': 0 };
+  const WIRE_OF: Partial<Record<Fixture, string>> = { 'openai-old-judge': 'openai-responses/v1', 'openai-new-judge': 'openai-responses/v1' };
   for (const name of Object.keys(reps) as Fixture[]) {
     const f = fix(name);
     assert.equal(f.header.schema, 'example.skill-evals-regrade/v4');
@@ -209,7 +210,8 @@ test('the fixtures are re-grades of one source rep of the example flow, each sto
     assert.equal('reading' in f.header.graderConfig, false);
     for (const row of f.rows) {
       assert.equal('reading' in rec(row), false);
-      assert.equal(rec(row).schema, 'example.grader-evidence/v7');
+      assert.equal(rec(row).schema, 'example.grader-evidence/v8');
+      assert.equal(rec(row).wire, WIRE_OF[name] ?? 'anthropic-messages/v1');
       // Every row of a case is the source rep's trace and stored output.
       const source = turnOf(row.caseId, reps[name]);
       assert.equal(row.traceSha256, source.traceSha256);
@@ -307,7 +309,7 @@ test('the six judge fields, each written out by hand from the header, the record
     judgeModelRequested: 'fake-judge-old',
     judgeModelServed: 'fake-judge-old-served-20260101',
     judgeCallShapeHash: callShapeHash(r0.callShape as CallShape),
-    judgeHarnessVersion: `skill-evals skill-evals/1; anchorset-recording-grader js sha256:${r0.grader.sha256}; ${r0.grader.runtime}; max-reasks 0; script-files sha256:${hashOf(f.header.scriptFiles)}`,
+    judgeHarnessVersion: `skill-evals skill-evals/1; anchorset-recording-grader js sha256:${r0.grader.sha256}; ${r0.grader.runtime}; max-reasks 0; wire anthropic-messages/v1; script-files sha256:${hashOf(f.header.scriptFiles)}`,
     rubricHash: hashOf({ tool: 'skill-evals', criterion: f.header.criterion.text }),
   });
   assert.equal(TOOL, 'skill-evals');
@@ -481,11 +483,11 @@ test('a reply that thought is graded, and the count of such replies is printed',
   rec(f.rows[1]).contentTypes = ['thinking', 'text'];
   rec(f.rows[1]).thinkingTokens = 12;
   rec(f.rows[4]).contentTypes = ['redacted_thinking', 'thinking', 'text'];
-  assert.equal(conv(f).thinkingReplies, 'replies with a thinking block: 2 of 9');
-  assert.equal(conv(fix()).thinkingReplies, 'replies with a thinking block: 0 of 9');
+  assert.match(conv(f).reasoning, /^replies with reasoning: 2 of 9 asks; reasoning tokens \(the provider's own count\): total 12, median 0, max 12; counter absent on 0$/);
+  assert.match(conv(fix()).reasoning, /^replies with reasoning: 0 of 9 asks; /);
   const cli = viaMain(f);
   assert.equal(cli.code, 0, cli.err);
-  assert.match(cli.out, /^replies with a thinking block: 2 of 9$/m);
+  assert.match(cli.out, /^replies with reasoning: 2 of 9 asks; /m);
 });
 
 // ---- the reading rule: stated at the re-grade, recorded in the header, and stated again at import -------------------
@@ -593,7 +595,7 @@ test('the command prints the six judge fields, the written file\'s sha256, the t
     `run file sha256: ${sha256Hex(written)}`,
     "the record reports the shipped grader's sha256",
     'system side and seed: UNKNOWN (this run can enter judge-change only under "system-side-not-compared"; `gate` refuses it)',
-    'replies with a thinking block: 0 of 9',
+    "replies with reasoning: 0 of 9 asks; reasoning tokens (the provider's own count): total 0, median 0, max 0; counter absent on 0",
     'reading rule: one-json-object-boolean-pass/v1',
     `re-grade file sha256: ${sha256Hex(bytes)}`,
     "source rep: 0 of the flow's 2 declared; each stored output graded 3 times (shown for the reader: nothing checks that two runs were made from the same rep, and judge-change refuses a pair only where their stored outputs differ)",
@@ -631,12 +633,12 @@ test('the command prints the six judge fields, the written file\'s sha256, the t
 
 test('the command as a process: exit 0 on a fixture, 2 on a refused file, with nothing written', () => {
   const out = join(work, 'process-out.json');
-  const good = spawnSync(process.execPath, [importer, '--in', join(dir, 'fixtures', 'new-judge.regrade.jsonl'), '--cases', join(dir, 'cases.json'), '--bar', join(dir, 'bar.json'), '--out', out, '--reading', READING, '--flow', exampleFlow], { encoding: 'utf8' });
+  const good = spawnSync(process.execPath, [importer, '--in', join(dir, 'fixtures', 'new-judge.regrade.jsonl'), '--cases', join(dir, 'cases.json'), '--bar', join(dir, 'bar.json'), '--out', out, '--reading', READING, '--flow', exampleFlow], { env: scratchEnv(), encoding: 'utf8' });
   assert.equal(good.status, 0, good.stderr);
   assert.match(good.stdout, /^flow: read again from /m);
   assert.ok(existsSync(out));
   const refusedOut = join(work, 'process-refused.json');
-  const bad = spawnSync(process.execPath, [importer, '--in', join(dir, 'bad-fixtures', 'failed-slot.regrade.jsonl'), '--cases', join(dir, 'cases.json'), '--bar', join(dir, 'bar.json'), '--out', refusedOut, '--reading', READING, '--flow', exampleFlow], { encoding: 'utf8' });
+  const bad = spawnSync(process.execPath, [importer, '--in', join(dir, 'bad-fixtures', 'failed-slot.regrade.jsonl'), '--cases', join(dir, 'cases.json'), '--bar', join(dir, 'bar.json'), '--out', refusedOut, '--reading', READING, '--flow', exampleFlow], { env: scratchEnv(), encoding: 'utf8' });
   assert.equal(bad.status, 2, bad.stderr);
   assert.match(ownStderr(bad.stderr), /^REFUSED IMPORT_UNGRADED/);
   assert.equal(existsSync(refusedOut), false);
@@ -694,10 +696,10 @@ test('a file that is not JSON lines, a header of another schema, and a row whose
 });
 
 test('a record of an earlier version is refused with the instruction to grade again with regrade.ts', () => {
-  for (const version of ['v6', 'v5', 'v4', 'v3']) {
+  for (const version of ['v7', 'v6', 'v5', 'v4', 'v3']) {
     const f = fix();
     rec(f.rows[0]).schema = `example.grader-evidence/${version}`;
-    assert.match(refuse(f, 'IMPORT_EVIDENCE', ['line 2/graderEvidence.schema']).message, /an earlier version than example\.grader-evidence\/v7; Grade the stored outputs again with examples\/importers\/skill-evals\/regrade\.ts/, version);
+    assert.match(refuse(f, 'IMPORT_EVIDENCE', ['line 2/graderEvidence.schema']).message, /an earlier version than example\.grader-evidence\/v8; Grade the stored outputs again with examples\/importers\/skill-evals\/regrade\.ts/, version);
   }
 });
 
@@ -1799,7 +1801,7 @@ test('fixtures/reask.regrade.jsonl imports', () => {
   assert.deepEqual(f.rows.flatMap((r) => [...rec(r).reask.earlier.map((a: J) => a.callSeq), rec(r).callSeq]), Array.from({ length: 12 }, (_, i) => i + 1));
   const cli = viaMain(fixtureBytes('reask'), { flow: join(dir, 'example-flow') });
   assert.equal(cli.code, 0, cli.err);
-  assert.match(cli.out, /^replies with a thinking block: 0 of 9\nre-asks: 3 on 3 of 9 slots \(truncated 3, timeout 0, transport 0, server-error 0, rate-limited 0\); at most 2 per slot\nreading rule: one-json-object-boolean-pass\/v1$/m);
+  assert.match(cli.out, /^replies with reasoning: 0 of 12 asks; [^\n]*\nre-asks: 3 on 3 of 9 slots \(truncated 3, timeout 0, transport 0, server-error 0, rate-limited 0\); at most 2 per slot\nreading rule: one-json-object-boolean-pass\/v1$/m);
   const run = parseRunArtifact(JSON.parse(readFileSync(cli.outPath, 'utf8')));
   assert.deepEqual(run.draws.map((d) => d.attempts.map((a) => a.kind).join('+')), ['unmeasured+graded', 'graded', 'graded', 'unmeasured+graded', 'graded', 'graded', 'unmeasured+graded', 'graded', 'graded']);
   for (const d of run.draws) {
@@ -1834,8 +1836,8 @@ test('the bound enters the judge definition hash: two bounds give two definition
   };
   const [two, three] = [at(2), at(3)];
   assert.notEqual(two.judgeDefinitionHash, three.judgeDefinitionHash);
-  assert.match(two.judgeHarnessVersion, /; max-reasks 2; script-files sha256:[0-9a-f]{64}$/);
-  assert.match(three.judgeHarnessVersion, /; max-reasks 3; script-files sha256:[0-9a-f]{64}$/);
+  assert.match(two.judgeHarnessVersion, /; max-reasks 2; wire anthropic-messages\/v1; script-files sha256:[0-9a-f]{64}$/);
+  assert.match(three.judgeHarnessVersion, /; max-reasks 3; wire anthropic-messages\/v1; script-files sha256:[0-9a-f]{64}$/);
   for (const k of ['judgeModelRequested', 'judgeModelServed', 'judgeCallShapeHash', 'rubricHash'] as const) assert.equal(two[k], three[k], k);
 });
 
@@ -2091,4 +2093,90 @@ test('a written import prints one line per line too: a --flow path holding a car
   const flowLine = out.find((l) => l.startsWith('flow: read again from ')) ?? '';
   assert.ok(flowLine.includes('\\r\\u001b[2K') && flowLine.includes('\\n') && flowLine.includes('\\u2028') && flowLine.includes('\\u202e'), JSON.stringify(flowLine));
   assert.equal(out.filter((l) => l.startsWith('run file sha256: ')).length, 1);
+});
+
+// ---- the OpenAI Responses wire ---------------------------------------------------------------------------------------------------
+
+test('openai-old-judge and openai-new-judge import: the wire is in the harness string before script-files, the served model is the requested one, and the header states the wire', () => {
+  for (const [name, model] of [['openai-old-judge', 'fake-judge-old'], ['openai-new-judge', 'fake-judge-strict-new']] as const) {
+    const f = fix(name);
+    assert.equal(f.header.graderConfig.wire, 'openai-responses/v1');
+    assert.equal(f.header.graderConfig.max_output_tokens, 256);
+    assert.equal('max_tokens' in f.header.graderConfig, false);
+    assert.equal('thinking' in f.header.graderConfig, false);
+    assert.deepEqual(Object.keys(f.header.graderConfig).sort(), ['baseUrl', 'effort', 'maxReasks', 'max_output_tokens', 'model', 'temperature', 'verbosity', 'wire']);
+    const c = conv(f);
+    assert.equal(c.wire, 'openai-responses/v1');
+    assert.equal(c.judge.judgeModelRequested, model);
+    assert.equal(c.judge.judgeModelServed, model);
+    const r0 = rec(f.rows[0]);
+    assert.equal(c.judge.judgeHarnessVersion, `skill-evals skill-evals/1; anchorset-recording-grader js sha256:${r0.grader.sha256}; ${r0.grader.runtime}; max-reasks 0; wire openai-responses/v1; script-files sha256:${hashOf(f.header.scriptFiles)}`);
+    assert.equal(parseRunArtifact(JSON.parse(JSON.stringify(c.run))).draws.length, 9);
+  }
+  const [a, o] = [conv(fix('old-judge')), conv(fix('openai-old-judge'))];
+  const moved = (Object.keys(a.judge) as (keyof typeof a.judge)[]).filter((k) => a.judge[k] !== o.judge[k]);
+  assert.deepEqual(moved.sort(), ['judgeCallShapeHash', 'judgeHarnessVersion', 'judgeModelServed']);
+  assert.equal(a.judge.judgeDefinitionHash, o.judge.judgeDefinitionHash);
+});
+
+test('the success lines of an OpenAI re-grade file: the wire, the served-id statement and the reasoning counts', () => {
+  const cli = viaMain(fixtureBytes('openai-new-judge'));
+  assert.equal(cli.code, 0, cli.err);
+  const lines = cli.out.split('\n');
+  assert.ok(lines.includes('wire: openai-responses/v1'));
+  assert.ok(lines.includes('judge model served: "fake-judge-strict-new", the same text as the model requested. The provider\'s reply named no more specific version, so this run file cannot show which version of the model graded it. A change of model behind this name would leave judgeModelServed unchanged.'));
+  assert.ok(lines.includes("replies with reasoning: 0 of 9 asks; reasoning tokens (the provider's own count): total 0, median 0, max 0; counter absent on 0"));
+  const anth = viaMain(fixtureBytes('old-judge'));
+  assert.ok(anth.out.split('\n').includes('wire: anthropic-messages/v1'));
+  assert.ok(anth.out.split('\n').includes('judge model served: "fake-judge-old-served-20260101" (requested "fake-judge-old"), as the provider\'s reply named it; not checked.'));
+});
+
+test('the header\'s wire is held to the records\': a header that names the other wire, or none, is IMPORT_EVIDENCE naming it', () => {
+  const stated = fix('openai-old-judge');
+  stated.header.graderConfig.wire = 'anthropic-messages/v1';
+  const e = refuse(stated, 'IMPORT_EVIDENCE');
+  assert.ok(e.fields.includes('header/graderConfig/wire'), [...e.fields].join());
+  const none = fix('openai-old-judge');
+  delete none.header.graderConfig.wire;
+  assert.match(refuse(none, 'IMPORT_EVIDENCE').message, /header\/graderConfig\/wire: "not set" but the record says "openai-responses\/v1"/);
+  // the OpenAI cap is max_output_tokens: an Anthropic-style key beside it is not a setting of this wire
+  const capKey = fix('openai-old-judge');
+  capKey.header.graderConfig.max_tokens = 256;
+  assert.match(refuse(capKey, 'IMPORT_EVIDENCE').message, /header\/graderConfig\/max_tokens: not a setting the grader sends on the openai-responses\/v1 wire/);
+  const verbosity = fix('openai-old-judge');
+  verbosity.header.graderConfig.verbosity = 'high';
+  assert.match(refuse(verbosity, 'IMPORT_EVIDENCE').message, /header\/graderConfig\/verbosity: "high" but the record says "NOT_SENT"/);
+});
+
+test('one wire per file: one row of another wire is IMPORT_MIXED_IDENTITY naming wire; a v7 row is refused by its version', () => {
+  const mixed = fix('openai-old-judge');
+  const other = rec(fix('old-judge').rows[4]);
+  const target = rec(mixed.rows[4]);
+  target.wire = other.wire;
+  target.sent = other.sent;
+  delete target.incompleteReason;
+  target.stopReason = 'end_turn';
+  target.contentTypes = ['text'];
+  target.callShape = other.callShape;
+  assert.deepEqual([...refuse(mixed, 'IMPORT_MIXED_IDENTITY').fields], ['wire']);
+  const v7 = fix('openai-old-judge');
+  rec(v7.rows[0]).schema = 'example.grader-evidence/v7';
+  assert.match(refuse(v7, 'IMPORT_EVIDENCE').message, /this record is of version example\.grader-evidence\/v7, an earlier version than example\.grader-evidence\/v8; Grade the stored outputs again with examples\/importers\/skill-evals\/regrade\.ts/);
+});
+
+test('status before text on the OpenAI wire: a cut or filtered response whose message looks complete is IMPORT_UNGRADED, never graded', () => {
+  for (const [stop, why, words] of [['incomplete', 'max_output_tokens', /status "incomplete" \(max_output_tokens\), not "completed"/], ['incomplete', 'content_filter', /status "incomplete" \(content_filter\), not "completed"/]] as const) {
+    const f = fix('openai-old-judge');
+    rec(f.rows[2]).stopReason = stop;
+    rec(f.rows[2]).incompleteReason = why;
+    const e = refuse(f, 'IMPORT_UNGRADED');
+    assert.match(e.message, words);
+    assert.match(e.message, /bank-dispute#2|faulty-headphones#|clearance-organiser#/);
+  }
+  const refusal = fix('openai-old-judge');
+  rec(refusal.rows[1]).contentTypes = ['message/output_text', 'message/refusal'];
+  assert.match(refuse(refusal, 'IMPORT_UNGRADED').message, /holds a refusal part/);
+  const empty = fix('openai-old-judge');
+  rec(empty.rows[1]).contentTypes = [];
+  assert.match(refuse(empty, 'IMPORT_UNGRADED').message, /not zero or more reasoning items followed by exactly one completed message with one output_text part/);
 });

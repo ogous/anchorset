@@ -14,7 +14,7 @@ import type { BarFile, IdentityField, JudgeChangePlan, JudgeChangeReport, RunArt
 import { RefusalError } from '../src/index.ts';
 import { buildInspectRun } from '../examples/importers/inspect/import.ts';
 import { loadBar, parseCasesFile, READINGS } from '../examples/importers/shared.ts';
-import { asRecorded, makeCallShape } from './helpers.ts';
+import { asRecorded, makeCallShape, scratchEnv } from './helpers.ts';
 
 const root = join(import.meta.dirname, '..');
 const TOOLS = ['promptfoo', 'inspect'] as const;
@@ -25,7 +25,7 @@ const dirOf = (t: Tool): string => join(root, 'examples', 'importers', t);
 const work = mkdtempSync(join(tmpdir(), 'anchorset-importers-e2e-'));
 after(() => rmSync(work, { recursive: true, force: true }));
 
-const node = (...args: string[]) => spawnSync(process.execPath, args, { encoding: 'utf8' });
+const node = (...args: string[]) => spawnSync(process.execPath, args, { encoding: 'utf8', env: scratchEnv() });
 const cli = (...args: string[]) => node(join(root, 'src', 'cli.ts'), ...args);
 
 // The seven fields no importer writes: six system-side fields and the seed.
@@ -533,12 +533,12 @@ for (const tool of TOOLS) {
     assert.equal(attemptKinds(reask.new.run).filter((k) => k !== 'graded').length, 2);
     assert.match(reask.old.stdout, /^re-asks: 2 on 2 of 9 slots \(truncated 1, timeout 0, transport 0, server-error 1, rate-limited 0\); at most 2 per slot$/m);
     assert.match(reask.new.stdout, /^re-asks: 2 on 2 of 9 slots \(truncated 1, timeout 0, transport 0, server-error 1, rate-limited 0\); at most 1 per slot$/m);
-    assert.match(reask.old.run.identity.judgeHarnessVersion, /; max-reasks 2$/);
-    assert.match(reask.new.run.identity.judgeHarnessVersion, /; max-reasks 1$/);
+    assert.match(reask.old.run.identity.judgeHarnessVersion, /; max-reasks 2; wire anthropic-messages\/v1$/);
+    assert.match(reask.new.run.identity.judgeHarnessVersion, /; max-reasks 1; wire anthropic-messages\/v1$/);
     // The bound is in both: the harness string states it, and it enters the judge's definition hash.
     assert.deepEqual(differing, ['judgeDefinitionHash', 'judgeModelRequested', 'judgeModelServed', 'judgeHarnessVersion']);
     // But for the bound, the two harness strings are one.
-    assert.equal(reask.old.run.identity.judgeHarnessVersion.replace(/max-reasks 2$/, ''), reask.new.run.identity.judgeHarnessVersion.replace(/max-reasks 1$/, ''));
+    assert.equal(reask.old.run.identity.judgeHarnessVersion.replace(/max-reasks 2; wire anthropic-messages\/v1$/, ''), reask.new.run.identity.judgeHarnessVersion.replace(/max-reasks 1; wire anthropic-messages\/v1$/, ''));
   });
 
   test(`re-ask (${tool}): judge-change on the reask run and the new judge's run refuses when judgeMoves leaves out judgeHarnessVersion`, () => {
@@ -571,7 +571,7 @@ for (const tool of TOOLS) {
     writeFileSync(planFile, JSON.stringify(plan, null, 2));
     const r = cli('judge-change', '--plan', planFile, '--bar', join(dirOf(tool), 'bar.json'), '--inputs', join(work, `${tool}-reask`));
     assert.equal(r.status, 0, r.stderr);
-    assert.match(r.stdout, /judgeHarnessVersion .*max-reasks 2 -> .*max-reasks 1/);
+    assert.match(r.stdout, /judgeHarnessVersion .*max-reasks 2; wire [^ ]+ -> .*max-reasks 1; wire/);
     // Under each run the report counts its judge retries, over the scored cases and over the run file:
     // here two slots of each run, asked twice, both in cases of the measured class.
     const lines = r.stdout.split('\n');

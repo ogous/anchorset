@@ -109,6 +109,7 @@ jobs:
         promptfoo: ${{ fromJSON(needs.importer-versions.outputs.promptfoo) }}
     env:
       ANTHROPIC_API_KEY: dummy
+      OPENAI_API_KEY: dummy
       ENDPOINT: http://127.0.0.1:18765
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -124,6 +125,11 @@ jobs:
       - run: npm install --global "promptfoo@${{ matrix.promptfoo }}"
       - name: The recording grader's self-test
         run: python examples/importers/inspect/selftest.py
+      - name: The Python tests, none skipped
+        env:
+          ANCHORSET_INSPECT_VENV: ${{ env.pythonLocation }}
+          ANCHORSET_REQUIRE_INSPECT: '1'
+        run: node --test test/importers.inspect.openai.test.ts test/importers.inspect.test.ts test/importers.grader.test.ts test/importers.gateway.test.ts test/docs.commands.test.ts
       - name: The walk over the list, on this tool
         env:
           ANCHORSET_INSPECT_VENV: ${{ env.pythonLocation }}
@@ -136,13 +142,19 @@ jobs:
           node examples/importers/fake-endpoint.ts --log "$OUT/sk-requests.jsonl" &
           EP=$!; trap 'kill $EP' EXIT; sleep 1
           for j in old:fake-judge-old new:fake-judge-strict-new; do
-            node $SK/regrade.ts --flow $SK/example-flow --variant baseline --cases $SK/cases.json --reps 2 --rep 0 --draws 3 \
+            node $SK/regrade.ts --wire anthropic-messages/v1 --flow $SK/example-flow --variant baseline --cases $SK/cases.json --reps 2 --rep 0 --draws 3 \
               --template $SK/template.txt --criterion $SK/criterion.txt --system $SK/system.txt --select /reply --model "${j#*:}" \
               --max-tokens 256 --temperature 0 --thinking NOT_SENT --effort NOT_SENT --max-reasks 0 --base-url "$ENDPOINT" \
               --reading one-json-object-boolean-pass/v1 --out "$OUT/sk-${j%%:*}.regrade.jsonl"
             node $SK/import.ts --in "$OUT/sk-${j%%:*}.regrade.jsonl" --cases $SK/cases.json --bar $SK/bar.json --out "$OUT/rehearsal-sk-${j%%:*}.json" \
               --reading one-json-object-boolean-pass/v1 --flow $SK/example-flow
           done
+          node $SK/regrade.ts --wire openai-responses/v1 --flow $SK/example-flow --variant baseline --cases $SK/cases.json --reps 2 --rep 0 --draws 3 \
+            --template $SK/template.txt --criterion $SK/criterion.txt --system $SK/system.txt --select /reply --model fake-judge-old \
+            --max-tokens 256 --temperature 0 --verbosity NOT_SENT --effort NOT_SENT --max-reasks 0 --base-url "$ENDPOINT/v1" \
+            --reading one-json-object-boolean-pass/v1 --out "$OUT/sk-openai.regrade.jsonl"
+          node $SK/import.ts --in "$OUT/sk-openai.regrade.jsonl" --cases $SK/cases.json --bar $SK/bar.json --out "$OUT/rehearsal-sk-openai.json" \
+            --reading one-json-object-boolean-pass/v1 --flow $SK/example-flow
       - name: Rehearsal, Inspect
         run: |
           OUT="$(mktemp -d)"
@@ -151,10 +163,13 @@ jobs:
           node examples/importers/fake-endpoint.ts --reply-format grade --log "$OUT/in-requests.jsonl" &
           EP=$!; trap 'kill $EP' EXIT; sleep 1
           for j in old:fake-judge-old new:fake-judge-strict-new; do
-            python $IN/regrade.py --log $IN/fixtures/source.json --epochs 3 --judge-model "${j#*:}" --max-tokens 256 --temperature 0 \
+            python $IN/regrade.py --wire anthropic-messages/v1 --log $IN/fixtures/source.json --epochs 3 --judge-model "${j#*:}" --max-tokens 256 --temperature 0 \
               --thinking NOT_SENT --effort NOT_SENT --max-reasks 0 --base-url "$ENDPOINT" --out-dir "$OUT/in-${j%%:*}"
             node $IN/import.ts --in "$(ls "$OUT"/in-${j%%:*}/*.json)" --cases $IN/cases.json --bar $IN/bar.json --out "$OUT/rehearsal-${j%%:*}-inspect.json"
           done
+          python $IN/regrade.py --wire openai-responses/v1 --log $IN/fixtures/source.json --epochs 3 --judge-model fake-judge-old --max-tokens 256 --temperature 0 \
+            --verbosity NOT_SENT --effort NOT_SENT --max-reasks 0 --base-url "$ENDPOINT/v1" --out-dir "$OUT/in-openai"
+          node $IN/import.ts --in "$(ls "$OUT"/in-openai/*.json)" --cases $IN/cases.json --bar $IN/bar.json --out "$OUT/rehearsal-openai-inspect.json"
       - name: Rehearsal, promptfoo
         run: |
           OUT="$(mktemp -d)"

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regenerates the fixtures of the importers (seventeen good ones and, for each tool, three files the tool wrote in a bad state) from scratch, at zero spend: both tools run against the local fake
+# Regenerates the fixtures of the importers (the good ones and, for each tool, the files the tool wrote in a bad state) from scratch, at zero spend: both tools run against the local fake
 # endpoint, and no provider is reached. It runs the whole set under the tool versions installed, each of which must be in
 # tested-versions.json. Run it once per version: the versions a matrix walks are the ones that file lists.
 #
@@ -10,8 +10,10 @@
 # Where the files go: the first version a tool lists is its reference version, and the whole set is kept for it
 # (<tool>/fixtures, <tool>/bad-fixtures). For any other listed version only the witnesses are kept: the two judges' files, the
 # three bad-state files and, for Inspect, the source log, in the folders its entry names. A whole set is still made and checked for it.
-# The Inspect reference set stands as it was written, before regrade.py wrote a system-log marker: the tests pin it as the file
-# with no marker. So a run under the Inspect reference version must name FIXTURES_OUT_ROOT, and is refused otherwise.
+# The Inspect reference set is replaced only on purpose: a run under the Inspect reference version must name FIXTURES_OUT_ROOT, and is
+# refused otherwise. Run it with a root that holds copies of promptfoo/ and inspect/, check what it wrote, copy the Inspect fixtures and
+# bad-fixtures back, then run the other listed version in place, which records FIXTURES.sha256 over the whole tree. The files it writes
+# carry the system-log marker (regrade.py always writes one); a file with none is made in the tests by taking the marker out.
 #
 # One fixture needs the tool's own Anthropic provider: ANCHORSET_INSPECT_PLAIN_VENV names an environment with the same inspect_ai and
 # the anthropic package (inspect_ai 0.3.275 runs on anthropic<2 and fails on 2.3.0; 0.3.286 runs on 2.3.0).
@@ -183,6 +185,14 @@ PF_REQUESTS=11; pf_run reask reask.yaml
 PF_REQUESTS=11; pf_run reask-new-judge reask-new-judge.yaml
 PF_REQUESTS=10; pf_run bad-reask-exhausted reask-exhausted.yaml
 PF_REQUESTS=9
+# The OpenAI Responses wire (`wire: openai-responses/v1` in the grader's config): the same stored outputs, the same fake endpoint, the key in
+# OPENAI_API_KEY. `openai-reask`: a bound of 2, one cut reply (status "incomplete", reason "max_output_tokens") and one 503, 11 requests for 9 slots.
+pf_run openai-old-judge openai-old-judge.yaml OPENAI_API_KEY="$DUMMY_KEY"
+pf_run openai-new-judge openai-new-judge.yaml OPENAI_API_KEY="$DUMMY_KEY"
+PF_REQUESTS=11; pf_run openai-reask openai-reask.yaml OPENAI_API_KEY="$DUMMY_KEY"
+PF_REQUESTS=9
+# A file in a bad state: two wires in one file. One grader process wrote it (c1 and c2 on the OpenAI wire, c3 on the Anthropic wire).
+pf_run bad-mixed-wires bad-mixed-wires.yaml OPENAI_API_KEY="$DUMMY_KEY"
 fi
 
 # ---- inspect_ai
@@ -192,9 +202,9 @@ IN_VERSION="$(env -i "${PY_ENV[@]}" "${TOOL_ENV[@]}" "$PY" -c 'import importlib.
 IN_FIXTURES="$(entry_field inspect_ai "$IN_VERSION" fixtures)" || die "inspect_ai $IN_VERSION is not listed in tested-versions.json"
 IN_BAD="$(entry_field inspect_ai "$IN_VERSION" badFixtures)"
 if [ "$IN_VERSION" = "$(reference_version inspect_ai)" ] && [ "$OUT_ROOT" = "$HERE" ]; then
-  die "inspect_ai $IN_VERSION is the reference version, whose committed set stands as the file with no system-log marker; name FIXTURES_OUT_ROOT to run it"
+  die "inspect_ai $IN_VERSION is the reference version, whose committed set is replaced only on purpose; name FIXTURES_OUT_ROOT to run it (see the header)"
 fi
-py() { (cd "$S/in" && env -i "${PY_ENV[@]}" "${TOOL_ENV[@]}" ANTHROPIC_API_KEY="$DUMMY_KEY" "$@"); }
+py() { (cd "$S/in" && env -i "${PY_ENV[@]}" "${TOOL_ENV[@]}" ANTHROPIC_API_KEY="$DUMMY_KEY" OPENAI_API_KEY="$DUMMY_KEY" "$@"); }
 one_log() { # <dir> : the one log file in it
   local n; n="$(ls "$1"/*.json 2>/dev/null | wc -l | tr -d ' ')"
   [ "$n" = 1 ] || die "$1 holds $n log files, expected 1"
@@ -213,15 +223,21 @@ cp "$(one_log "$S/in/src-reask")" "$S/in/source-reask.json"
 py "$PY" "$I/fixture_inputs.py" source-reask-exhausted src-reask-exhausted >/dev/null
 cp "$(one_log "$S/in/src-reask-exhausted")" "$S/in/source-reask-exhausted.json"
 
-RG_THINKING=NOT_SENT   # the two settings of regrade.py, stated for every run (it has no default); a fixture may set them before its call
+RG_WIRE=anthropic-messages/v1   # the wire of the next regrade (regrade.py has no default: --wire is stated for every run)
+RG_THINKING=NOT_SENT   # the settings of regrade.py, stated for every run (it has no default); a fixture may set them before its call. --thinking is the Anthropic wire's, --verbosity the OpenAI wire's
+RG_VERBOSITY=NOT_SENT
 RG_EFFORT=NOT_SENT
 RG_REASKS=0            # the bound of re-asks per slot, stated for every run too (no default); 0 asks every slot once
 RG_GO_ON=()            # --go-on-and-count: without it regrade.py stops at the first slot the importer will refuse; a bad-state fixture needs the file whole
 regrade() { # <fixture name> <source log> <judge model> <epochs> <requests> [endpoint flags]
   local name=$1 src=$2 model=$3 epochs=$4 n=$5; shift 5
   start_ep "in-$name" --reply-format grade "$@"
-  py "$PY" "$I/regrade.py" --log "$src" --epochs "$epochs" --judge-model "$model" --max-tokens 256 --temperature 0 \
-     --thinking "$RG_THINKING" --effort "$RG_EFFORT" --max-reasks "$RG_REASKS" --base-url "http://127.0.0.1:$PORT" ${RG_GO_ON[@]+"${RG_GO_ON[@]}"} --out-dir "run-$name" > "$S/logs/in-$name.stdout" 2>&1 \
+  # The wire selects the flags and the address: the Anthropic wire posts to <base>/v1/messages, the OpenAI wire to <base>/responses (the stand-in's route is /v1/responses).
+  local wire_flags base
+  if [ "$RG_WIRE" = openai-responses/v1 ]; then wire_flags=(--verbosity "$RG_VERBOSITY"); base="http://127.0.0.1:$PORT/v1"
+  else wire_flags=(--thinking "$RG_THINKING"); base="http://127.0.0.1:$PORT"; fi
+  py "$PY" "$I/regrade.py" --log "$src" --epochs "$epochs" --wire "$RG_WIRE" --judge-model "$model" --max-tokens 256 --temperature 0 \
+     "${wire_flags[@]}" --effort "$RG_EFFORT" --max-reasks "$RG_REASKS" --base-url "$base" ${RG_GO_ON[@]+"${RG_GO_ON[@]}"} --out-dir "run-$name" > "$S/logs/in-$name.stdout" 2>&1 \
      || { stop_ep; cat "$S/logs/in-$name.stdout" >&2; die "regrade $name failed"; }
   stop_ep
   expect_requests "in-$name" "$n"
@@ -246,6 +262,20 @@ RG_REASKS=1; regrade reask-new-judge source-reask.json fake-judge-strict-new 3 1
 # One slot uses up a bound of 1 on two cut replies: Inspect writes a bare NaN for that grade.
 RG_GO_ON=(--go-on-and-count); RG_REASKS=1; regrade bad-reask-exhausted source-reask-exhausted.json fake-judge-old 3 10; RG_GO_ON=()
 RG_REASKS=0
+# The OpenAI Responses wire (`--wire openai-responses/v1`): the same stored outputs, the same fake endpoint, the key in OPENAI_API_KEY, the
+# base URL with /v1 as the OpenAI base URL has it. 9 requests each, and the served id is the requested one (the stand-in's default on this route).
+RG_WIRE=openai-responses/v1
+regrade openai-old-judge source.json fake-judge-old 3 9
+regrade openai-new-judge source.json fake-judge-strict-new 3 9
+RG_WIRE=anthropic-messages/v1
+# A file in a bad state: two wires in one file. One eval wrote it, with a scorer that grades c1 and c2 on the OpenAI wire and c3 on the Anthropic wire
+# (the same recording grader and the same stand-in; only the scorer is the fixture's own, named model_graded_qa so the log reads as one).
+start_ep "in-bad-mixed-wires" --reply-format grade
+py "$PY" "$I/fixture_inputs.py" mixed-wires source.json run-bad-mixed-wires 3 "$PORT" > "$S/logs/in-bad-mixed-wires.stdout" 2>&1 \
+  || { stop_ep; cat "$S/logs/in-bad-mixed-wires.stdout" >&2; die "the mixed-wires run failed"; }
+stop_ep
+expect_requests "in-bad-mixed-wires" 9
+cp "$(one_log "$S/in/run-bad-mixed-wires")" "$S/stage/inspect/bad-mixed-wires.json"
 
 # the plain log needs Inspect's own Anthropic provider, which needs the `anthropic` package. It comes from a second,
 # separate environment named by ANCHORSET_INSPECT_PLAIN_VENV, used for this one fixture only.
@@ -276,14 +306,14 @@ fi
 # ---- place the fixtures, then record the hashes
 # The whole set is staged under <tool>/<name>, a bad-state file as <tool>/bad-<name>. Each staged file is placed under the folder
 # the version's entry names: for a version other than the reference, only the witnesses are kept.
-WHOLE_GOOD_PF=(old-judge new-judge plain short-outputs thinking fenced reask reask-new-judge)
-WHOLE_GOOD_IN=(old-judge new-judge plain long-reply source short-targets thinking reask reask-new-judge)
-BAD=(truncated no-verdict reask-exhausted)
+WHOLE_GOOD_PF=(old-judge new-judge plain short-outputs thinking fenced reask reask-new-judge openai-old-judge openai-new-judge openai-reask)
+WHOLE_GOOD_IN=(old-judge new-judge plain long-reply source short-targets thinking reask reask-new-judge openai-old-judge openai-new-judge)
+BAD=(truncated no-verdict reask-exhausted mixed-wires)
 place_tool() { # <tool folder> <fixtures folder> <bad folder> <good names...>
   local tool=$1 good=$2 bad=$3; shift 3
   local names=("$@")
   # Beyond the reference version: the two judges' files and, for Inspect, the system log they were graded from.
-  case "$good" in */by-version/*) names=(old-judge new-judge); if [ "$tool" = inspect ]; then names+=(source); fi ;; esac
+  case "$good" in */by-version/*) names=(old-judge new-judge openai-old-judge openai-new-judge); if [ "$tool" = inspect ]; then names+=(source); fi ;; esac
   mkdir -p "${OUT_ROOT:?}/$good" "${OUT_ROOT:?}/$bad"
   local n
   for n in "${names[@]}"; do

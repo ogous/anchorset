@@ -15,6 +15,7 @@ import type { CasesFile, ImportRefusalCode } from '../examples/importers/shared.
 import { convertPromptfoo, main } from '../examples/importers/promptfoo/import.ts';
 import { ImportUsageError, READINGS } from '../examples/importers/shared.ts';
 import { main as mainInspect } from '../examples/importers/inspect/import.ts';
+import { scratchEnv } from './helpers.ts';
 
 const root = join(import.meta.dirname, '..');
 const dirPf = join(root, 'examples', 'importers', 'promptfoo');
@@ -142,7 +143,7 @@ test('the old-judge fixture imports to a v3 run that the library parses', () => 
   assert.equal(id.judgeModelRequested, 'fake-judge-old');
   assert.equal(id.judgeModelServed, 'fake-judge-old-served-20260101');
   assert.equal(id.drawsPerCase, 3);
-  assert.match(id.judgeHarnessVersion, /^promptfoo 0\.123\.1; anchorset-recording-grader js sha256:[0-9a-f]{64}; node v\d+\.\d+\.\d+; max-reasks 0$/);
+  assert.match(id.judgeHarnessVersion, /^promptfoo 0\.123\.1; anchorset-recording-grader js sha256:[0-9a-f]{64}; node v\d+\.\d+\.\d+; max-reasks 0; wire anthropic-messages\/v1$/);
   for (const f of ['judgeDefinitionHash', 'judgeCallShapeHash', 'rubricHash', 'barHash', 'caseSetHash'] as const) assert.match(id[f], /^[0-9a-f]{64}$/, f);
 });
 
@@ -177,14 +178,14 @@ test('determinism: the same source bytes give the same run bytes, in one process
   assert.equal(readFileSync(one.outPath, 'utf8'), readFileSync(two.outPath, 'utf8'));
   const inPath = join(work, 'det-in.json');
   writeFileSync(inPath, fixtureText('old-judge'));
-  const spawn = (n: number) => {
+  const importOnce = (n: number) => {
     const out = join(work, `det-out-${n}.json`);
-    const r = spawnSync(process.execPath, [importer, '--in', inPath, '--cases', join(dirPf, 'cases.json'), '--bar', join(dirPf, 'bar.json'), '--out', out, '--reading', READINGS[0]], { encoding: 'utf8' });
+    const r = spawnSync(process.execPath, [importer, '--in', inPath, '--cases', join(dirPf, 'cases.json'), '--bar', join(dirPf, 'bar.json'), '--out', out, '--reading', READINGS[0]], { env: scratchEnv(), encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);
     return { text: readFileSync(out, 'utf8'), stdout: r.stdout };
   };
-  const a = spawn(1);
-  const b = spawn(2);
+  const a = importOnce(1);
+  const b = importOnce(2);
   assert.equal(a.text, b.text);
   assert.equal(a.stdout, b.stdout);
   assert.equal(a.text, readFileSync(one.outPath, 'utf8'));
@@ -376,7 +377,7 @@ test('the plain fixture (the built-in grader) is refused with the message that n
 
 test('IMPORT_NO_RECORD: a record of another schema on every row is no record', () => {
   const j = fix('old-judge');
-  for (const r of rowsOf(j)) ev(r).schema = 'example.grader-evidence/v8';
+  for (const r of rowsOf(j)) ev(r).schema = 'example.grader-evidence/v9';
   refuse(j, 'IMPORT_NO_RECORD');
 });
 
@@ -1028,7 +1029,8 @@ test('a fixed text changed alike on every row moves judgeDefinitionHash only; a 
 
 const [FIRST, SECOND] = READINGS;
 const configOf = (j: J): J => j.config.defaultTest.options.provider.config;
-const countLine = (out: string): string => out.split('\n').find((l) => l.startsWith('replies with a thinking block: ')) ?? 'NO LINE';
+/** The first part of the reasoning line: how many asks that got a reply held reasoning. */
+const countLine = (out: string): string => (out.split('\n').find((l) => l.startsWith('replies with reasoning: ')) ?? 'NO LINE').split(';')[0] as string;
 
 test('thinking fixture: some replies thought and some did not; the file imports, every label is read from the text block, and the count line is printed', () => {
   const j = fix('thinking');
@@ -1037,7 +1039,7 @@ test('thinking fixture: some replies thought and some did not; the file imports,
   const k = types.filter((t) => t === 'thinking+text').length;
   const r = viaMain(fixtureText('thinking'));
   assert.equal(r.code, 0, r.err);
-  assert.equal(countLine(r.out), `replies with a thinking block: ${k} of 9`);
+  assert.equal(countLine(r.out), `replies with reasoning: ${k} of 9 asks`);
   assert.ok(k > 0 && k < 9);
   const run = parseRunArtifact(JSON.parse(readFileSync(r.outPath, 'utf8')));
   assert.equal(run.draws.length, 9);
@@ -1067,8 +1069,8 @@ test('the count line counts the blocks: a thinking or redacted_thinking block, a
   ev(rowOf(j, 'c3', 2)).thinkingTokens = 99; // a counter alone is not a block
   const r = viaMain(j);
   assert.equal(r.code, 0, r.err);
-  assert.equal(countLine(r.out), 'replies with a thinking block: 3 of 9');
-  assert.equal(countLine(viaMain(fixtureText('old-judge')).out), 'replies with a thinking block: 0 of 9');
+  assert.equal(countLine(r.out), 'replies with reasoning: 3 of 9 asks');
+  assert.equal(countLine(viaMain(fixtureText('old-judge')).out), 'replies with reasoning: 0 of 9 asks');
 });
 
 test('the counter and the blocks are not compared, and "ABSENT" is a counter value: each imports', () => {
@@ -1142,7 +1144,7 @@ test('the fenced fixture is imported under the second rule, and no record or con
   const r = viaMain(fixtureText('fenced'), { reading: SECOND });
   assert.equal(r.code, 0, r.err);
   assert.equal(parseRunArtifact(JSON.parse(readFileSync(r.outPath, 'utf8'))).draws.length, 9);
-  assert.equal(countLine(r.out), 'replies with a thinking block: 0 of 9');
+  assert.equal(countLine(r.out), 'replies with reasoning: 0 of 9 asks');
   assert.ok(r.out.split('\n').includes(`reading rule: ${SECOND}`));
 });
 
@@ -1336,14 +1338,14 @@ test('fixtures/reask.json imports', () => {
   const j = fix('reask');
   // What the tool wrote under a bound of 2: one slot of c1 was cut once, one slot of c2 got a 529 once; 11 asks for 9 slots.
   assert.deepEqual(reaskedSlots(j), [['c1#0', ['truncated']], ['c2#0', ['server-error']]]);
-  assert.ok(rowsOf(j).every((r) => ev(r).reask.max === 2 && ev(r).schema === 'example.grader-evidence/v7'));
+  assert.ok(rowsOf(j).every((r) => ev(r).reask.max === 2 && ev(r).schema === 'example.grader-evidence/v8'));
   assert.equal(j.config.defaultTest.options.provider.config.maxReasks, 2);
   const seqs = rowsOf(j).flatMap((r) => [...ev(r).reask.earlier.map((a: J) => a.callSeq), ev(r).callSeq]).sort((a: number, b: number) => a - b);
   assert.deepEqual(seqs, Array.from({ length: 11 }, (_, i) => i + 1));
   const r = viaMain(fixtureText('reask'));
   assert.equal(r.code, 0, r.err);
   const lines = r.out.split('\n');
-  assert.deepEqual(lines.slice(-5, -2), ['replies with a thinking block: 0 of 9', REASK_LINE, `reading rule: ${READINGS[0]}`]);
+  assert.deepEqual(lines.slice(-5, -2).map((l) => l.replace(/^(replies with reasoning: 0 of 10 asks); .*$/, '$1')), ['replies with reasoning: 0 of 10 asks', REASK_LINE, `reading rule: ${READINGS[0]}`]);
   const run = parseRunArtifact(JSON.parse(readFileSync(r.outPath, 'utf8')));
   const shapes = Object.fromEntries(run.draws.map((d) => [`${d.caseId}#${d.drawIndex}`, d.attempts.map((a) => (a.kind === 'unmeasured' ? `${a.kind} ${a.role} ${a.reason}` : a.kind))]));
   assert.deepEqual(shapes['c1#0'], ['unmeasured judge truncated', 'graded']);
@@ -1367,7 +1369,7 @@ test('fixtures/reask.json imports', () => {
   const failed = run.draws.find((d) => d.caseId === 'c2' && d.drawIndex === 0)?.attempts[0] as { detail: string };
   assert.match(failed.detail, /^judge ask 1 of 2: no reply \(server-error\), status 529; callSeq \d+, call id [0-9a-f-]{36}$/);
   // The bound is in the judge's harness string, and nowhere on the system side, which stays unknown.
-  assert.match(run.identity.judgeHarnessVersion, /; node v\d+\.\d+\.\d+; max-reasks 2$/);
+  assert.match(run.identity.judgeHarnessVersion, /; node v\d+\.\d+\.\d+; max-reasks 2; wire anthropic-messages\/v1$/);
   assert.equal(run.identity.systemHarnessVersion, 'UNKNOWN');
   assert.equal(run.identity.seed, 'UNKNOWN');
   // No client-error, parse-failure or content-filter attempt is ever written.
@@ -1391,8 +1393,8 @@ test('the bound enters the judge definition hash: two bounds give two definition
   };
   const [two, three] = [at(2), at(3)];
   assert.notEqual(two.judge.judgeDefinitionHash, three.judge.judgeDefinitionHash);
-  assert.match(two.judge.judgeHarnessVersion, /; max-reasks 2$/);
-  assert.match(three.judge.judgeHarnessVersion, /; max-reasks 3$/);
+  assert.match(two.judge.judgeHarnessVersion, /; max-reasks 2; wire anthropic-messages\/v1$/);
+  assert.match(three.judge.judgeHarnessVersion, /; max-reasks 3; wire anthropic-messages\/v1$/);
   for (const f of ['judgeModelRequested', 'judgeModelServed', 'judgeCallShapeHash', 'rubricHash'] as const) assert.equal(two.judge[f], three.judge[f], f);
 });
 
@@ -1484,9 +1486,9 @@ test('a record of the version before, as the earlier grader wrote it, is refused
     }
   }
   const e = refuse(j, 'IMPORT_EVIDENCE');
-  assert.match(e.message, /this record is of version example\.grader-evidence\/v6, an earlier version than example\.grader-evidence\/v7; re-grade with the current grader \(examples\/importers\/promptfoo\/grader-provider\.cjs, schema example\.grader-evidence\/v7\)/);
-  // The same file under the current schema string is not a v7 file: the cut ask lacks the two keys.
-  for (const r of rowsOf(j)) ev(r).schema = 'example.grader-evidence/v7';
+  assert.match(e.message, /this record is of version example\.grader-evidence\/v6, an earlier version than example\.grader-evidence\/v8; re-grade with the current grader \(examples\/importers\/promptfoo\/grader-provider\.cjs, schema example\.grader-evidence\/v8\)/);
+  // The same file under the current schema string is not a v8 file: the cut ask lacks the two keys.
+  for (const r of rowsOf(j)) ev(r).schema = 'example.grader-evidence/v8';
   assert.match(refuse(j, 'IMPORT_REASK').message, /not the form of a "truncated" ask; it lacks replySha256, replyUtf8Bytes/);
   // v5: no usage and no reask.
   const k = fix('old-judge');
@@ -1495,7 +1497,7 @@ test('a record of the version before, as the earlier grader wrote it, is refused
     delete ev(r).usage;
     delete ev(r).reask;
   }
-  assert.match(refuse(k, 'IMPORT_EVIDENCE').message, /this record is of version example\.grader-evidence\/v5, an earlier version than example\.grader-evidence\/v7; re-grade with the current grader/);
+  assert.match(refuse(k, 'IMPORT_EVIDENCE').message, /this record is of version example\.grader-evidence\/v5, an earlier version than example\.grader-evidence\/v8; re-grade with the current grader/);
 });
 
 test('a reply that gives "pass" twice is not a verdict: the slot is IMPORT_UNGRADED under either rule, whatever the tool graded', () => {
@@ -1553,4 +1555,133 @@ test('a usage error prints a path on one line: a file name holding a carriage re
   assert.equal(err.length, 1, JSON.stringify(err));
   for (const line of err) assert.ok(!/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(line), JSON.stringify(line));
   assert.ok(err.some((line) => line.includes('\\r\\u001b[2K') && line.includes('\\n') && line.includes('\\u2028')), JSON.stringify(err));
+});
+
+// ---- the OpenAI Responses wire ---------------------------------------------------------------------------------------------
+
+const OPENAI = 'openai-responses/v1';
+const badFixtureText = (name: string): string => readFileSync(join(dirPf, 'bad-fixtures', `${name}.json`), 'utf8');
+
+test('openai-old-judge and openai-new-judge import; the run names the wire in judgeHarnessVersion, and the served model equals the requested one', () => {
+  for (const [name, model] of [['openai-old-judge', 'fake-judge-old'], ['openai-new-judge', 'fake-judge-strict-new']] as const) {
+    const r = conv(fix(name));
+    const run = parseRunArtifact(JSON.parse(JSON.stringify(r.run)));
+    assert.equal(r.wire, OPENAI);
+    assert.equal(run.identity.judgeModelRequested, model);
+    assert.equal(run.identity.judgeModelServed, model, 'the stand-in echoes the requested id by default; the importer copies what the reply named');
+    assert.match(run.identity.judgeHarnessVersion, /^promptfoo 0\.123\.1; anchorset-recording-grader js sha256:[0-9a-f]{64}; node v\d+\.\d+\.\d+; max-reasks 0; wire openai-responses\/v1$/);
+    assert.equal(run.draws.length, 9);
+    for (const d of run.draws) assert.deepEqual(d.attempts.map((a) => a.kind), ['graded']);
+    const call = run.callShapes.judge as Record<string, unknown>;
+    assert.equal(call['endpoint'], 'http://127.0.0.1:18765/v1/responses');
+    assert.equal(call['apiVersion'], NOT_SENT);
+    assert.deepEqual(call['extras'], { 'openai.store': false });
+    assert.equal(call['contextPolicy'], 'none');
+    assert.equal(call['maxOutputTokens'], 256);
+    // the config of the fixture states the wire's settings
+    assert.deepEqual(Object.keys(configOf(fix(name))).sort(), ['baseUrl', 'effort', 'maxReasks', 'max_output_tokens', 'model', 'temperature', 'verbosity', 'wire']);
+  }
+  // the same stored outputs: the new judge differs in the label of the one case that carries the strict marker, and in the model
+  const [o, n] = [conv(fix('openai-old-judge')), conv(fix('openai-new-judge'))];
+  assert.equal(o.judge.judgeDefinitionHash, n.judge.judgeDefinitionHash);
+  assert.equal(o.judge.judgeCallShapeHash, n.judge.judgeCallShapeHash);
+  assert.equal(o.judge.judgeHarnessVersion, n.judge.judgeHarnessVersion);
+  assert.notEqual(o.judge.judgeModelRequested, n.judge.judgeModelRequested);
+});
+
+test('the success lines of an OpenAI file: the wire, the served-id statement (served equals requested), the reasoning counts and the re-asks', () => {
+  const r = viaMain(fixtureText('openai-old-judge'));
+  assert.equal(r.code, 0, r.err);
+  const lines = r.out.split('\n');
+  assert.ok(lines.includes('wire: openai-responses/v1'));
+  assert.ok(lines.includes('judge model served: "fake-judge-old", the same text as the model requested. The provider\'s reply named no more specific version, so this run file cannot show which version of the model graded it. A change of model behind this name would leave judgeModelServed unchanged.'));
+  assert.ok(lines.includes("replies with reasoning: 0 of 9 asks; reasoning tokens (the provider's own count): total 0, median 0, max 0; counter absent on 0"));
+  // the Anthropic fixture prints the other statement, so the two are told apart
+  const a = viaMain(fixtureText('old-judge'));
+  assert.ok(a.out.split('\n').includes('judge model served: "fake-judge-old-served-20260101" (requested "fake-judge-old"), as the provider\'s reply named it; not checked.'));
+  assert.ok(a.out.split('\n').includes('wire: anthropic-messages/v1'));
+});
+
+test('openai-reask: a cut ask and a 503 ask stand before the graded attempt; the cut ask states why it was incomplete', () => {
+  const j = fix('openai-reask');
+  const cut = rowsOf(j).flatMap((r) => ev(r).reask.earlier).filter((a: J) => a.reason === 'truncated');
+  assert.equal(cut.length, 1);
+  assert.equal(cut[0].stopReason, 'incomplete');
+  assert.equal(cut[0].incompleteReason, 'max_output_tokens');
+  assert.deepEqual(rowsOf(j).flatMap((r) => ev(r).reask.earlier.map((a: J) => a.reason)).sort(), ['server-error', 'truncated']);
+  const r = conv(j);
+  const run = parseRunArtifact(JSON.parse(JSON.stringify(r.run)));
+  const shapes = Object.fromEntries(run.draws.map((d) => [`${d.caseId}#${d.drawIndex}`, d.attempts.map((a) => (a.kind === 'unmeasured' ? `${a.kind} ${a.role} ${a.reason}` : a.kind))]));
+  assert.deepEqual(shapes['c1#0'], ['unmeasured judge truncated', 'graded']);
+  assert.deepEqual(shapes['c2#0'], ['unmeasured judge server-error', 'graded']);
+  const cutAttempt = run.draws.find((d) => d.caseId === 'c1' && d.drawIndex === 0)?.attempts[0];
+  assert.ok(cutAttempt !== undefined && cutAttempt.kind === 'unmeasured');
+  assert.match(cutAttempt.detail, /the reply was cut at the output cap \(stop "incomplete" \(max_output_tokens\)\), status 200, response resp_fake_\d+, served model fake-judge-old; callSeq \d+, call id [0-9a-f-]{36}; usage input \d+ output \d+; thinking tokens 0; cut reply sha256:[0-9a-f]{64} \(\d+ UTF-8 bytes\)/);
+  assert.equal(r.reasks.startsWith('re-asks: 2 on 2 of 9 slots (truncated 1, timeout 0, transport 0, server-error 1, rate-limited 0)'), true);
+  assert.match(r.reasoning, /^replies with reasoning: 0 of 10 asks;/);
+});
+
+test('mixed-wires.json (c1 and c2 on the OpenAI wire, c3 on the Anthropic wire, one grader process) is IMPORT_MIXED_IDENTITY naming wire', () => {
+  const j = JSON.parse(badFixtureText('mixed-wires'));
+  assert.deepEqual([...new Set(rowsOf(j).map((r) => ev(r).wire))].sort(), ['anthropic-messages/v1', 'openai-responses/v1']);
+  assert.equal(new Set(rowsOf(j).map((r) => ev(r).graderRunId)).size, 1, 'one grader process wrote the whole file');
+  const e = refuse(j, 'IMPORT_MIXED_IDENTITY');
+  assert.deepEqual([...e.fields], ['wire']);
+});
+
+test('an OpenAI file whose rows come from two grader processes is IMPORT_HIDDEN_CALLS', () => {
+  const j = fix('openai-old-judge');
+  // a second process: its run id differs (the callSeq of its asks would restart at 1, which the first check does not need to see)
+  ev(rowOf(j, 'c3', 2)).graderRunId = 'another-grader-process';
+  const e = refuse(j, 'IMPORT_HIDDEN_CALLS');
+  assert.deepEqual([...e.fields], ['graderRunId']);
+  assert.match(e.message, /two grader processes wrote this file \(2 distinct run ids\)/);
+});
+
+test('a v7 record on any row is refused with the instruction to grade again, not read as Anthropic', () => {
+  const j = fix('old-judge');
+  for (const r of rowsOf(j)) {
+    ev(r).schema = 'example.grader-evidence/v7';
+    delete ev(r).wire;
+  }
+  const e = refuse(j, 'IMPORT_EVIDENCE');
+  assert.match(e.message, /this record is of version example\.grader-evidence\/v7, an earlier version than example\.grader-evidence\/v8; re-grade with the current grader/);
+});
+
+test('the OpenAI record is held to its config: the wire, the cap max_output_tokens, effort and verbosity must be the record\'s', () => {
+  const edit = (over: (c: J) => void, field: string, words: RegExp): void => {
+    const j = fix('openai-old-judge');
+    over(configOf(j));
+    const e = refuse(j, 'IMPORT_EVIDENCE');
+    assert.ok(e.fields.includes(`/config/defaultTest/options/provider/config/${field}`), fieldsOf(e));
+    assert.match(e.message, words);
+  };
+  edit((c) => { delete c.wire; }, 'wire', /wire: "not set" but the record says "openai-responses\/v1"/);
+  edit((c) => { c.wire = 'anthropic-messages/v1'; }, 'wire', /wire: "anthropic-messages\/v1" but the record says/);
+  edit((c) => { c.max_output_tokens = 99; }, 'max_output_tokens', /max_output_tokens: 99 but the record says 256/);
+  edit((c) => { c.max_tokens = 256; }, 'max_tokens', /max_tokens: not a setting the grader sends on the openai-responses\/v1 wire/);
+  edit((c) => { c.effort = 'high'; }, 'effort', /effort: "high" but the record says "NOT_SENT"/);
+  edit((c) => { c.verbosity = 'low'; }, 'verbosity', /verbosity: "low" but the record says "NOT_SENT"/);
+  edit((c) => { c.thinking = NOT_SENT; }, 'thinking', /thinking: not a setting/);
+  edit((c) => { c.apiVersion = '2023-06-01'; }, 'apiVersion', /apiVersion/);
+  // the base URL posts to <base>/responses: the Anthropic form of the same address is another endpoint
+  edit((c) => { c.baseUrl = 'http://127.0.0.1:18765'; }, 'baseUrl', /posts to "http:\/\/127\.0\.0\.1:18765\/responses" but the record says "http:\/\/127\.0\.0\.1:18765\/v1\/responses"/);
+});
+
+test('the OpenAI witnesses of the other listed version import and give the run of the reference version, but for the tool version in the harness string', () => {
+  for (const name of ['openai-old-judge', 'openai-new-judge']) {
+    const witness = JSON.parse(readFileSync(join(dirPf, 'by-version', '0.125.1', `${name}.json`), 'utf8'));
+    const r = conv(witness);
+    assert.match(r.judge.judgeHarnessVersion, /^promptfoo 0\.125\.1; .*; wire openai-responses\/v1$/);
+    const ref = conv(fix(name));
+    for (const f of ['judgeModelRequested', 'judgeModelServed', 'judgeCallShapeHash', 'rubricHash'] as const) assert.equal(r.judge[f], ref.judge[f], f);
+  }
+});
+
+test('the harness-version string of a run moves with the wire alone: Anthropic old-judge against openai-old-judge differ in four judge fields at the same model name', () => {
+  const [a, o] = [conv(fix('old-judge')), conv(fix('openai-old-judge'))];
+  const moved = (Object.keys(a.judge) as (keyof typeof a.judge)[]).filter((k) => a.judge[k] !== o.judge[k]);
+  // same requested model name; the served model, the call shape and the harness string move, and the definition hash does not
+  assert.deepEqual(moved.sort(), ['judgeCallShapeHash', 'judgeHarnessVersion', 'judgeModelServed']);
+  assert.equal(a.judge.judgeDefinitionHash, o.judge.judgeDefinitionHash);
 });

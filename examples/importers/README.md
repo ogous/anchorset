@@ -11,7 +11,7 @@ include them.
 
 | Path | What it is |
 |---|---|
-| `promptfoo/` | the grading script (`grader-provider.cjs`), the importer (`import.ts`), an example config, cases, bar and plan |
+| `promptfoo/` | the grading script (`grader-provider.cjs`), the importer (`import.ts`), `stored-from-result.ts` (the stored answers from a result file of your system), an example config, cases, bar and plan |
 | `inspect/` | the grading script (`regrade.py`), the importer (`import.ts`), the grading texts, example cases, bar and plan |
 | `skill-evals/` | the check (`check.ts`), the grading script (`regrade.ts`), the importer (`import.ts`), an example result folder and the judge's texts |
 | `make-plan.ts` | writes a `judge-change` plan for two imported run files |
@@ -22,8 +22,10 @@ include them.
 | `watch-candidate.sh` | tries a new tool release in a scratch copy of the tree; a run made that way carries no claim from this repository |
 | `shared.ts` | what the three importers share |
 
-The Inspect set in `inspect/fixtures/` was written before `regrade.py` recorded the system log, so its files hold no record of
-one. It stays that way on purpose: it is the example of such a file.
+The graded Inspect files that `regrade.py` wrote, in `inspect/fixtures/` and `inspect/by-version/`, each hold a record of the
+system log. `fixtures/plain.json` and the `mixed-wires.json` files, written by `fixture_inputs.py`, hold none, and each
+`source.json` is a system log. A file with none (one written before `regrade.py` recorded it) is made in the tests by taking
+that record out of one of these.
 
 The grading texts under `inspect/` are copied from inspect_ai 0.3.275 and are under that tool's MIT license; see
 `NOTICE`.

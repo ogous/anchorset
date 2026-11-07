@@ -3,6 +3,82 @@
 All notable changes to this project are recorded here. Each file format carries its own schema string;
 `docs/MIGRATIONS.md` lists them, and from 0.1.0 on it says how a file moves when one changes.
 
+## 0.4.0 (2026-11-07)
+
+What changed since 0.3.0. The library and its seven commands are unchanged: every format `anchorset` reads or writes
+keeps its version string, and every file the 0.3.0 commands read, the 0.4.0 commands still read. The changes are in the example importers and grading
+scripts under `examples/importers/` (run from a checkout; the npm package does not hold them), in a new guide for
+promptfoo users, and in how the Claude Code plugin is served. One grader record moves up, so a grader result written
+before this version must be graded again or imported with the checkout that wrote it; `docs/MIGRATIONS.md` says how.
+
+### Example grading scripts: a second API
+
+- **The example grading scripts speak a second API.** `grader-provider.cjs` (promptfoo and the skill's folder) and
+  `recording_grader.py` (Inspect) take a required setting `wire`: `anthropic-messages/v1` (Anthropic's Messages API) or
+  `openai-responses/v1` (OpenAI's own Responses API). It has no default. An OpenAI judge states `max_output_tokens` (16
+  or more; `--max-tokens` on `regrade.py` and `regrade.ts`), `effort`, `verbosity` and `maxReasks`; the key is read from
+  `OPENAI_API_KEY`. Every OpenAI request sends `store: false` and `truncation: "disabled"`.
+- **The grader record is `example.grader-evidence/v8`.** It adds `wire`. `judgeHarnessVersion` now ends with
+  `; wire <name>` (the skill's folder keeps its `script-files` part last), so a switch from a Claude judge to a GPT
+  judge moves `judgeModelRequested`, `judgeModelServed`, `judgeCallShapeHash` and `judgeHarnessVersion`, and not
+  `judgeDefinitionHash`. One run file holds one wire.
+- **`regrade.py` and `skill-evals/regrade.ts` require `--wire`.** A flag of the other wire is a usage error (exit 64):
+  `--thinking` and `--api-version` belong to Anthropic's wire, `--verbosity` to OpenAI's.
+- **Every importer prints `wire: <name>`**, a statement of the served model name (the same text as the requested name,
+  or the name the provider gave), and a reasoning line in place of the thinking line: asks with reasoning, and the
+  total, median and largest reasoning-token count, each provider's own count.
+- **What the importers read of an OpenAI reply.** A completed message whose `phase` is absent or exactly
+  `final_answer`; any other phase is refused at import. A reply that is `incomplete` for a reason other than the output
+  cap, or that holds a refusal part, is never graded and never asked again; the import refuses the file and names the
+  draw.
+- **`examples/importers/make-plan.ts` prints a note on standard error** when the two run files were graded through
+  different APIs, or when one names no wire. The plan is still written.
+- **The grading scripts check four OpenAI address variables**, in all three paths (promptfoo's grader, `regrade.py`
+  and `skill-evals/regrade.ts`): `OPENAI_BASE_URL`, `OPENAI_API_BASE_URL` and `OPENAI_API_HOST`, the three that
+  promptfoo's code reads for an OpenAI address, as read on 2026-11-07 in 0.125.1, and `OPENAI_HOST`. Any one that is
+  set and differs from the address you give, or is set when you give none, stops the grader before any call. For the
+  two `HOST` variables the message says to unset the variable.
+- **The stand-in** (`fake-endpoint.ts`) answers the Responses route (`/v1/responses`) with the modes the tests need.
+- **What ran against OpenAI's API**, on 2026-11-06, in two short checks with one draw per call: 13 requests through the
+  JavaScript grading script and 2 through the Python one, with `inspect_ai` 0.3.286; the second check imported one case
+  on each of the eval-skill and Inspect paths. Not run against OpenAI's API: a `promptfoo eval` run, a comparison of two
+  judges, more than one draw, and the rate-limit, server-error and timeout paths. `docs/IMPORTERS.md` lists the models
+  and what each answered.
+
+### promptfoo
+
+- **`docs/PROMPTFOO.md`** is new: for a promptfoo user whose `llm-rubric` judge is about to change, the steps from a
+  result file of their own system to the `judge-change` report, with an OpenAI config line and the `--judge-moves` of
+  a switch from a Claude judge to a GPT judge.
+- **`examples/importers/promptfoo/stored-from-result.ts`** is new: `--in <result.json> --out <stored.json>` writes the
+  stored answers, one per case, from a result file of a run of your system (`promptfoo eval -o`), and prints the
+  stored file's sha256. It copies none of the grades the file may hold, never overwrites `--out`, and refuses a file from an untested promptfoo
+  version, with more than one prompt or provider, with a tool error, with two different answers for one case, or with
+  a case whose variables differ between rows.
+- The promptfoo importer, and `stored-from-result.ts`, refuse a file in which `defaultTest`, a test, or a row's
+  `testCase` names its own `provider` or a fixed `providerOutput`, since that answer does not come from the suite's one
+  provider.
+
+### Claude Code plugin
+
+- The catalog (`.claude-plugin/marketplace.json`) no longer serves the default branch. It names one commit of the
+  repository by its full hash (`git-subdir`, the repository's URL, path `plugin`, `sha`), so an install gets the plugin
+  text of one release, and an update comes with a new plugin version. In this release's commit the catalog names, by
+  `sha` alone, a commit after the v0.3.0 tag that holds 0.3.0's plugin, so an install from it gets 0.3.0's skill,
+  which runs `npx anchorset@0.3.0`. A later commit, made once npm serves 0.4.0, moves the pin to this release's commit
+  and adds its tag as `ref`.
+- The plugin's skill in `plugin/` runs `npx anchorset@0.4.0` and names the OpenAI path and `stored-from-result.ts`;
+  the catalog serves it from that later commit on.
+
+### Docs
+
+- `docs/IMPORTERS.md` has a new section, "Two APIs, and a switch between them": each API's settings, what a switch
+  moves, and what ran.
+- `docs/RUN_FORMAT.md`, under "Finish reasons", has a table for OpenAI's Responses API.
+- `docs/JUDGE_CHANGE.md`, under Limits: across two providers the report measures the change of the grading path, not of
+  the model alone.
+- README and `llms.txt` name the promptfoo guide; the npm package holds it at `node_modules/anchorset/docs/`.
+
 ## 0.3.0 (2026-11-05)
 
 What changed since 0.2.0. `anchorset.run/v3` and the other formats you write keep their version strings, and every

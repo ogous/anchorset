@@ -4,7 +4,9 @@
  *   node examples/importers/inspect/import.ts --in <log.json> --cases <cases.json> --bar <bar.json> --out <run.json>
  *
  * It reads one JSON-format Inspect log, of an inspect_ai version in `tested-versions.json`, that `regrade.py` wrote through the
- * recording grader, and writes an `anchorset.run/v3` file. It refuses, and writes nothing, when any slot is not a
+ * recording grader, and writes an `anchorset.run/v3` file. The grader's record names its wire (`anthropic-messages/v1` or
+ * `openai-responses/v1`); a record of version 8 of either is read, a record of version 7 is refused with the instruction to grade again, and
+ * the log's model arguments must be the wire's own and the record's. It refuses, and writes nothing, when any slot is not a
  * clean, finished, strictly readable grade, or when the fields it reads do not agree with one another and with the grader's record.
  *
  * The record is read from the sample's score, never from an event. An event string that is an `attachment://`
@@ -43,16 +45,18 @@ import {
   runImporterAsProcess,
   shape,
   skeletonFromTemplate,
-  thinkingRepliesLine,
+  reasoningLine,
   typeName,
   ungradedReason,
+  WIRE_OPENAI,
   ungradedRefusal,
 } from '../shared.ts';
-import type { CasesFile, GraderRecord, Io, RecordedSlot, SkeletonRow, TestedSet } from '../shared.ts';
+import type { CasesFile, GraderRecord, Io, RecordedSlot, SkeletonRow, TestedSet, Wire } from '../shared.ts';
 
 const SCORER = 'model_graded_qa';
 const SLOTS = ['question', 'answer', 'criterion', 'instructions'] as const;
 const DATA_MARKER = /\[(?:begin|end) data\]/i;
+/** The model arguments the grader takes, by wire (`wire` itself is looked at apart, as the grader looks at it). */
 export const MODEL_ARG_KEYS = GRADER_CONFIG_KEYS.inspect;
 
 /** The keys the tool writes on the grader's prompt message and on its reply message. Any other key refuses. */
@@ -166,7 +170,10 @@ export type InspectSummary = {
   drawsPerCase: number;
   grader: { name: string; language: string; runtime: string; sha256: string };
   slots: number;
-  thinkingReplies: string;
+  wire: Wire;
+  requestedModel: string;
+  servedModel: string;
+  reasoning: string;
   reasks: string;
 };
 
@@ -317,6 +324,7 @@ export function buildInspectRun(bytes: Uint8Array, fileName: string, stated: Cas
   const slots: RecordedSlot[] = rows.map((r) => ({ caseId: r.caseId, draw: r.draw, record: r.g }));
   checkRecordSet(slots);
   const first = (rows[0] as Row).g;
+  const wire = first.wire;
 
   // ---- the model option -----------------------------------------------------------------------------------------
   const modelOpt = options['model'];
@@ -326,13 +334,23 @@ export function buildInspectRun(bytes: Uint8Array, fileName: string, stated: Cas
   }
   const argsPath = '/eval/scorers/0/options/model/model_args';
   const args = isObject(modelOpt) && modelOpt['model_args'] !== undefined ? asObj(modelOpt['model_args'], argsPath) : {};
-  const badArgs = Object.keys(args).filter((k) => !MODEL_ARG_KEYS.includes(k));
+  const badArgs = Object.keys(args).filter((k) => k !== 'wire' && !MODEL_ARG_KEYS[wire].includes(k));
   if (badArgs.length > 0) throw new ImportRefusal('IMPORT_EVIDENCE', badArgs.map((k) => `${argsPath}/${k}`), `${argsPath}: keys ${badArgs.join(', ')} are not documented settings of the grader`);
-  // Thinking and effort are stated, with no default: the log must show the two arguments, and they must be the ones the record shows.
-  const recEffort = first.sent.output_config === NOT_SENT ? NOT_SENT : first.sent.output_config.effort;
+  // The wire is stated, with no default, and is the record's. Its settings are the wire's own: an argument of the other wire is not one (refused above).
   const argProblems: string[] = [];
-  if (!('thinking' in args) || hashOf(args['thinking']) !== hashOf(first.sent.thinking)) argProblems.push(`${argsPath}/thinking: ${shown(args, 'thinking')} but the record says it sent ${JSON.stringify(first.sent.thinking)}`);
-  if (args['effort'] !== recEffort) argProblems.push(`${argsPath}/effort: ${shown(args, 'effort')} but the record says ${JSON.stringify(recEffort)}`);
+  if (args['wire'] !== wire) argProblems.push(`${argsPath}/wire: ${shown(args, 'wire')} but the record says ${JSON.stringify(wire)}`);
+  if (first.wire === WIRE_OPENAI) {
+    // Reasoning effort and verbosity are stated, with no default: the log must show the two arguments, and they must be the ones the record shows.
+    const recEffort = first.sent.reasoning === NOT_SENT ? NOT_SENT : first.sent.reasoning.effort;
+    if (args['effort'] !== recEffort) argProblems.push(`${argsPath}/effort: ${shown(args, 'effort')} but the record says ${JSON.stringify(recEffort)}`);
+    const recVerbosity = first.sent.text === NOT_SENT ? NOT_SENT : first.sent.text.verbosity;
+    if (args['verbosity'] !== recVerbosity) argProblems.push(`${argsPath}/verbosity: ${shown(args, 'verbosity')} but the record says ${JSON.stringify(recVerbosity)}`);
+  } else {
+    // Thinking and effort are stated, with no default: the log must show the two arguments, and they must be the ones the record shows.
+    const recEffort = first.sent.output_config === NOT_SENT ? NOT_SENT : first.sent.output_config.effort;
+    if (!('thinking' in args) || hashOf(args['thinking']) !== hashOf(first.sent.thinking)) argProblems.push(`${argsPath}/thinking: ${shown(args, 'thinking')} but the record says it sent ${JSON.stringify(first.sent.thinking)}`);
+    if (args['effort'] !== recEffort) argProblems.push(`${argsPath}/effort: ${shown(args, 'effort')} but the record says ${JSON.stringify(recEffort)}`);
+  }
   // The bound of re-asks is stated too, with no default: the log must show the argument, equal to the record's.
   if (args['max_reasks'] !== first.reask.max) argProblems.push(`${argsPath}/max_reasks: ${shown(args, 'max_reasks')} but the record says the bound was ${first.reask.max} re-ask(s)`);
   // Where a call went and under what deadline: the base URL (a sibling of model_args in the scorer's model), the deadline, the API version and
@@ -342,6 +360,7 @@ export function buildInspectRun(bytes: Uint8Array, fileName: string, stated: Cas
       { timeoutMs: args['timeout_ms'], apiVersion: args['api_version'], apiKeyEnv: args['api_key_env'], baseUrl: isObject(modelOpt) ? modelOpt['base_url'] : undefined },
       first.callShape,
       { timeoutMs: `${argsPath}/timeout_ms`, apiVersion: `${argsPath}/api_version`, apiKeyEnv: `${argsPath}/api_key_env`, baseUrl: '/eval/scorers/0/options/model/base_url' },
+      wire,
     ),
   );
   if (argProblems.length > 0) throw new ImportRefusal('IMPORT_EVIDENCE', argProblems.map((p) => p.slice(0, p.indexOf(':'))), argProblems.join('; '));
@@ -480,7 +499,10 @@ export function buildInspectRun(bytes: Uint8Array, fileName: string, stated: Cas
       drawsPerCase: epochs,
       grader: { name: first.grader.name, language: first.grader.language, runtime: first.grader.runtime, sha256: first.grader.sha256 },
       slots: rows.length,
-      thinkingReplies: thinkingRepliesLine(rows.map((r) => r.g)),
+      wire: first.wire,
+      requestedModel: first.requestedModel,
+      servedModel: first.servedModel,
+      reasoning: reasoningLine(rows.map((r) => r.g)),
       reasks: reasksLine(rows.map((r) => r.g)),
     },
   };

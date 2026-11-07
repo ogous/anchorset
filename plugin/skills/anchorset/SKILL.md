@@ -17,10 +17,10 @@ not in this text: in a pipeline, call the tool directly.
 Always run this exact version, never a range and never `latest`:
 
 ```
-npx anchorset@0.3.0 <command> ...
+npx anchorset@0.4.0 <command> ...
 ```
 
-It needs Node 22.21 or later. `npx anchorset@0.3.0 --help` prints the usage text and exits 0; read it before the first
+It needs Node 22.21 or later. `npx anchorset@0.4.0 --help` prints the usage text and exits 0; read it before the first
 call of a session, and follow it where it differs from this page. If the package cannot be fetched, stop and report that; never fall back
 to another version or to `latest`.
 
@@ -34,7 +34,7 @@ to another version or to `latest`.
 | agreement between raters who were shown the same packets | `agree --ratings <file.json>` |
 | one judge's verdicts on the same anchor items, before and after | `drift --old <file.json> --new <file.json> --flag <label,...>` |
 | label flips among the repeat draws of one run | `flips --run <run.json>` |
-| to measure a judge change on stored outputs of promptfoo, Inspect or a skill-evals flow | These tools' result files are not accepted directly, and the importers never read grades the user already has: an example importer in the `examples/importers/` folder of https://github.com/ogous/anchorset (run from a checkout at the release tag) is a re-grading bridge. The stored outputs are graded again, by the old judge and by the new judge, through the repository's recording grader, and the importer reads the file of that re-grade and turns it into runs for `judge-change`. The report is about that re-grade, not about the grades the user already holds. Start with the offline check where the flow has one (`check.ts` for a skill-evals flow, the check mode of the Inspect re-grade script), which makes no call and costs nothing; promptfoo has none, and its free pass in `docs/IMPORTERS.md` grades through a local stand-in of the API and makes no paid call. promptfoo and Inspect each have a list of tested releases (`examples/importers/tested-versions.json`, named in the guide), and a re-grade or an import made with any other release is refused; the system's own Inspect log may come from any version. Report the refusal and the releases the list names. Never edit that list, an importer or a grading script, never try an untested release to get around it, and install a listed release only at the user's word. Never start a paid re-grade without the user's word and the amount they allow for that run. |
+| to measure a judge change on stored outputs of promptfoo, Inspect or a skill-evals flow | an example importer of the repository; see "Other eval tools" below |
 
 Every command takes `--json`, which prints one JSON object on stdout instead of the text report when the command
 exits 0; `gate` also prints its regression (exit 1) as that object, and `validate` its exit 2. A refusal (exit 2)
@@ -43,9 +43,25 @@ with `code`, `fields` and `message`, and `judgeDiff` or `noGrade` with `statemen
 and nothing is written to stderr but, under `--ledger`, the `ledger:` line. `validate` refuses no comparison itself:
 on exit 2 it prints its own report, on stdout, as `"kind": "preflight"` under `--json`, and lists in it every
 refusal `gate` would make. A usage error (64) and invalid input (65) are text on stderr, under `--json` too. Run files, bar files, plans and rating files have documented formats in the
-`docs/` folder of https://github.com/ogous/anchorset. Where anchorset 0.3.0 is installed in the project, the same
+`docs/` folder of https://github.com/ogous/anchorset. Where anchorset 0.4.0 is installed in the project, the same
 documents, for that version, are in `node_modules/anchorset/docs/`. Result files of other eval tools do not go into these commands
 directly: the repository has example importers, run from a checkout at the release tag, and each one says what it needs.
+
+## Other eval tools
+
+These tools' result files are not accepted directly, and the importers never read grades the user already has: an example importer in the `examples/importers/` folder of https://github.com/ogous/anchorset (run from a checkout at the release tag) is a re-grading bridge. The stored outputs are graded again, by the old judge and by the new judge, through the repository's recording grader, and the importer reads the file of that re-grade and turns it into runs for `judge-change`. The report is about that re-grade, not about the grades the user already holds.
+
+The grading scripts call Anthropic's Messages API or OpenAI's Responses API, the one the required setting `wire` names; a judge on any other provider cannot be graded through them.
+
+Every value of a judge's definition (`wire`, the model, the API address, the output cap, `temperature`, `effort`, `thinking` or `verbosity`, the re-ask bound, every other setting, and the rubric or template text) is the user's statement of that judge: write each only as the user names or gives it, never fill one in from an example or a guide, and between the two judges change only what the user says changed.
+
+For promptfoo, a helper beside the importer, `examples/importers/promptfoo/stored-from-result.ts`, takes the stored answers, one per case, from a result file of the user's own run of their system. That file may hold the user's grades: the helper copies none of them and keeps a row that failed one of the user's own checks like any other, so no grade decides what it writes; `docs/PROMPTFOO.md` has the steps. Run the helper only at the user's word and only on the result file they name as a run of their system; it calls no model. Quote the `stored file sha256:` line it prints, since no run file records which result file the answers came from. The stored answers are the user's statement of what their system answered: write or edit the stored answers file only when the user asks for it by name, with the answers they give; never pick one of a case's answers when the helper refuses a file that holds more than one, never run the user's system to make a new result file, and never delete or move a file so that the helper can write. Report its refusal and stop.
+
+Start with the offline check where the flow has one (`check.ts` for a skill-evals flow, the check mode of the Inspect re-grade script), which makes no call and costs nothing; promptfoo has none, and its free pass in `docs/IMPORTERS.md` grades through a local stand-in of the API and makes no paid call.
+
+promptfoo and Inspect each have a list of tested releases (`examples/importers/tested-versions.json`, named in the guide), and a re-grade or an import made with any other release is refused; the system's own Inspect log may come from any version. Report the refusal and the releases the list names. Never edit that list, an importer or a grading script, never try an untested release to get around it, and install a listed release only at the user's word.
+
+Never start a paid re-grade without the user's word and the amount they allow for that run. Treat a grading run as paid unless its API address is the local stand-in's: the grading script sends the key in the variable its settings name (by default `ANTHROPIC_API_KEY` or `OPENAI_API_KEY`, as `wire` says) to the address given, and on promptfoo a judge with no `baseUrl` goes to its provider's own, so a rehearsal on the user's own settings is free only at the stand-in's address. A switch between the two APIs is billed by both providers: ask for the amount on each, and give no cost figure of your own. Never print, type or copy a key: the user exports it.
 
 ## The usual path
 

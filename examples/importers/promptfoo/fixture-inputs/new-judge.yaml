@@ -8,7 +8,7 @@ defaultTest:
   options:
     provider:
       id: 'file://grader-provider.cjs'
-      config: { model: fake-judge-strict-new, max_tokens: 256, temperature: 0, baseUrl: 'http://127.0.0.1:18765', thinking: NOT_SENT, effort: NOT_SENT, maxReasks: 0 }
+      config: { wire: anthropic-messages/v1, model: fake-judge-strict-new, max_tokens: 256, temperature: 0, baseUrl: 'http://127.0.0.1:18765', thinking: NOT_SENT, effort: NOT_SENT, maxReasks: 0 }
   assert:
     - type: llm-rubric
       value: The reply follows the refund policy (within 30 days or damaged goods, never more than once).

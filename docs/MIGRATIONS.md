@@ -1,10 +1,10 @@
 # Migrations
 
-Look up here the version string a file should carry in anchorset 0.3.0, and how a file of 0.2.0 or 0.1.0 moves. Each
-format names its version in a `schema` field, and a file with any other version string is invalid input (exit 65).
+Look up here the version string a file should carry in anchorset 0.4.0, and how a file of 0.3.0, 0.2.0 or 0.1.0 moves.
+Each format names its version in a `schema` field, and a file with any other version string is invalid input (exit 65).
 Later changes of a format will be listed here.
 
-## The version strings at 0.3.0
+## The version strings at 0.4.0
 
 Files you write:
 
@@ -37,6 +37,20 @@ Files and output anchorset writes:
 The files you write are described in [RUN_FORMAT.md](RUN_FORMAT.md) (the run-input manifest under "From your eval's
 rows"), [RATINGS_FORMAT.md](RATINGS_FORMAT.md) and [JUDGE_CHANGE.md](JUDGE_CHANGE.md), the tie-break draws and resample
 indices under "Draws you supply". The study manifest has no page; [`examples/judge-change/manifest.json`](../examples/judge-change/manifest.json) is an example.
+
+## From 0.3.0 to 0.4.0
+
+0.4.0 changes no format that `anchorset` reads or writes: every version string above is the one 0.3.0 had, and every
+file the 0.3.0 commands read still reads. The changes are in the example importers and grading scripts under
+`examples/importers/`, which you run from a checkout, and some files that 0.3.0's importers read are refused now:
+
+- Grader records move from `example.grader-evidence/v7` to `v8`, which adds `wire`. The importers of this version
+  refuse a v7 grader result: grade again, or, before you upgrade, import the file with the checkout whose grader wrote
+  it.
+- Run files already imported stay valid; `anchorset.run/v3` and `anchorset.callshape/v1` do not change. A run imported
+  before and one imported after differ in `judgeHarnessVersion`, as after any change of the grading script.
+- `regrade.py` and `skill-evals/regrade.ts` now require `--wire`. Add `--wire anthropic-messages/v1` to saved commands.
+- The promptfoo grader config now requires `wire`. Add `wire: anthropic-messages/v1` to saved configs.
 
 ## From 0.2.0 to 0.3.0
 

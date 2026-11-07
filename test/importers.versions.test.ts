@@ -134,7 +134,7 @@ function treeWith(setText: string | Buffer | undefined): string {
 
 /** A Python of 3.10 or later, or undefined. */
 function python(): string | undefined {
-  return ['python3.13', 'python3.12', 'python3.11', 'python3.10', 'python3', 'python'].find((p) => spawnSync(p, ['-c', 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)']).status === 0);
+  return ['python3.13', 'python3.12', 'python3.11', 'python3.10', 'python3', 'python'].find((p) => spawnSync(p, ['-c', 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)'], { env: { PATH: process.env['PATH'] ?? '' } }).status === 0);
 }
 /** Runs regrade.py's `main` with the installed version stated and the package kept out of reach: nothing after the version check can run. */
 function regradeAs(scriptPath: string, version: string) {
@@ -161,7 +161,7 @@ function constructUnderPromptfoo(graderPath: string, version: string): void {
   try {
     delete require.cache[graderPath];
     const Grader = require(graderPath) as new (o: unknown) => unknown;
-    new Grader({ id: 'file://grader-provider.cjs', config: { model: 'm', max_tokens: 8, baseUrl: 'http://127.0.0.1:18765', thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0 } });
+    new Grader({ id: 'file://grader-provider.cjs', config: { model: 'm', max_tokens: 8, wire: 'anthropic-messages/v1', baseUrl: 'http://127.0.0.1:18765', thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0 } });
   } finally {
     if (saved === undefined) process.argv.length = 1;
     else process.argv[1] = saved;
@@ -239,7 +239,7 @@ describe('the one list', () => {
     const grader = join(treeWith(undefined), 'promptfoo', 'grader-provider.cjs');
     delete require.cache[grader];
     const Grader = require(grader) as new (o: unknown) => unknown;
-    assert.doesNotThrow(() => new Grader({ id: 'file://grader-provider.cjs', config: { model: 'm', max_tokens: 8, baseUrl: 'http://127.0.0.1:18765', thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0 } }));
+    assert.doesNotThrow(() => new Grader({ id: 'file://grader-provider.cjs', config: { model: 'm', max_tokens: 8, wire: 'anthropic-messages/v1', baseUrl: 'http://127.0.0.1:18765', thinking: 'NOT_SENT', effort: 'NOT_SENT', maxReasks: 0 } }));
     delete require.cache[grader];
   });
 
@@ -251,7 +251,7 @@ describe('the one list', () => {
     for (const f of ['import.ts', 'recording_grader.py', 'cases.json', 'bar.json']) copyFileSync(join(IN, f), join(tree, 'inspect', f));
     writeFileSync(join(tree, 'tested-versions.json'), '{ not json');
     // The copy imports the library by its relative path, so the library is linked in beside it.
-    spawnSync('ln', ['-s', join(root, 'src'), join(d, 'src')]);
+    spawnSync('ln', ['-s', join(root, 'src'), join(d, 'src')], { env: { PATH: process.env['PATH'] ?? '' } });
     const out = join(d, 'run.json');
     const r = node([join(tree, 'inspect', 'import.ts'), '--in', join(IN, 'fixtures', 'old-judge.json'), '--cases', join(tree, 'inspect', 'cases.json'), '--bar', join(tree, 'inspect', 'bar.json'), '--out', out]);
     assert.equal(r.status, 2, r.stderr);
@@ -395,20 +395,40 @@ describe('the run records the version read from the file', () => {
   }
 });
 
-/** The sha256 of the import of the Inspect 0.3.275 old-judge.json, as it reads with the system-log text taken out. */
-const OLD_JUDGE_BEFORE = 'fbb53bd679b4fb13b3b4c684b78cc27a00b8a1308d78752e6e7da99405b8cad6';
-/** The same import as it stands: it differs in packetSource only, which gains `; system log UNKNOWN`. */
-const OLD_JUDGE_NOW = '9d48a7a5900124f5a8676b8c4813da9c0606b63e0611fcb204df2a4640561f52';
+/**
+ * The sha256 of the import of the Inspect 0.3.275 old-judge.json with its system-log marker taken out in memory, as a file written before the
+ * marker is imported, and of the import of the file as it stands (with the marker). The reference set was regenerated for record version 8 by
+ * the current `regrade.py`, which always writes the marker, so the committed file carries one; the file with no marker is made here, by taking the
+ * marker out of the log (both places it is written), which is what a file from before the marker looks like.
+ */
+const OLD_JUDGE_WITHOUT_MARKER = 'c8ee657d5975dbc22c707dd153d72dcbd0284de4a6d4577545112ea01223160e';
+const OLD_JUDGE_WITH_MARKER = 'a0f9119c4d2bcea45994ab138bde80613698e60edd3702a267f67b6fffabe5b5';
 
-test('the 0.3.275 old-judge.json gives the same run as before in every key but packetSource, which only gains the system-log text', () => {
+test('the 0.3.275 old-judge.json gives the same run with and without its system-log marker in every key but packetSource, which only gains the marker text', () => {
   const tool = TOOLS[0] as Tool;
-  const out = join(fresh(), 'run.json');
-  imported(tool, join(IN, 'fixtures', 'old-judge.json'), out);
-  const text = readFileSync(out, 'utf8');
-  assert.equal(sha256Hex(text), OLD_JUDGE_NOW);
-  assert.equal(text.split('; system log UNKNOWN').length, 2, 'the text stands once');
-  assert.equal(sha256Hex(text.replace('; system log UNKNOWN', '')), OLD_JUDGE_BEFORE);
-  assert.ok((jsonFile(out)['packetSource'] as string).endsWith("the question, answer and criterion slots of the grader's message; system log UNKNOWN"));
+  const withMarker = join(fresh(), 'run.json');
+  imported(tool, join(IN, 'fixtures', 'old-judge.json'), withMarker);
+  const text = readFileSync(withMarker, 'utf8');
+  const log = jsonFile(join(IN, 'fixtures', 'old-judge.json'));
+  const m = log['eval'].metadata[SYSTEM_LOG_MARKER];
+  const suffix = `; system log sha256:${m.sha256}, stated version inspect_ai ${m.version}`;
+  assert.equal(sha256Hex(text), OLD_JUDGE_WITH_MARKER);
+  assert.equal(text.split(suffix).length, 2, 'the marker text stands once');
+  assert.ok((jsonFile(withMarker)['packetSource'] as string).endsWith(`the question, answer and criterion slots of the grader's message${suffix}`));
+  // the same log with the marker taken out: a file written before the marker
+  delete log['eval'].metadata;
+  delete log['metadata'][SYSTEM_LOG_MARKER];
+  const logPath = join(fresh(), 'no-marker.json');
+  writeFileSync(logPath, JSON.stringify(log));
+  const withoutPath = join(fresh(), 'run.json');
+  imported(tool, logPath, withoutPath);
+  const withoutText = readFileSync(withoutPath, 'utf8');
+  assert.ok((jsonFile(withoutPath)['packetSource'] as string).endsWith("the question, answer and criterion slots of the grader's message; system log UNKNOWN"));
+  assert.equal(withoutText.split('; system log UNKNOWN').length, 2, 'the text stands once');
+  // the two runs are the same bytes but for that text and the source's own sha256 (the log without a marker is other bytes)
+  const strip = (t: string): string => t.replace(/log sha256:[0-9a-f]{64}/, 'log sha256:X').replace(suffix, '').replace('; system log UNKNOWN', '');
+  assert.equal(strip(text), strip(withoutText));
+  assert.equal(sha256Hex(withoutText), OLD_JUDGE_WITHOUT_MARKER);
 });
 
 test('the example plans bind the run files the committed fixtures import to, so the guide\'s trial runs', () => {
@@ -573,7 +593,11 @@ describe('the system-log marker', () => {
     delete log['eval'].metadata;
     delete log['metadata'][SYSTEM_LOG_MARKER];
     assert.ok((importLog(log)['packetSource'] as string).endsWith('; system log UNKNOWN'));
-    assert.ok((importLog(jsonFile(join(IN, 'fixtures', 'old-judge.json')))['packetSource'] as string).endsWith('; system log UNKNOWN'));
+    // the reference set carries a marker too (it was written by the current regrade.py): with it taken out, it reads as a file from before the marker
+    const reference = jsonFile(join(IN, 'fixtures', 'old-judge.json'));
+    delete reference['eval'].metadata;
+    delete reference['metadata'][SYSTEM_LOG_MARKER];
+    assert.ok((importLog(reference)['packetSource'] as string).endsWith('; system log UNKNOWN'));
   });
 
   it('other task metadata beside no marker changes nothing', () => {
@@ -790,7 +814,7 @@ const editedLog = (edit: (d: J) => void, from = SOURCE): string => {
 };
 const check = (py: string, log: string) => spawnSync(py, [REGRADE, '--log', log, '--epochs', '1', '--check'], { encoding: 'utf8', env: TOOL_ENV, cwd: fresh() });
 const grade = (py: string, log: string, base: string, out: string) =>
-  spawnSync(py, [REGRADE, '--log', log, '--epochs', '1', '--judge-model', 'fake-judge-old', '--max-tokens', '256', '--temperature', '0', '--thinking', 'NOT_SENT', '--effort', 'NOT_SENT', '--max-reasks', '0', '--base-url', base, '--out-dir', out], { encoding: 'utf8', env: TOOL_ENV, cwd: fresh() });
+  spawnSync(py, [REGRADE, '--log', log, '--epochs', '1', '--judge-model', 'fake-judge-old', '--max-tokens', '256', '--temperature', '0', '--wire', 'anthropic-messages/v1', '--thinking', 'NOT_SENT', '--effort', 'NOT_SENT', '--max-reasks', '0', '--base-url', base, '--out-dir', out], { encoding: 'utf8', env: TOOL_ENV, cwd: fresh() });
 const oneJson = (dir: string): string => join(dir, readdirSync(dir).find((f) => f.endsWith('.json')) as string);
 /** A log read by the installed tool; the cases file is stated, one draw per case. */
 const importOneDraw = (graded: string): J => jsonFile((() => {

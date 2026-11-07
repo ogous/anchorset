@@ -5,10 +5,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { test } from 'node:test';
-import { callShapeHash, NOT_SENT, sha256Hex, validateCallShape } from '../src/index.ts';
+import { callShapeHash, EFFORTS, NOT_SENT, sha256Hex, validateCallShape } from '../src/index.ts';
 import { caseSetHash, parseRunArtifact, RUN_SCHEMA } from '../src/artifact.ts';
 import { duplicateKeyProblem, hashOf, parseJsonText } from '../src/identity.ts';
-import { callShapesFor, gradedAttempt, makeJudgedIdentity, ownStderr, PACKET, slot } from './helpers.ts';
+import { callShapesFor, gradedAttempt, makeJudgedIdentity, ownStderr, PACKET, slot, scratchEnv } from './helpers.ts';
 import {
   agreeSkeleton,
   assertBarHasLabels,
@@ -40,7 +40,15 @@ import {
   readUnderRule,
   readSlot,
   RECORD_SCHEMA_PREVIOUS,
-  thinkingRepliesLine,
+  reasoningLine,
+  servedModelStatement,
+  isCutStop,
+  gatewayProblemFor,
+  WIRE_ANTHROPIC,
+  WIRE_OPENAI,
+  WIRES,
+  OPENAI_INCOMPLETE_MAP,
+  contentIsReadable,
   IMPORT_FLAGS,
   ImportInputError,
   ImportRefusal,
@@ -74,7 +82,7 @@ import {
   writeRun,
 } from '../examples/importers/shared.ts';
 import { attemptsOf, NEXT_STEP_LINE, NO_RESPONSE, REASK_CEILING, REASK_REASONS, reaskProblems, reasksLine, slotLabel, successLines, TIMEOUT_MS_CEILING } from '../examples/importers/shared.ts';
-import type { GraderRecord, RecordedSlot, SkeletonRow } from '../examples/importers/shared.ts';
+import type { AnthropicRecord, GraderRecord, RecordedSlot, SkeletonRow, Wire } from '../examples/importers/shared.ts';
 
 // ---- builders (synthetic customer-support refund bot) ------------------------------------------------------------
 
@@ -113,6 +121,7 @@ const sentOf = (over: Record<string, unknown> = {}): Record<string, unknown> => 
 
 const record = (seq: number, over: Record<string, unknown> = {}): Record<string, unknown> => ({
   schema: RECORD_SCHEMA,
+  wire: WIRE_ANTHROPIC,
   grader: { name: 'anchorset-recording-grader', language: 'js', sha256: GRADER_SHA, runtime: 'node v24.0.0' },
   graderRunId: 'run-1',
   callSeq: seq,
@@ -212,9 +221,9 @@ test('a score that holds the text of the internal NaN marker, beside a bare NaN 
 // ---- the stop map ---------------------------------------------------------------------------------------------
 
 test('the stop map is closed: end_turn maps to end, every other word has no mapping', () => {
-  assert.deepEqual(STOP_MAP, { end_turn: 'end' });
-  assert.equal(judgeStopOf('end_turn'), 'end');
-  for (const w of ['max_tokens', 'refusal', 'stop_sequence', 'tool_use', 'pause_turn', 'end', 'toString', '__proto__', '']) assert.equal(judgeStopOf(w), undefined, w);
+  assert.deepEqual(STOP_MAP[WIRE_ANTHROPIC], { end_turn: 'end' });
+  assert.equal(judgeStopOf(WIRE_ANTHROPIC, 'end_turn'), 'end');
+  for (const w of ['max_tokens', 'refusal', 'stop_sequence', 'tool_use', 'pause_turn', 'end', 'toString', '__proto__', '', 'completed', 'incomplete']) assert.equal(judgeStopOf(WIRE_ANTHROPIC, w), undefined, w);
 });
 
 test('ungradedReason names a non-completing stop and non-text content in the record\'s words', () => {
@@ -248,7 +257,7 @@ test('a valid record parses and is returned unchanged', () => {
 });
 
 test('IMPORT_NO_RECORD: no record, or a record of another schema; the message names the example grader of the tool', () => {
-  for (const raw of [undefined, null, 'x', {}, record(1, { schema: 'example.grader-evidence/v8' })]) {
+  for (const raw of [undefined, null, 'x', {}, record(1, { schema: 'example.grader-evidence/v9' })]) {
     const r = refuses('IMPORT_NO_RECORD', ['rows[3].graderEvidence'], () => parseRecord(raw, 'rows[3].graderEvidence', 'promptfoo'));
     assert.match(r.message, /examples\/importers\/promptfoo\/grader-provider\.cjs/);
   }
@@ -367,7 +376,7 @@ test('oneValue returns the one value, by canonical JSON, and counts the distinct
 });
 
 test('judgeHarnessVersion is built from the record only', () => {
-  assert.equal(judgeHarnessVersion('promptfoo', '0.123.1', parsed(1)), `promptfoo 0.123.1; anchorset-recording-grader js sha256:${GRADER_SHA}; node v24.0.0; max-reasks 0`);
+  assert.equal(judgeHarnessVersion('promptfoo', '0.123.1', parsed(1)), `promptfoo 0.123.1; anchorset-recording-grader js sha256:${GRADER_SHA}; node v24.0.0; max-reasks 0; wire anthropic-messages/v1`);
 });
 
 // ---- the skeleton rule -------------------------------------------------------------------------------
@@ -877,9 +886,11 @@ test('the importers\' own lists: promptfoo requires --reading and Inspect does n
 });
 
 test('the shared key lists name the grader\'s defaults and settings for both tools', () => {
-  assert.deepEqual(GRADER_DEFAULTS, { baseUrl: 'https://api.anthropic.com', apiVersion: '2023-06-01', timeoutMs: 60000 });
-  assert.deepEqual([...GRADER_CONFIG_KEYS.promptfoo], ['model', 'max_tokens', 'temperature', 'baseUrl', 'timeoutMs', 'apiVersion', 'apiKeyEnv', 'thinking', 'effort', 'maxReasks']);
-  assert.deepEqual([...GRADER_CONFIG_KEYS.inspect], ['timeout_ms', 'api_version', 'api_key_env', 'thinking', 'effort', 'max_reasks']);
+  assert.deepEqual(GRADER_DEFAULTS[WIRE_ANTHROPIC], { baseUrl: 'https://api.anthropic.com', apiVersion: '2023-06-01', timeoutMs: 60000 });
+  assert.deepEqual(GRADER_DEFAULTS[WIRE_OPENAI], { baseUrl: 'https://api.openai.com/v1', timeoutMs: 60000 });
+  assert.deepEqual([...GRADER_CONFIG_KEYS.promptfoo[WIRE_ANTHROPIC]], ['model', 'max_tokens', 'temperature', 'baseUrl', 'timeoutMs', 'apiVersion', 'apiKeyEnv', 'thinking', 'effort', 'maxReasks']);
+  assert.deepEqual([...GRADER_CONFIG_KEYS.promptfoo[WIRE_OPENAI]], ['model', 'max_output_tokens', 'temperature', 'baseUrl', 'timeoutMs', 'apiKeyEnv', 'effort', 'verbosity', 'maxReasks']);
+  assert.deepEqual([...GRADER_CONFIG_KEYS.inspect[WIRE_ANTHROPIC]], ['timeout_ms', 'api_version', 'api_key_env', 'thinking', 'effort', 'max_reasks']);
   assert.equal(GRADER_NAME, 'anchorset-recording-grader');
 });
 
@@ -887,7 +898,7 @@ test('the shared key lists name the grader\'s defaults and settings for both too
 
 const importersDir = join(import.meta.dirname, '..', 'examples', 'importers');
 const runCli = (tool: 'promptfoo' | 'inspect', ...args: string[]): { status: number | null; stdout: string; stderr: string } => {
-  const res = spawnSync(process.execPath, [join(importersDir, tool, 'import.ts'), ...args], { encoding: 'utf8' });
+  const res = spawnSync(process.execPath, [join(importersDir, tool, 'import.ts'), ...args], { env: scratchEnv(), encoding: 'utf8' });
   return { status: res.status, stdout: res.stdout, stderr: ownStderr(res.stderr) };
 };
 const toolFlags = (tool: 'promptfoo' | 'inspect', fixture: string, out: string): string[] => [
@@ -933,19 +944,21 @@ test('both commands print the same lines, in the same shape, for a success and f
   assert.ok(ok[0]?.out.some((l) => l === 'grader: anchorset-recording-grader <language and runtime> sha256:<sha>'));
   assert.ok(ok[0]?.out.some((l) => l === "the record reports the shipped grader's sha256" || l === 'the record does not match the shipped grader (name, language or sha256), or the shipped file could not be read'));
   assert.ok(!ok[0]?.out.some((l) => /python python/.test(l)), 'the language is not printed twice');
-  assert.ok(ok[0]?.out.includes('replies with a thinking block: 0 of 9'));
-  // the re-asks line is printed on every success, zero included, after the thinking line
+  assert.ok(ok[0]?.out.includes("replies with reasoning: 0 of 9 asks; reasoning tokens (the provider's own count): total 0, median 0, max 0; counter absent on 0"));
+  assert.ok(ok[0]?.out.includes('wire: anthropic-messages/v1'));
+  assert.ok(ok[0]?.out.some((l) => l.startsWith('judge model served: "')));
+  // the re-asks line is printed on every success, zero included, after the reasoning line
   assert.ok(ok[0]?.out.includes('re-asks: 0 on 0 of 9 slots (truncated 0, timeout 0, transport 0, server-error 0, rate-limited 0); at most 0 per slot'));
   // the fixtures in which some replies thought: both tools print the same two count lines, last
   const thought = shapes((t) => runCli(t, ...toolFlags(t, 'thinking', join(work, `${t}-thinking.json`))));
   same('success with thinking replies', thought);
   assert.equal(thought[0]?.status, 0);
-  assert.deepEqual(thought[0]?.out.filter((l) => l !== '').slice(-4, -2), ['replies with a thinking block: 6 of 9', 're-asks: 0 on 0 of 9 slots (truncated 0, timeout 0, transport 0, server-error 0, rate-limited 0); at most 0 per slot']);
+  assert.deepEqual(thought[0]?.out.filter((l) => l !== '').slice(-4, -2).map((l) => l.replace(/^(replies with reasoning: 6 of 9 asks); .*$/, '$1')), ['replies with reasoning: 6 of 9 asks', 're-asks: 0 on 0 of 9 slots (truncated 0, timeout 0, transport 0, server-error 0, rate-limited 0); at most 0 per slot']);
   // the fixtures in which two slots were asked again: both tools print the same count, by reason, and the bound
   const reasked = shapes((t) => runCli(t, ...toolFlags(t, 'reask', join(work, `${t}-reask.json`))));
   same('success with re-asked slots', reasked);
   assert.equal(reasked[0]?.status, 0);
-  assert.deepEqual(reasked[0]?.out.filter((l) => l !== '').slice(-4, -2), ['replies with a thinking block: 0 of 9', 're-asks: 2 on 2 of 9 slots (truncated 1, timeout 0, transport 0, server-error 1, rate-limited 0); at most 2 per slot']);
+  assert.deepEqual(reasked[0]?.out.filter((l) => l !== '').slice(-4, -2).map((l) => l.replace(/^(replies with reasoning: 0 of \d+ asks); .*$/, '$1')), ['replies with reasoning: 0 of 10 asks', 're-asks: 2 on 2 of 9 slots (truncated 1, timeout 0, transport 0, server-error 1, rate-limited 0); at most 2 per slot']);
   // a refusal: a file the tool did not grade through the recording grader
   const refused = shapes((t) => runCli(t, ...toolFlags(t, 'plain', join(work, `${t}-plain.json`))));
   same('refusal', refused);
@@ -977,15 +990,15 @@ test('both commands print the same lines, in the same shape, for a success and f
 
 // ---- stated thinking and effort, thinking blocks, the reading rule -----------------------------------
 
-test('the record is v7; a v6 record refuses with IMPORT_EVIDENCE and "re-grade with the current grader"; another schema is still IMPORT_NO_RECORD', () => {
-  assert.equal(RECORD_SCHEMA, 'example.grader-evidence/v7');
-  assert.equal(RECORD_SCHEMA_PREVIOUS, 'example.grader-evidence/v6');
+test('the record is v8; a v7 or v6 record refuses with IMPORT_EVIDENCE and "re-grade with the current grader"; another schema is still IMPORT_NO_RECORD', () => {
+  assert.equal(RECORD_SCHEMA, 'example.grader-evidence/v8');
+  assert.equal(RECORD_SCHEMA_PREVIOUS, 'example.grader-evidence/v7');
   // A v6 record as the earlier grader wrote it, its cut ask with no sha256 and no length of the cut reply: refused by its version, nothing converted.
   const v6ask = without(without(cutAsk(1), 'replySha256'), 'replyUtf8Bytes');
   const v6 = reasked(2, 1, [v6ask], { schema: RECORD_SCHEMA_PREVIOUS });
   for (const tool of ['promptfoo', 'inspect'] as const) {
     const r6 = refuses('IMPORT_EVIDENCE', ['p.schema'], () => parseRecord(v6, 'p', tool));
-    assert.match(r6.message, /p\.schema: this record is of version example\.grader-evidence\/v6, an earlier version than example\.grader-evidence\/v7; re-grade with the current grader \(examples\/importers\//);
+    assert.match(r6.message, /p\.schema: this record is of version example\.grader-evidence\/v7, an earlier version than example\.grader-evidence\/v8; re-grade with the current grader \(examples\/importers\//);
     // A v6 record with no earlier ask is refused by its version all the same: nothing of an earlier version is converted.
     refuses('IMPORT_EVIDENCE', ['p.schema'], () => parseRecord(record(1, { schema: RECORD_SCHEMA_PREVIOUS }), 'p', tool));
   }
@@ -997,7 +1010,7 @@ test('the record is v7; a v6 record refuses with IMPORT_EVIDENCE and "re-grade w
   delete v5['usage'];
   delete v5['reask'];
   refuses('IMPORT_EVIDENCE', ['p.usage', 'p.reask'], () => parseRecord(v5, 'p', 'promptfoo'));
-  for (const old of ['example.grader-evidence/v3', 'example.grader-evidence/v4', 'example.grader-evidence/v5', 'example.grader-evidence/v6']) {
+  for (const old of ['example.grader-evidence/v3', 'example.grader-evidence/v4', 'example.grader-evidence/v5', 'example.grader-evidence/v6', 'example.grader-evidence/v7']) {
     const r = refuses('IMPORT_EVIDENCE', ['rows[0].graderEvidence.schema'], () => parseRecord(record(1, { schema: old }), 'rows[0].graderEvidence', 'promptfoo'));
     assert.match(r.message, /re-grade with the current grader/);
     assert.ok(r.message.includes(old), old);
@@ -1010,7 +1023,7 @@ test('the record is v7; a v6 record refuses with IMPORT_EVIDENCE and "re-grade w
   for (const odd of ['example.grader-evidence/v0', 'example.grader-evidence/v03', 'example.grader-evidence/v-1', 'example.grader-evidence/v1.5', 'example.grader-evidence/vx', 'x/example.grader-evidence/v2']) {
     refuses('IMPORT_NO_RECORD', ['p'], () => parseRecord(record(1, { schema: odd }), 'p', 'promptfoo'));
   }
-  refuses('IMPORT_NO_RECORD', ['p'], () => parseRecord(record(1, { schema: 'example.grader-evidence/v8' }), 'p', 'promptfoo'));
+  refuses('IMPORT_NO_RECORD', ['p'], () => parseRecord(record(1, { schema: 'example.grader-evidence/v9' }), 'p', 'promptfoo'));
   // one schema string for both graders: the same current and earlier versions for Inspect
   parseRecord(record(1), 'p', 'inspect');
   for (const old of ['example.grader-evidence/v2', 'example.grader-evidence/v3', 'example.grader-evidence/v4', 'example.grader-evidence/v5', 'example.grader-evidence/v6']) {
@@ -1071,7 +1084,7 @@ test('call shape and sent: each stated form is admitted when the call shape says
   ];
   for (const [thinking, shape] of forms) {
     const rec = parseRecord(record(1, { sent: sentOf({ thinking }), callShape: judgeShape(shape) }), 'p', 'promptfoo');
-    assert.deepEqual(rec.sent.thinking, thinking);
+    assert.deepEqual((rec as AnthropicRecord).sent.thinking, thinking);
   }
   for (const effort of ['low', 'medium', 'high', 'xhigh', 'max']) {
     parseRecord(record(1, { sent: sentOf({ output_config: { effort } }), callShape: judgeShape({ effort }) }), 'p', 'promptfoo');
@@ -1139,12 +1152,13 @@ test('the call-shape keys other than thinking and effort are still held to NOT_S
   refuses('IMPORT_EVIDENCE', ['p.callShape.toolChoice'], () => parseRecord(record(1, { callShape: judgeShape({ toolChoice: 'any' }) }), 'p', 'promptfoo'));
 });
 
-test('thinkingRepliesLine counts the replies with a thinking block: "replies with a thinking block: <k> of <n>"', () => {
-  const recs = [parsed(1), parsed(2, { contentTypes: ['thinking', 'text'] }), parsed(3, { contentTypes: ['redacted_thinking', 'text'] }), parsed(4)];
-  assert.equal(thinkingRepliesLine(recs), 'replies with a thinking block: 2 of 4');
-  assert.equal(thinkingRepliesLine([parsed(1)]), 'replies with a thinking block: 0 of 1');
-  // a counter alone does not make a reply one that thought: the blocks are what is counted, and the two are not cross-checked
-  assert.equal(thinkingRepliesLine([parsed(1, { thinkingTokens: 40 })]), 'replies with a thinking block: 0 of 1');
+test('reasoningLine on the Anthropic wire counts asks with a thinking block and the thinking-token counters of every ask that got a reply', () => {
+  const recs = [parsed(1), parsed(2, { contentTypes: ['thinking', 'text'], thinkingTokens: 12 }), parsed(3, { contentTypes: ['redacted_thinking', 'text'], thinkingTokens: 30 }), parsed(4)];
+  // FIXTURE, hand-worked: four asks; two hold a thinking block (2 of 4). The counters are 0, 12, 30, 0: total 42; sorted 0, 0, 12, 30; four values, so the
+  // lower median is the second value, 0; the maximum is 30. No counter is absent.
+  assert.equal(reasoningLine(recs), "replies with reasoning: 2 of 4 asks; reasoning tokens (the provider's own count): total 42, median 0, max 30; counter absent on 0");
+  // a counter alone does not make a reply one that reasoned: the blocks are what is counted, and the two are not cross-checked
+  assert.equal(reasoningLine([parsed(1, { thinkingTokens: 40 })]), "replies with reasoning: 0 of 1 asks; reasoning tokens (the provider's own count): total 40, median 40, max 40; counter absent on 0");
   assert.equal(parsed(1, { contentTypes: ['thinking', 'text'], thinkingTokens: 0 }).thinkingTokens, 0);
   assert.equal(parsed(1, { contentTypes: ['text'], thinkingTokens: 'ABSENT' }).thinkingTokens, 'ABSENT');
 });
@@ -1360,7 +1374,7 @@ test('noRecordRefusal and parseRecord take an instruction text that replaces the
 
 test('judgeHarnessVersion takes an optional third component, the sha256 of the list of script files, in the last position', () => {
   const rec = parsed(1);
-  const base = `promptfoo 0.1; ${rec.grader.name} js sha256:${rec.grader.sha256}; ${rec.grader.runtime}; max-reasks 0`;
+  const base = `promptfoo 0.1; ${rec.grader.name} js sha256:${rec.grader.sha256}; ${rec.grader.runtime}; max-reasks 0; wire anthropic-messages/v1`;
   assert.equal(judgeHarnessVersion('promptfoo', '0.1', rec), base);
   assert.equal(judgeHarnessVersion('promptfoo', '0.1', rec, undefined), base);
   const files = sha256Hex('script list');
@@ -1553,7 +1567,7 @@ test('runImporter decodes the cases file and the bar strictly: bytes that are no
 
 // ---- checkGraderConfig: one function for the grader's settings -------------------------------------------------
 
-const matching = (over: Record<string, unknown> = {}): Record<string, unknown> => ({ model: 'judge-alias', max_tokens: 256, temperature: 0.7, timeoutMs: 30000, thinking: NOT_SENT, effort: NOT_SENT, maxReasks: 0, baseUrl: 'http://127.0.0.1:8099', ...over });
+const matching = (over: Record<string, unknown> = {}): Record<string, unknown> => ({ wire: WIRE_ANTHROPIC, model: 'judge-alias', max_tokens: 256, temperature: 0.7, timeoutMs: 30000, thinking: NOT_SENT, effort: NOT_SENT, maxReasks: 0, baseUrl: 'http://127.0.0.1:8099', ...over });
 
 test('checkGraderConfig accepts settings equal to the record, and names every difference under the prefix it is given', () => {
   const rec = parsed(1);
@@ -1599,9 +1613,9 @@ test('ungradedRefusal names the document only, no section; a caller\'s own closi
 // ---- checkGraderConfig: a null or a wrong type is a value, not "not set" -------------------
 
 /** A record whose call shape holds the grader's defaults, so that a setting read as "not set" would agree with it. */
-const defaultsRecord = (): GraderRecord => parsed(1, { callShape: judgeShape({ timeoutMs: GRADER_DEFAULTS.timeoutMs, apiVersion: GRADER_DEFAULTS.apiVersion, endpoint: `${GRADER_DEFAULTS.baseUrl}/v1/messages` }) });
+const defaultsRecord = (): GraderRecord => parsed(1, { callShape: judgeShape({ timeoutMs: GRADER_DEFAULTS[WIRE_ANTHROPIC].timeoutMs, apiVersion: GRADER_DEFAULTS[WIRE_ANTHROPIC].apiVersion, endpoint: `${GRADER_DEFAULTS[WIRE_ANTHROPIC].baseUrl}/v1/messages` }) });
 /** The settings that agree with that record with every optional key absent. */
-const bare = (over: Record<string, unknown> = {}): Record<string, unknown> => ({ model: 'judge-alias', max_tokens: 256, temperature: 0.7, thinking: NOT_SENT, effort: NOT_SENT, maxReasks: 0, ...over });
+const bare = (over: Record<string, unknown> = {}): Record<string, unknown> => ({ wire: WIRE_ANTHROPIC, model: 'judge-alias', max_tokens: 256, temperature: 0.7, thinking: NOT_SENT, effort: NOT_SENT, maxReasks: 0, ...over });
 
 test('an absent optional setting is the grader\'s default; a null or a value of another type is never read as that default', () => {
   const rec = defaultsRecord();
@@ -2060,7 +2074,7 @@ test('judgeHarnessVersion states the bound, before the script-files component', 
   const files = sha256Hex('script list');
   for (const max of [0, 1, 2, 3]) {
     const rec = parsedReask(1, max, []);
-    const base = `tool 1.0; ${rec.grader.name} js sha256:${rec.grader.sha256}; ${rec.grader.runtime}; max-reasks ${max}`;
+    const base = `tool 1.0; ${rec.grader.name} js sha256:${rec.grader.sha256}; ${rec.grader.runtime}; max-reasks ${max}; wire anthropic-messages/v1`;
     assert.equal(judgeHarnessVersion('tool', '1.0', rec), base);
     assert.equal(judgeHarnessVersion('tool', '1.0', rec, files), `${base}; script-files sha256:${files}`);
   }
@@ -2081,16 +2095,16 @@ test('the re-asks line, with counts and with zeros', () => {
   assert.equal(reasksLine([parsedReask(1, 2, [])]), 're-asks: 0 on 0 of 1 slots (truncated 0, timeout 0, transport 0, server-error 0, rate-limited 0); at most 2 per slot');
   // two bounds are never summed up as one
   refuses('IMPORT_MIXED_IDENTITY', ['reask.max'], () => reasksLine([parsedReask(1, 1, []), parsedReask(2, 2, [])]));
-  // the thinking line counts last asks only: a cut ask that thought is not a reply that thought
-  assert.equal(thinkingRepliesLine([parsedReask(2, 1, [cutAsk(1, { contentTypes: ['thinking', 'text'] })])]), 'replies with a thinking block: 0 of 1');
-  // on every success, after the thinking line and before the reading rule
-  const summary = { judge: {}, barHash: 'b', caseSetHash: 'c', drawsPerCase: 3, grader: { name: 'n', language: 'js', runtime: 'node v1', sha256: 's' }, thinkingReplies: 'THINKING', reasks: 'REASKS' };
+  // the reasoning line counts every ask that got a reply, an earlier cut ask included: here the cut ask thought and the last ask did not
+  assert.equal(reasoningLine([parsedReask(2, 1, [cutAsk(1, { contentTypes: ['thinking', 'text'] })])]).slice(0, 38), 'replies with reasoning: 1 of 2 asks; r');
+  // on every success, after the wire, the served-id statement and the reasoning line, and before the reading rule
+  const summary = { judge: {}, barHash: 'b', caseSetHash: 'c', drawsPerCase: 3, grader: { name: 'n', language: 'js', runtime: 'node v1', sha256: 's' }, wire: WIRE_ANTHROPIC as Wire, requestedModel: 'r', servedModel: 's', reasoning: 'THINKING', reasks: 'REASKS' };
   assert.deepEqual(successLines('promptfoo', { ...summary, readingRule: 'RULE' }, 'h', undefined).slice(-5, -2), ['THINKING', 'REASKS', 'reading rule: RULE']);
   assert.deepEqual(successLines('inspect', summary, 'h', undefined).slice(-4, -2), ['THINKING', 'REASKS']);
 });
 
 test('the last two lines of a success are the run file\'s sha256 and one next-step line that says where it goes; lines an importer adds come before them', () => {
-  const summary = { judge: {}, barHash: 'b', caseSetHash: 'c', drawsPerCase: 3, grader: { name: 'n', language: 'js', runtime: 'node v1', sha256: 's' }, thinkingReplies: 'THINKING', reasks: 'REASKS' };
+  const summary = { judge: {}, barHash: 'b', caseSetHash: 'c', drawsPerCase: 3, grader: { name: 'n', language: 'js', runtime: 'node v1', sha256: 's' }, wire: WIRE_ANTHROPIC as Wire, requestedModel: 'r', servedModel: 's', reasoning: 'THINKING', reasks: 'REASKS' };
   for (const tool of ['promptfoo', 'inspect'] as const) {
     const lines = successLines(tool, { ...summary, readingRule: 'RULE' }, 'abc123', undefined, ['EXTRA 1', 'EXTRA 2']);
     assert.deepEqual(lines.slice(-5), ['reading rule: RULE', 'EXTRA 1', 'EXTRA 2', 'run file sha256: abc123', NEXT_STEP_LINE]);
@@ -2278,7 +2292,7 @@ test('slotLabel is the one way a slot is named: <case>#<draw>, and the case alon
 /** Runs a script with its stdout and stderr read ends destroyed at once, so every write meets a closed pipe; resolves to the exit code. */
 function runWithClosedPipes(args: string[]): Promise<number | null> {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(process.execPath, args, { env: scratchEnv(), stdio: ['ignore', 'pipe', 'pipe'] });
     child.stdout.destroy();
     child.stderr.destroy();
     child.once('error', reject);
@@ -2312,14 +2326,14 @@ test('runImporterAsProcess: a command that writes more than a pipe holds keeps i
   const async = 'async (_argv, io) => { for (let i = 0; i < 20000; i++) io.out("line " + i); await Promise.resolve(); return 3; }';
   for (const [name, command] of [['sync', sync], ['async', async]] as const) {
     const driver = driverOf(`runImporterAsProcess(${command}, "driver");`);
-    const r = spawnSync('bash', ['-c', `${JSON.stringify(process.execPath)} ${JSON.stringify(driver)} | head -n 1 >/dev/null; echo "\${PIPESTATUS[0]}"`], { encoding: 'utf8' });
+    const r = spawnSync('bash', ['-c', `${JSON.stringify(process.execPath)} ${JSON.stringify(driver)} | head -n 1 >/dev/null; echo "\${PIPESTATUS[0]}"`], { env: scratchEnv(), encoding: 'utf8' });
     assert.equal(r.stdout.trim(), '3', `${name}: ${r.stderr}`);
   }
 });
 
 test('runImporterAsProcess: a write that fails for any other reason is exit 70 with one line on stderr', () => {
   const driver = driverOf('process.stdout.write = () => { throw Object.assign(new Error("no space left"), { code: "ENOSPC" }); };\nrunImporterAsProcess((_argv, io) => { io.out("a line"); return 0; }, "driver");');
-  const r = spawnSync(process.execPath, [driver], { encoding: 'utf8' });
+  const r = spawnSync(process.execPath, [driver], { env: scratchEnv(), encoding: 'utf8' });
   assert.equal(r.status, 70, r.stderr);
   assert.equal(r.stderr, 'driver: internal error: cannot write to stdout: no space left\n');
 });
@@ -2395,4 +2409,353 @@ test('runImporter prints a refusal as exactly two lines, and a usage error, an i
     for (const line of err) assert.ok(!/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(line), JSON.stringify(line));
     assert.ok(err.every((line) => line.includes('\\r\\u001b[2K')), JSON.stringify(err));
   }
+});
+
+// ---- the OpenAI Responses wire: record v8 ---------------------------------------------------------------------------------
+
+const oaShape = (over: Record<string, unknown> = {}): Record<string, unknown> => judgeShape({ endpoint: 'http://127.0.0.1:8099/v1/responses', apiVersion: NOT_SENT, extras: { 'openai.store': false }, ...over });
+const oaSent = (over: Record<string, unknown> = {}): Record<string, unknown> => ({ system: NOT_SENT, user: sha256Hex('a'), reasoning: NOT_SENT, text: NOT_SENT, store: false, truncation: 'disabled', ...over });
+const oaRecord = (seq: number, over: Record<string, unknown> = {}): Record<string, unknown> => ({
+  ...record(seq),
+  wire: WIRE_OPENAI,
+  sent: oaSent({ user: sha256Hex(`prompt ${seq}`) }),
+  responseId: `resp-${seq}`,
+  stopReason: 'completed',
+  incompleteReason: 'ABSENT',
+  contentTypes: ['message/output_text'],
+  callShape: oaShape(),
+  ...over,
+});
+const oaParsed = (seq: number, over: Record<string, unknown> = {}): GraderRecord => parseRecord(oaRecord(seq, over), 'p', 'promptfoo');
+const oaCutAsk = (seq: number, over: Record<string, unknown> = {}): Record<string, unknown> => ({
+  reason: 'truncated', callSeq: seq, callId: `call-${seq}`, httpStatus: 200, responseId: `resp-${seq}`, servedModel: 'judge-2026-01-01', stopReason: 'incomplete', incompleteReason: 'max_output_tokens',
+  contentTypes: ['reasoning'], thinkingTokens: 20, usage: { input_tokens: 100, output_tokens: 256 }, replySha256: sha256Hex(''), replyUtf8Bytes: 0, ...over,
+});
+const oaReasked = (seq: number, max: number, earlier: unknown[], over: Record<string, unknown> = {}): GraderRecord => parseRecord(oaRecord(seq, { reask: { max, earlier }, ...over }), 'p', 'promptfoo');
+
+test('v8 of both wires parses and is returned unchanged; an Anthropic v8 record is the v7 record plus schema and wire', () => {
+  const a = record(1);
+  assert.deepEqual(parseRecord(a, 'p', 'promptfoo'), a);
+  assert.equal(a['schema'], 'example.grader-evidence/v8');
+  assert.equal(a['wire'], 'anthropic-messages/v1');
+  const o = oaRecord(1, { sent: oaSent({ system: sha256Hex('s'), reasoning: { effort: 'low' }, text: { verbosity: 'high' } }), callShape: oaShape({ effort: 'low', extras: { 'openai.store': false, 'openai.verbosity': 'high' } }) });
+  assert.deepEqual(parseRecord(o, 'p', 'promptfoo'), o);
+  for (const effort of EFFORTS) parseRecord(oaRecord(1, { sent: oaSent({ reasoning: { effort } }), callShape: oaShape({ effort }) }), 'p', 'promptfoo');
+  assert.deepEqual([...WIRES], ['anthropic-messages/v1', 'openai-responses/v1']);
+});
+
+test('a v7 record, of either kind, is refused with the instruction to grade again; it is not read as Anthropic', () => {
+  const v7 = without(record(1, { schema: RECORD_SCHEMA_PREVIOUS }), 'wire');
+  for (const tool of ['promptfoo', 'inspect'] as const) {
+    const r = refuses('IMPORT_EVIDENCE', ['p.schema'], () => parseRecord(v7, 'p', tool));
+    assert.match(r.message, /this record is of version example\.grader-evidence\/v7, an earlier version than example\.grader-evidence\/v8; re-grade with the current grader/);
+  }
+  // with a per-caller instruction text the same refusal carries that text
+  assert.match(refusal(() => parseRecord(v7, 'p', 'promptfoo', 'Run the re-grade script again.')).message, /Run the re-grade script again\.$/);
+});
+
+test('the wire is required and closed: a record with none, or another name, is IMPORT_EVIDENCE naming wire', () => {
+  refuses('IMPORT_EVIDENCE', ['p.wire'], () => parseRecord(without(record(1), 'wire'), 'p', 'promptfoo'));
+  for (const wire of ['openai-chat/v1', 'anthropic-messages/v2', '', 7, null, ['openai-responses/v1']]) {
+    const r = refusal(() => parseRecord(record(1, { wire }), 'p', 'promptfoo'));
+    assert.equal(r.code, 'IMPORT_EVIDENCE');
+    assert.ok(r.fields.includes('p.wire'), JSON.stringify(wire));
+  }
+});
+
+test('each wire has its own closed key set: incompleteReason is OpenAI only, thinking and output_config are Anthropic only', () => {
+  refuses('IMPORT_EVIDENCE', ['p.incompleteReason'], () => parseRecord(record(1, { incompleteReason: 'ABSENT' }), 'p', 'promptfoo'));
+  refuses('IMPORT_EVIDENCE', ['p.incompleteReason'], () => parseRecord(without(oaRecord(1), 'incompleteReason'), 'p', 'promptfoo'));
+  const mixedSent = refusal(() => parseRecord(oaRecord(1, { sent: { ...oaSent(), thinking: NOT_SENT } }), 'p', 'promptfoo'));
+  assert.deepEqual([...mixedSent.fields], ['p.sent.thinking']);
+  const anthropicWithReasoning = refusal(() => parseRecord(record(1, { sent: { ...sentOf(), reasoning: NOT_SENT } }), 'p', 'promptfoo'));
+  assert.deepEqual([...anthropicWithReasoning.fields], ['p.sent.reasoning']);
+});
+
+test('each parseRecord contradiction of an OpenAI call shape and request is IMPORT_EVIDENCE naming the field', () => {
+  // sent.store and sent.truncation
+  refuses('IMPORT_EVIDENCE', ['p.sent.store'], () => parseRecord(oaRecord(1, { sent: oaSent({ store: true }) }), 'p', 'promptfoo'));
+  refuses('IMPORT_EVIDENCE', ['p.sent.truncation'], () => parseRecord(oaRecord(1, { sent: oaSent({ truncation: 'auto' }) }), 'p', 'promptfoo'));
+  for (const k of ['store', 'truncation']) refuses('IMPORT_EVIDENCE', [`p.sent.${k}`], () => parseRecord(oaRecord(1, { sent: without(oaSent(), k) }), 'p', 'promptfoo'));
+  // contextPolicy other than "none"
+  refuses('IMPORT_EVIDENCE', ['p.callShape.contextPolicy'], () => parseRecord(oaRecord(1, { callShape: oaShape({ contextPolicy: 'truncate-oldest' }) }), 'p', 'promptfoo'));
+  // extras that differ from what sent implies: missing store, a wrong value, an extra the request does not send, a verbosity not sent, a truncation alias
+  for (const extras of [{}, { 'openai.store': true }, { 'openai.store': false, 'openai.user': 'x' }, { 'openai.store': false, 'openai.verbosity': 'low' }]) {
+    refuses('IMPORT_EVIDENCE', ['p.callShape.extras'], () => parseRecord(oaRecord(1, { callShape: oaShape({ extras }) }), 'p', 'promptfoo'));
+  }
+  // `truncation` is the context policy's alias in the library, so an extra of that name is refused by the call-shape schema itself
+  refuses('IMPORT_EVIDENCE', ['p.callShape.extras.openai.truncation'], () => parseRecord(oaRecord(1, { callShape: oaShape({ extras: { 'openai.store': false, 'openai.truncation': 'disabled' } }) }), 'p', 'promptfoo'));
+  // verbosity sent, but missing from extras
+  refuses('IMPORT_EVIDENCE', ['p.callShape.extras'], () => parseRecord(oaRecord(1, { sent: oaSent({ text: { verbosity: 'low' } }) }), 'p', 'promptfoo'));
+  // effort differs from sent.reasoning
+  refuses('IMPORT_EVIDENCE', ['p.callShape.effort'], () => parseRecord(oaRecord(1, { sent: oaSent({ reasoning: { effort: 'low' } }) }), 'p', 'promptfoo'));
+  refuses('IMPORT_EVIDENCE', ['p.callShape.effort'], () => parseRecord(oaRecord(1, { callShape: oaShape({ effort: 'high' }) }), 'p', 'promptfoo'));
+  // Anthropic-only call-shape values, and a cap below the least OpenAI takes
+  refuses('IMPORT_EVIDENCE', ['p.callShape.apiVersion'], () => parseRecord(oaRecord(1, { callShape: oaShape({ apiVersion: '2023-06-01' }) }), 'p', 'promptfoo'));
+  refuses('IMPORT_EVIDENCE', ['p.callShape.thinkingMode'], () => parseRecord(oaRecord(1, { callShape: oaShape({ thinkingMode: 'adaptive' }) }), 'p', 'promptfoo'));
+  refuses('IMPORT_EVIDENCE', ['p.callShape.maxOutputTokens'], () => parseRecord(oaRecord(1, { callShape: oaShape({ maxOutputTokens: 15 }) }), 'p', 'promptfoo'));
+  parseRecord(oaRecord(1, { callShape: oaShape({ maxOutputTokens: 16 }) }), 'p', 'promptfoo');
+  refuses('IMPORT_EVIDENCE', ['p.callShape.endpoint'], () => parseRecord(oaRecord(1, { callShape: oaShape({ endpoint: 'http://127.0.0.1:8099/v1/messages' }) }), 'p', 'promptfoo'));
+  // a closed reasoning and text; a word outside the closed lists
+  refuses('IMPORT_EVIDENCE', ['p.sent.reasoning'], () => parseRecord(oaRecord(1, { sent: oaSent({ reasoning: { effort: 'extreme' } }) }), 'p', 'promptfoo'));
+  refuses('IMPORT_EVIDENCE', ['p.sent.text'], () => parseRecord(oaRecord(1, { sent: oaSent({ text: { verbosity: 'loud' } }) }), 'p', 'promptfoo'));
+  // a status other than the two the grader records, and a reason that does not go with the status
+  refuses('IMPORT_EVIDENCE', ['p.stopReason'], () => parseRecord(oaRecord(1, { stopReason: 'failed' }), 'p', 'promptfoo'));
+  refuses('IMPORT_EVIDENCE', ['p.incompleteReason'], () => parseRecord(oaRecord(1, { incompleteReason: 'max_output_tokens' }), 'p', 'promptfoo'));
+  refuses('IMPORT_EVIDENCE', ['p.incompleteReason'], () => parseRecord(oaRecord(1, { stopReason: 'incomplete', incompleteReason: 'ABSENT' }), 'p', 'promptfoo'));
+  refuses('IMPORT_EVIDENCE', ['p.incompleteReason'], () => parseRecord(oaRecord(1, { stopReason: 'incomplete', incompleteReason: 'two\nlines' }), 'p', 'promptfoo'));
+});
+
+test('per-wire reaskProblems: the OpenAI cut form is "incomplete" with "max_output_tokens"; the earlier cut asks of that wire carry incompleteReason', () => {
+  // the form: an OpenAI cut ask holds incompleteReason (CUT_ASK_KEYS), an Anthropic one never does
+  const good = oaReasked(2, 1, [oaCutAsk(1)]);
+  assert.equal(good.reask.earlier.length, 1);
+  assert.deepEqual(reaskProblems(good, 'p'), []);
+  const lacks = refusal(() => oaReasked(2, 1, [without(oaCutAsk(1), 'incompleteReason')]));
+  assert.equal(lacks.code, 'IMPORT_REASK');
+  assert.match(lacks.message, /not the form of a "truncated" ask; it lacks incompleteReason/);
+  const extra = refusal(() => parseRecord(reasked(2, 1, [cutAsk(1, { incompleteReason: 'max_output_tokens' })]), 'p', 'promptfoo'));
+  assert.equal(extra.code, 'IMPORT_REASK');
+  assert.match(extra.message, /it holds incompleteReason/);
+  // the content of the form: another status, another reason, a finished reply asked again
+  for (const over of [{ stopReason: 'completed' }, { incompleteReason: 'content_filter' }, { incompleteReason: 'ABSENT' }, { stopReason: 'max_tokens' }]) {
+    const r = refusal(() => oaReasked(2, 1, [oaCutAsk(1, over)]));
+    assert.equal(r.code, over['stopReason'] === 'completed' || over['stopReason'] === 'max_tokens' ? 'IMPORT_REASK' : r.code, JSON.stringify(over));
+    assert.ok(r.code === 'IMPORT_REASK' || r.code === 'IMPORT_EVIDENCE', JSON.stringify(over));
+  }
+  assert.match(refusal(() => oaReasked(2, 1, [oaCutAsk(1, { stopReason: 'completed' })])).message, /stopReason: "completed", not "incomplete"/);
+  assert.match(refusal(() => oaReasked(2, 1, [oaCutAsk(1, { incompleteReason: 'content_filter' })])).message, /incompleteReason: "content_filter", not "max_output_tokens"/);
+  // an Anthropic cut ask still reads "max_tokens"
+  assert.match(refusal(() => parseRecord(reasked(2, 1, [cutAsk(1, { stopReason: 'incomplete' })]), 'p', 'promptfoo')).message, /stopReason: "incomplete", not "max_tokens"/);
+  // the no-reply asks are the same on both wires
+  oaReasked(3, 2, [noReplyAsk(1, 'server-error', 503), noReplyAsk(2, 'rate-limited', 429)]);
+  // isCutStop is the one test of a cut, by wire
+  assert.equal(isCutStop(WIRE_OPENAI, 'incomplete', 'max_output_tokens'), true);
+  assert.equal(isCutStop(WIRE_OPENAI, 'incomplete', 'content_filter'), false);
+  assert.equal(isCutStop(WIRE_OPENAI, 'max_tokens', undefined), false);
+  assert.equal(isCutStop(WIRE_ANTHROPIC, 'max_tokens', undefined), true);
+  assert.equal(isCutStop(WIRE_ANTHROPIC, 'incomplete', 'max_output_tokens'), false);
+});
+
+test('the OpenAI stop table: completed is end, incomplete with content_filter is content-filter, every other pair has no mapping', () => {
+  assert.deepEqual(STOP_MAP[WIRE_OPENAI], { completed: 'end' });
+  assert.deepEqual({ ...OPENAI_INCOMPLETE_MAP }, { max_output_tokens: 'cut', content_filter: 'content-filter' });
+  assert.equal(judgeStopOf(WIRE_OPENAI, 'completed'), 'end');
+  assert.equal(judgeStopOf(WIRE_OPENAI, 'incomplete', 'content_filter'), 'content-filter');
+  for (const [s, r] of [['incomplete', 'max_output_tokens'], ['incomplete', 'max_messages'], ['incomplete', 'steered'], ['incomplete', undefined], ['failed', undefined], ['end_turn', undefined], ['cancelled', undefined], ['toString', undefined], ['__proto__', undefined], ['', undefined]] as const) {
+    assert.equal(judgeStopOf(WIRE_OPENAI, s, r), undefined, `${s} ${String(r)}`);
+  }
+});
+
+test('contentIsReadable by wire: zero or more reasoning items, then exactly one message/output_text, last; nothing else', () => {
+  const readable = [['message/output_text'], ['message[phase=final_answer]/output_text'], ['reasoning', 'message[phase=final_answer]/output_text'], ['reasoning', 'message/output_text'], ['reasoning', 'reasoning', 'message/output_text']];
+  const not = [[], ['reasoning'], ['message/output_text', 'message/output_text'], ['message/output_text', 'reasoning'], ['message/output_text', 'message/refusal'], ['message/refusal', 'message/output_text'], ['message/output_text', 'message/output_text', 'message/output_text'],
+    ['message[status=incomplete]/output_text'], ['message[phase=commentary]/output_text'], ['message[phase=null]/output_text'], ['message[phase=final_answer]'], ['message[phase=final_answer]/refusal'], ['message[phase=final_answer]/output_text', 'message/output_text'], ['message[phase=final_answer]/output_text', 'reasoning'], ['message[phase=Final_answer]/output_text'], ['message[status=incomplete]/output_text', 'message[phase=final_answer]/output_text'], ['message'], ['function_call'], ['reasoning', 'function_call', 'message/output_text'], ['text'], ['thinking', 'message/output_text'], ['message[status=completed]/refusal', 'message/output_text']];
+  for (const ct of readable) assert.equal(contentIsReadable(WIRE_OPENAI, ct), true, JSON.stringify(ct));
+  for (const ct of not) assert.equal(contentIsReadable(WIRE_OPENAI, ct), false, JSON.stringify(ct));
+  // the Anthropic rule is unchanged, and the other wire's labels are not its own
+  for (const ct of [['text'], ['thinking', 'text'], ['redacted_thinking', 'thinking', 'text']]) assert.equal(contentIsReadable(WIRE_ANTHROPIC, ct), true, JSON.stringify(ct));
+  for (const ct of [[], ['message/output_text'], ['reasoning', 'text'], ['text', 'text']]) assert.equal(contentIsReadable(WIRE_ANTHROPIC, ct), false, JSON.stringify(ct));
+});
+
+test('the stop and content tables are the Python constants: the words in regrade.py are the words here, and the two functions answer alike over every pair and list', (t) => {
+  const python = ['python3.13', 'python3.12', 'python3.11', 'python3.10', 'python3', 'python'].find((p) => spawnSync(p, ['-c', 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)'], { env: { PATH: process.env['PATH'] ?? '' } }).status === 0);
+  const regrade = join(import.meta.dirname, '..', 'examples', 'importers', 'inspect', 'regrade.py');
+  const text = readFileSync(regrade, 'utf8');
+  // the constants, as written
+  assert.deepEqual({ ...STOP_MAP[WIRE_ANTHROPIC] }, { end_turn: 'end' });
+  assert.deepEqual({ ...STOP_MAP[WIRE_OPENAI] }, { completed: 'end' });
+  assert.ok(text.includes('STOP_MAP = {WIRE_ANTHROPIC: {"end_turn": "end"}, WIRE_OPENAI: {"completed": "end"}}'), 'STOP_MAP');
+  assert.ok(text.includes('OPENAI_INCOMPLETE_MAP = {"max_output_tokens": "cut", "content_filter": "content-filter"}'), 'OPENAI_INCOMPLETE_MAP');
+  assert.deepEqual({ ...OPENAI_INCOMPLETE_MAP }, { max_output_tokens: 'cut', content_filter: 'content-filter' });
+  assert.ok(text.includes('OPENAI_REASONING = "reasoning"') && text.includes('OPENAI_ANSWER = "message/output_text"') && text.includes('OPENAI_ANSWER_FINAL = "message[phase=final_answer]/output_text"'), 'the labels');
+  assert.ok(text.includes('THINKING_BLOCKS = ("thinking", "redacted_thinking")'), 'the thinking blocks');
+  if (python === undefined) {
+    t.skip('no Python 3.10 or later on this machine: the functions are not compared');
+    return;
+  }
+  const stops: [Wire, string, string | undefined][] = [];
+  for (const w of WIRES) {
+    for (const s of ['end_turn', 'max_tokens', 'refusal', 'stop_sequence', 'tool_use', 'completed', 'incomplete', 'failed', 'cancelled', 'end', 'toString', '__proto__', 'hasOwnProperty', '']) {
+      for (const r of [undefined, 'max_output_tokens', 'content_filter', 'max_messages', 'steered', 'ABSENT', 'toString', '']) stops.push([w, s, r]);
+    }
+  }
+  const labels = ['text', 'thinking', 'redacted_thinking', 'tool_use', 'reasoning', 'message/output_text', 'message/refusal', 'message[status=incomplete]/output_text', 'message[phase=final_answer]/output_text', 'message[phase=commentary]/output_text', 'message', 'function_call', 'message/output_text '];
+  const lists: [Wire, string[]][] = [];
+  for (const w of WIRES) {
+    lists.push([w, []]);
+    for (const a of labels) {
+      lists.push([w, [a]]);
+      for (const b of labels) {
+        lists.push([w, [a, b]]);
+        for (const c of ['text', 'message/output_text', 'reasoning']) lists.push([w, [a, b, c]]);
+      }
+    }
+  }
+  const driver = `
+import json, runpy, sys
+m = runpy.run_path(${JSON.stringify(regrade)}, run_name="not_main")
+spec = json.load(sys.stdin)
+print(json.dumps({"stops": [m["judge_stop_of"](w, s, r) for w, s, r in spec["stops"]], "lists": [m["content_is_readable"](w, t) for w, t in spec["lists"]]}))
+`;
+  const r = spawnSync(python, ['-c', driver], { input: JSON.stringify({ stops, lists }), encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, env: { PATH: process.env['PATH'] ?? '', PYTHONDONTWRITEBYTECODE: '1' } });
+  assert.equal(r.status, 0, r.stderr);
+  const got = JSON.parse(r.stdout) as { stops: (string | null)[]; lists: boolean[] };
+  assert.deepEqual(got.stops, stops.map(([w, s, r2]) => judgeStopOf(w, s, r2) ?? null));
+  assert.deepEqual(got.lists, lists.map(([w, l]) => contentIsReadable(w, l)));
+  // the table is not all one answer
+  assert.ok(got.stops.includes('end') && got.stops.includes('content-filter') && got.stops.includes(null));
+  assert.ok(got.lists.includes(true) && got.lists.includes(false));
+});
+
+test('status before text: a reply that a reading rule would accept is never graded when the response was cut, filtered or held a refusal; ungradedReason runs before the rule', () => {
+  // This test pins an order. The reply is a whole verdict the first reading rule accepts; the label `message/output_text` looks readable.
+  const verdict = '{"pass": true, "reason": "inside the window"}';
+  const cases: [string, Record<string, unknown>, RegExp][] = [
+    ['truncated-verdict-whole, the bound used up at 0', { stopReason: 'incomplete', incompleteReason: 'max_output_tokens' }, /stopped with status "incomplete" \(max_output_tokens\), not "completed"/],
+    ['content-filter', { stopReason: 'incomplete', incompleteReason: 'content_filter' }, /stopped with status "incomplete" \(content_filter\), not "completed"/],
+    ['an unknown reason', { stopReason: 'incomplete', incompleteReason: 'steered' }, /\(steered\)/],
+    ['refusal-after-text', { contentTypes: ['message/output_text', 'message/refusal'] }, /holds a refusal part/],
+    ['refusal-before-text', { contentTypes: ['message/refusal', 'message/output_text'] }, /holds a refusal part/],
+    ['a refusal in a bracketed message', { contentTypes: ['message[status=incomplete]/refusal', 'message/output_text'] }, /holds a refusal part/],
+    ['a refusal beside reasoning', { contentTypes: ['reasoning', 'message/refusal'] }, /holds a refusal part/],
+    ['message-incomplete', { contentTypes: ['message[status=incomplete]/output_text'] }, /not zero or more reasoning items followed by exactly one completed message/],
+    ['phase commentary', { contentTypes: ['message[phase=commentary]/output_text'] }, /not zero or more reasoning items/],
+    ['an empty output on a completed response', { contentTypes: [] }, /not zero or more reasoning items/],
+    ['a cut reply with phase final_answer', { stopReason: 'incomplete', incompleteReason: 'max_output_tokens', contentTypes: ['message[phase=final_answer]/output_text'] }, /stopped with status "incomplete" \(max_output_tokens\), not "completed"/],
+    ['a filtered reply with phase final_answer', { stopReason: 'incomplete', incompleteReason: 'content_filter', contentTypes: ['message[phase=final_answer]/output_text'] }, /stopped with status "incomplete" \(content_filter\), not "completed"/],
+    ['a refusal beside phase final_answer', { contentTypes: ['message[phase=final_answer]/output_text', 'message[phase=final_answer]/refusal'] }, /holds a refusal part/],
+  ];
+  for (const [name, over, why] of cases) {
+    const rec = oaParsed(1, { reply: verdict, ...over });
+    assert.match(ungradedReason(rec) ?? 'NONE', why, name);
+    for (const rule of READINGS) {
+      const got = readSlot(rec, rule);
+      assert.ok('why' in got, `${name} ${rule}`);
+      assert.equal((got as { at: string }).at, '', `${name} ${rule}: the slot fails at the record, never at the reply`);
+      assert.match((got as { why: string }).why, why, name);
+    }
+  }
+  // a finished, readable response is read under the rule
+  assert.deepEqual(readSlot(oaParsed(1, { reply: verdict }), READINGS[0]), { pass: true, reason: 'inside the window' });
+  // a completed message with phase final_answer is read like one with no phase; commentary is not
+  assert.equal(ungradedReason(oaParsed(1, { reply: verdict, contentTypes: ['reasoning', 'message[phase=final_answer]/output_text'] })), undefined);
+  assert.deepEqual(readSlot(oaParsed(1, { reply: verdict, contentTypes: ['message[phase=final_answer]/output_text'] }), READINGS[0]), { pass: true, reason: 'inside the window' });
+  assert.match(ungradedReason(oaParsed(1, { reply: verdict, contentTypes: ['message[phase=commentary]/output_text'] })) ?? 'NONE', /not zero or more reasoning items/);
+  // the Anthropic wire keeps its own words
+  assert.match(ungradedReason(parsed(1, { stopReason: 'max_tokens' })) ?? '', /stopped with "max_tokens", not "end_turn"/);
+});
+
+test('an incomplete response with max_output_tokens: output [] is a cut (asked again within the bound), a completed one with output [] is unreadable', () => {
+  // The asymmetry with the Anthropic wire: there an empty `content` is a malformed body and leaves no record.
+  const cutEmpty = { stopReason: 'incomplete', incompleteReason: 'max_output_tokens', contentTypes: [], reply: '' };
+  assert.equal(isCutStop(WIRE_OPENAI, 'incomplete', 'max_output_tokens'), true);
+  // every ask cut, the bound used up: the cut words
+  assert.equal(ungradedReason(oaReasked(2, 1, [oaCutAsk(1, { contentTypes: [] })], cutEmpty)), "the judge's reply was cut at the output cap on each of 2 asks; the bound of 1 re-asks is used up");
+  // a bound of 0: the stop words
+  assert.match(ungradedReason(oaReasked(1, 0, [], cutEmpty)) ?? '', /status "incomplete" \(max_output_tokens\)/);
+  // a mix of a cut and a missing reply
+  assert.match(ungradedReason(oaReasked(3, 2, [noReplyAsk(1, 'server-error', 503), oaCutAsk(2)], cutEmpty)) ?? '', /cut at the output cap on the last of 3 asks \(2 cut, 1 with no reply\)/);
+  assert.match(ungradedReason(oaParsed(1, { contentTypes: [], reply: '' })) ?? '', /not zero or more reasoning items/);
+});
+
+test('one wire per file: checkRecordSet refuses a mix with IMPORT_MIXED_IDENTITY naming wire', () => {
+  const slots = (...recs: GraderRecord[]): RecordedSlot[] => recs.map((r, i) => ({ caseId: 'c', draw: i, record: r }));
+  checkRecordSet(slots(oaParsed(1), oaParsed(2)));
+  const mixed = refuses('IMPORT_MIXED_IDENTITY', ['wire'], () => checkRecordSet(slots(parsed(1), oaParsed(2))));
+  assert.match(mixed.message, /wire: 2 distinct values/);
+  // two wires with everything else equal are still two
+  refuses('IMPORT_MIXED_IDENTITY', ['wire'], () => checkRecordSet(slots(parsed(1, { requestedModel: 'judge-alias' }), oaParsed(2, { requestedModel: 'judge-alias' }))));
+});
+
+test('judgeHarnessVersion names the wire on both wires, after max-reasks and before script-files', () => {
+  const files = sha256Hex('script list');
+  const a = parsed(1);
+  const o = oaParsed(1);
+  const head = (r: GraderRecord): string => `tool 1.0; ${r.grader.name} js sha256:${r.grader.sha256}; ${r.grader.runtime}; max-reasks 0`;
+  assert.equal(judgeHarnessVersion('tool', '1.0', a), `${head(a)}; wire anthropic-messages/v1`);
+  assert.equal(judgeHarnessVersion('tool', '1.0', o), `${head(o)}; wire openai-responses/v1`);
+  assert.equal(judgeHarnessVersion('tool', '1.0', a, files), `${head(a)}; wire anthropic-messages/v1; script-files sha256:${files}`);
+  assert.equal(judgeHarnessVersion('tool', '1.0', o, files), `${head(o)}; wire openai-responses/v1; script-files sha256:${files}`);
+  assert.notEqual(judgeHarnessVersion('tool', '1.0', a), judgeHarnessVersion('tool', '1.0', o));
+});
+
+test('reasoningLine on a hand-worked fixture: odd and even counts, a missing counter, no counter at all', () => {
+  // FIXTURE (hand-worked; not a published example). Each record is one slot; an earlier cut ask is an ask that got a reply, so it counts.
+  // OpenAI wire, counters 0, 12, 40 on the last asks, and a cut earlier ask of 20 on the third slot:
+  //   asks that got a reply: 4 (0, 12, 40, 20); sorted 0, 12, 20, 40; total 72; four values, so the lower median is the second, 12; max 40.
+  //   Reasoning is held by the asks with a reasoning item: slot 2 and the cut ask of slot 3 (['reasoning']) -> 2 of 4.
+  const slot1 = oaParsed(1, { thinkingTokens: 0 });
+  const slot2 = oaParsed(2, { contentTypes: ['reasoning', 'message/output_text'], thinkingTokens: 12 });
+  const slot3 = oaReasked(4, 1, [oaCutAsk(3)], { contentTypes: ['message/output_text'], thinkingTokens: 40 });
+  assert.equal(reasoningLine([slot1, slot2, slot3]), "replies with reasoning: 2 of 4 asks; reasoning tokens (the provider's own count): total 72, median 12, max 40; counter absent on 0");
+  // odd count: 0, 12, 40 -> total 52, median 12 (the middle one), max 40
+  assert.equal(reasoningLine([slot1, slot2, oaParsed(3, { thinkingTokens: 40 })]), "replies with reasoning: 1 of 3 asks; reasoning tokens (the provider's own count): total 52, median 12, max 40; counter absent on 0");
+  // a missing counter: 0, 12 and one ABSENT -> 2 counted, total 12, the lower median of two values (0 and 12) is 0, max 12; absent on 1
+  assert.equal(reasoningLine([slot1, slot2, oaParsed(3, { thinkingTokens: 'ABSENT' })]), "replies with reasoning: 1 of 3 asks; reasoning tokens (the provider's own count): total 12, median 0, max 12; counter absent on 1");
+  // no counter at all: every figure is "-"
+  assert.equal(reasoningLine([oaParsed(1, { thinkingTokens: 'ABSENT' }), oaParsed(2, { thinkingTokens: 'ABSENT' })]), "replies with reasoning: 0 of 2 asks; reasoning tokens (the provider's own count): total -, median -, max -; counter absent on 2");
+  // a no-reply ask is not an ask that got a reply: it adds nothing
+  assert.equal(reasoningLine([oaReasked(2, 1, [noReplyAsk(1, 'timeout', NO_RESPONSE)], { thinkingTokens: 5 })]), "replies with reasoning: 0 of 1 asks; reasoning tokens (the provider's own count): total 5, median 5, max 5; counter absent on 0");
+  // both wires in one list count by their own markers (the import refuses such a file; the line is only arithmetic)
+  assert.equal(reasoningLine([parsed(1, { contentTypes: ['thinking', 'text'], thinkingTokens: 9 }), oaParsed(2, { contentTypes: ['reasoning', 'message/output_text'], thinkingTokens: 3 })]), "replies with reasoning: 2 of 2 asks; reasoning tokens (the provider's own count): total 12, median 3, max 9; counter absent on 0");
+});
+
+test('servedModelStatement: one of two statements, never a count', () => {
+  assert.equal(
+    servedModelStatement('gpt-x', 'gpt-x'),
+    'judge model served: "gpt-x", the same text as the model requested. The provider\'s reply named no more specific version, so this run file cannot show which version of the model graded it. A change of model behind this name would leave judgeModelServed unchanged.',
+  );
+  assert.equal(servedModelStatement('gpt-x', 'gpt-x-2026-01-01'), 'judge model served: "gpt-x-2026-01-01" (requested "gpt-x"), as the provider\'s reply named it; not checked.');
+  // both are printed, on both wires, by successLines
+  const base = { judge: {}, barHash: 'b', caseSetHash: 'c', drawsPerCase: 3, grader: { name: 'n', language: 'js', runtime: 'node v1', sha256: 's' }, reasoning: 'R', reasks: 'A' };
+  for (const wire of WIRES) {
+    const same = successLines('promptfoo', { ...base, wire, requestedModel: 'm', servedModel: 'm' }, 'h', undefined);
+    assert.ok(same.includes(`wire: ${wire}`));
+    assert.ok(same.includes(servedModelStatement('m', 'm')));
+    const differ = successLines('promptfoo', { ...base, wire, requestedModel: 'm', servedModel: 'm-2026' }, 'h', undefined);
+    assert.ok(differ.includes(servedModelStatement('m', 'm-2026')));
+  }
+});
+
+test('the OpenAI settings are checked against the record: wire, the cap max_output_tokens, effort, verbosity, no apiVersion', () => {
+  const rec = oaParsed(1, { sent: oaSent({ reasoning: { effort: 'low' }, text: { verbosity: 'medium' } }), callShape: oaShape({ effort: 'low', extras: { 'openai.store': false, 'openai.verbosity': 'medium' }, timeoutMs: 30000 }) });
+  const matchingOpenAI = (over: Record<string, unknown> = {}): Record<string, unknown> => ({ wire: WIRE_OPENAI, model: 'judge-alias', max_output_tokens: 256, temperature: 0.7, timeoutMs: 30000, effort: 'low', verbosity: 'medium', maxReasks: 0, baseUrl: 'http://127.0.0.1:8099/v1', ...over });
+  assert.deepEqual(graderConfigProblems(matchingOpenAI(), rec, '/c'), []);
+  // the default base URL and key variable are the wire's own: the default OpenAI address posts to <base>/responses
+  const defaults = oaParsed(1, { callShape: oaShape({ endpoint: 'https://api.openai.com/v1/responses', timeoutMs: 60000 }) });
+  const bareOpenAI = matchingOpenAI({ effort: NOT_SENT, verbosity: NOT_SENT, temperature: 0.7 });
+  delete bareOpenAI['baseUrl'];
+  delete bareOpenAI['timeoutMs'];
+  assert.deepEqual(graderConfigProblems(bareOpenAI, defaults, '/c'), []);
+  const probs = (over: Record<string, unknown>): string[] => graderConfigProblems(matchingOpenAI(over), rec, '/c');
+  assert.match(probs({ wire: WIRE_ANTHROPIC }).join(';'), /\/c\/wire: "anthropic-messages\/v1" but the record says "openai-responses\/v1"/);
+  assert.match(probs({ max_output_tokens: 99 }).join(';'), /\/c\/max_output_tokens: 99 but the record says 256/);
+  assert.match(probs({ effort: 'high' }).join(';'), /\/c\/effort: "high" but the record says "low"/);
+  assert.match(probs({ verbosity: 'low' }).join(';'), /\/c\/verbosity: "low" but the record says "medium"/);
+  // keys of the other wire are not settings of this one: max_tokens, thinking, apiVersion
+  for (const key of ['max_tokens', 'thinking', 'apiVersion']) assert.match(probs({ [key]: key === 'thinking' ? NOT_SENT : 5 }).join(';'), new RegExp(`/c/${key}: not a setting`));
+  // no wire stated at all
+  const noWire = matchingOpenAI();
+  delete noWire['wire'];
+  assert.match(graderConfigProblems(noWire, rec, '/c').join(';'), /\/c\/wire: "not set" but the record says "openai-responses\/v1"/);
+  // the Anthropic config keys against an OpenAI record are named, not silently ignored
+  assert.ok(graderConfigProblems(matching(), rec, '/c').length >= 3);
+});
+
+test('gatewayProblemFor: the four OpenAI address variables are each held to the stated base URL; the Anthropic wire reads one', () => {
+  for (const name of ['OPENAI_BASE_URL', 'OPENAI_API_BASE_URL', 'OPENAI_API_HOST', 'OPENAI_HOST']) {
+    const env = { [name]: 'https://gateway.example.test/v1' };
+    assert.match(gatewayProblemFor(WIRE_OPENAI, env, undefined) ?? '', new RegExp(`the environment variable ${name} is set`));
+    // a bare host can never equal a base URL: for the two HOST variables the one remedy is to unset the variable
+    const remedy = gatewayProblemFor(WIRE_OPENAI, env, undefined) ?? '';
+    if (name.endsWith('_HOST')) assert.ok(remedy.includes(' Unset the variable. Nothing was written') && !remedy.includes('State the same address'), remedy);
+    else assert.ok(remedy.includes('State the same address with --base-url, or unset the variable.'), remedy);
+    assert.match(gatewayProblemFor(WIRE_OPENAI, env, 'https://api.openai.com/v1') ?? '', new RegExp(name));
+    assert.equal(gatewayProblemFor(WIRE_OPENAI, env, 'https://gateway.example.test/v1'), undefined);
+    assert.equal(gatewayProblemFor(WIRE_ANTHROPIC, env, undefined), undefined);
+    assert.equal(gatewayProblemFor(WIRE_OPENAI, { [name]: '' }, undefined), undefined);
+  }
+  assert.match(gatewayProblemFor(WIRE_ANTHROPIC, { ANTHROPIC_BASE_URL: 'https://gw.example.test' }, undefined) ?? '', /ANTHROPIC_BASE_URL/);
+  assert.equal(gatewayProblemFor(WIRE_OPENAI, { ANTHROPIC_BASE_URL: 'https://gw.example.test' }, undefined), undefined);
 });

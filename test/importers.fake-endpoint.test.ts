@@ -3,8 +3,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { LONG_REPLY_DEFAULT, MODES, SERVED_SUFFIX, startFakeEndpoint, verdictOf } from '../examples/importers/fake-endpoint.ts';
-import type { FakeEndpointOptions } from '../examples/importers/fake-endpoint.ts';
+import { LONG_REPLY_DEFAULT, MESSAGES_ONLY_MODES, MODES, OPENAI_ONLY_MODES, OPENAI_ROUTE_MODES, SERVED_DATED_MARKER, SERVED_SUFFIX, startFakeEndpoint, verdictOf } from '../examples/importers/fake-endpoint.ts';
+import type { FakeEndpointOptions, Mode } from '../examples/importers/fake-endpoint.ts';
 
 const SECRET = 'test-dummy-credential-123';
 
@@ -433,5 +433,248 @@ test('[[times:0:truncated]] and [[times:1:nonsense]] are answered 400', async ()
     // Never silently treated as normal, and never counted: the same body is refused again.
     assert.equal((await answered(url, bodyOf('grade [[times:0:truncated]]'))).status, 400);
     assert.ok(logOf(logPath).every((l) => l.response.status === 400));
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// The Responses route: POST /v1/responses
+// ---------------------------------------------------------------------------------------------------------------
+
+interface RReply { status: number; json: any; headers: Headers }
+/** A request to the Responses route, with the body in the form the grader sends (instructions, then input as messages). */
+async function askR(url: string, prompt: string, model = 'judge-a', extra: Record<string, unknown> = {}): Promise<RReply> {
+  const r = await fetch(`${url}/v1/responses`, {
+    method: 'POST',
+    redirect: 'manual',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${SECRET}` },
+    body: JSON.stringify({ model, input: [{ role: 'user', content: prompt }], instructions: 'Be a judge.', max_output_tokens: 256, store: false, truncation: 'disabled', ...extra }),
+  });
+  return { status: r.status, json: await r.json(), headers: r.headers };
+}
+const textR = (r: RReply): string => r.json.output.flatMap((i: any) => (i.type === 'message' ? i.content : [])).map((p: any) => p.text ?? '').join('');
+const types = (r: RReply): string[] => r.json.output.map((i: any) => (i.type === 'message' ? `message/${i.content.map((p: any) => p.type).join('+')}` : i.type));
+const RESPONSE_KEYS = ['error', 'id', 'incomplete_details', 'model', 'object', 'output', 'previous_response_id', 'status', 'store', 'truncation', 'usage'];
+
+test('Responses route, shape: object, completed, null error and details, an echo of truncation and store, one message item', async () => {
+  await withEndpoint({}, async (url) => {
+    const r = await askR(url, 'Grade this.');
+    assert.equal(r.status, 200);
+    assert.deepEqual(Object.keys(r.json).sort(), RESPONSE_KEYS);
+    assert.equal(r.json.id, 'resp_fake_0001');
+    assert.equal(r.json.object, 'response');
+    assert.equal(r.json.status, 'completed');
+    assert.equal(r.json.error, null);
+    assert.equal(r.json.incomplete_details, null);
+    assert.equal(r.json.truncation, 'disabled');
+    assert.equal(r.json.store, false);
+    assert.equal(r.json.previous_response_id, null);
+    assert.deepEqual(r.json.output, [{ type: 'message', id: 'msg_fake_0001', role: 'assistant', status: 'completed', phase: 'final_answer', content: [{ type: 'output_text', text: textR(r), annotations: [] }] }]);
+    assert.deepEqual(JSON.parse(textR(r)), { pass: true, score: 1, reason: 'Local fake judge: pass.' });
+    assert.deepEqual(r.json.usage, { input_tokens: 100, output_tokens: 20, output_tokens_details: { reasoning_tokens: 0 }, total_tokens: 120 });
+    assert.equal((await askR(url, 'again')).json.id, 'resp_fake_0002');
+  });
+});
+
+test('Responses route, served id: the requested id by default, a dated one under [[served:dated]]; the Messages route keeps its suffix', async () => {
+  await withEndpoint({}, async (url) => {
+    assert.equal((await askR(url, 'x', 'judge-a')).json.model, 'judge-a');
+    assert.equal((await askR(url, `x ${SERVED_DATED_MARKER}`, 'judge-a')).json.model, `judge-a${SERVED_SUFFIX}`);
+    assert.equal((await ask(url, 'x', 'judge-a')).json.model, `judge-a${SERVED_SUFFIX}`);
+    // The marker has no counterpart on the Messages route: refused, never silently ignored.
+    const m = await ask(url, `x ${SERVED_DATED_MARKER}`);
+    assert.equal(m.status, 400);
+    assert.equal(m.json.type, 'error');
+  });
+});
+
+test('Responses route, prompt: instructions and input (a string, or messages with string or part content) feed the verdict rule', async () => {
+  await withEndpoint({}, async (url) => {
+    const post = async (b: Record<string, unknown>): Promise<any> => (await fetch(`${url}/v1/responses`, { method: 'POST', body: JSON.stringify({ model: 'judge-strict', ...b }) })).json();
+    const pass = (j: any): boolean => JSON.parse(j.output[0].content[0].text).pass;
+    assert.equal(pass(await post({ input: 'plain' })), true);
+    assert.equal(pass(await post({ input: 'x [[verdict:fail]]' })), false);
+    assert.equal(pass(await post({ instructions: '[[verdict:fail]]', input: 'plain' })), false);
+    assert.equal(pass(await post({ input: [{ role: 'user', content: [{ type: 'input_text', text: '[[strict:fail]]' }] }] })), false);
+    const graded = await post({ input: 'x [[format:grade]]' });
+    assert.match(graded.output[0].content[0].text, /GRADE: C$/);
+  });
+});
+
+test('Responses route, log: the whole body as sent, the path, and credential redaction', async () => {
+  await withEndpoint({}, async (url, logPath) => {
+    await askR(url, 'first');
+    const raw = readFileSync(logPath, 'utf8');
+    assert.ok(!raw.includes(SECRET));
+    const line = logOf(logPath)[0];
+    assert.equal(line.path, '/v1/responses');
+    assert.equal(line.headers['authorization'], '<redacted>');
+    assert.deepEqual(line.bodyJson, { model: 'judge-a', input: [{ role: 'user', content: 'first' }], instructions: 'Be a judge.', max_output_tokens: 256, store: false, truncation: 'disabled' });
+    assert.equal(line.response.status, 200);
+  });
+});
+
+test('Responses route, bad requests: 404 for another path, 400 for no model, no input or a body that is not an object', async () => {
+  await withEndpoint({}, async (url, logPath) => {
+    assert.equal((await fetch(`${url}/v1/responses`)).status, 404);
+    assert.equal((await fetch(`${url}/v1/responses/resp_1`, { method: 'POST', body: '{}' })).status, 404);
+    assert.equal((await fetch(`${url}/v1/chat/completions`, { method: 'POST', body: '{}' })).status, 404);
+    const bad = (b: string): Promise<Response> => fetch(`${url}/v1/responses`, { method: 'POST', body: b });
+    assert.equal((await bad('not json')).status, 400);
+    assert.equal((await bad('{"model":"m"}')).status, 400);
+    assert.equal((await bad('{"model":"m","messages":[]}')).status, 400);
+    assert.equal((await bad('{"input":"x"}')).status, 400);
+    const r = await bad('{"model":"m","input":7}');
+    assert.equal(r.status, 400);
+    const j = (await r.json()) as any;
+    assert.deepEqual(Object.keys(j.error).sort(), ['code', 'message', 'param', 'type']);
+    assert.equal((await askR(url, 'x [[mode:bogus]]')).status, 400);
+    assert.equal(logOf(logPath).length, 9);
+  });
+});
+
+test('Responses route, modes: each answers as documented, by flag and by marker', async () => {
+  const msgs = (r: RReply): any[] => r.json.output.filter((i: any) => i.type === 'message');
+  const expectations: Record<string, (r: RReply) => void> = {
+    normal: (r) => { assert.equal(r.json.status, 'completed'); assert.deepEqual(types(r), ['message/output_text']); assert.equal(JSON.parse(textR(r)).pass, true); assert.equal(msgs(r)[0].phase, 'final_answer'); },
+    truncated: (r) => {
+      assert.equal(r.json.status, 'incomplete');
+      assert.deepEqual(r.json.incomplete_details, { reason: 'max_output_tokens' });
+      assert.throws(() => JSON.parse(textR(r)));
+      assert.ok(textR(r).startsWith('{"pass"'));
+      assert.equal(msgs(r)[0].status, 'incomplete');
+    },
+    'truncated-verdict-whole': (r) => {
+      assert.deepEqual([r.json.status, r.json.incomplete_details], ['incomplete', { reason: 'max_output_tokens' }]);
+      assert.equal(JSON.parse(textR(r)).pass, true); // a whole verdict a reading rule accepts, cut only by the response status
+      assert.equal(msgs(r)[0].status, 'completed');
+    },
+    'truncated-reasoning': (r) => {
+      assert.deepEqual([r.json.status, r.json.incomplete_details], ['incomplete', { reason: 'max_output_tokens' }]);
+      assert.deepEqual(types(r), ['reasoning']);
+      assert.deepEqual(r.json.output[0], { type: 'reasoning', id: 'rs_fake_0001', summary: [], encrypted_content: 'ZmFrZS1lbmNyeXB0ZWQ=', status: 'completed' });
+    },
+    'no-verdict': (r) => { assert.equal(r.json.status, 'completed'); assert.deepEqual(Object.keys(JSON.parse(textR(r))), ['reason']); },
+    prose: (r) => { assert.equal(r.json.status, 'completed'); assert.throws(() => JSON.parse(textR(r))); assert.ok(textR(r).startsWith('Here is my verdict: {"pass":true')); },
+    empty: (r) => { assert.equal(textR(r), ''); assert.equal(r.json.status, 'completed'); assert.deepEqual(types(r), ['message/output_text']); },
+    'not-json': (r) => { assert.throws(() => JSON.parse(textR(r))); assert.ok(!textR(r).includes('pass')); },
+    refusal: (r) => { assert.equal(r.json.status, 'completed'); assert.deepEqual(types(r), ['message/refusal']); },
+    'refusal-after-text': (r) => { assert.equal(r.json.status, 'completed'); assert.deepEqual(types(r), ['message/output_text+refusal']); assert.equal(JSON.parse(textR(r)).pass, true); },
+    'refusal-before-text': (r) => { assert.equal(r.json.status, 'completed'); assert.deepEqual(types(r), ['message/refusal+output_text']); assert.equal(JSON.parse(textR(r)).pass, true); },
+    'content-filter': (r) => {
+      assert.deepEqual([r.json.status, r.json.incomplete_details], ['incomplete', { reason: 'content_filter' }]);
+      assert.equal(JSON.parse(textR(r)).pass, true);
+      assert.equal(msgs(r)[0].status, 'completed');
+    },
+    'message-incomplete': (r) => { assert.equal(r.json.status, 'completed'); assert.equal(msgs(r)[0].status, 'incomplete'); assert.equal(JSON.parse(textR(r)).pass, true); },
+    'phase-absent': (r) => { assert.equal(r.json.status, 'completed'); assert.ok(!('phase' in msgs(r)[0])); assert.equal(msgs(r)[0].status, 'completed'); assert.equal(JSON.parse(textR(r)).pass, true); },
+    'phase-commentary': (r) => { assert.equal(r.json.status, 'completed'); assert.equal(msgs(r)[0].phase, 'commentary'); assert.equal(msgs(r)[0].status, 'completed'); assert.equal(JSON.parse(textR(r)).pass, true); },
+    'tool-use': (r) => { assert.equal(r.json.status, 'completed'); assert.deepEqual(types(r), ['function_call']); assert.equal(textR(r), ''); },
+    'non-text': (r) => { assert.deepEqual(types(r), ['reasoning', 'message/output_text']); assert.equal(r.json.usage.output_tokens_details.reasoning_tokens, 12); },
+    'http-500': (r) => { assert.equal(r.status, 500); assert.deepEqual(Object.keys(r.json), ['error']); },
+    'http-503': (r) => { assert.equal(r.status, 503); assert.equal(r.json.error.type, 'service_unavailable_error'); },
+    'http-429': (r) => { assert.equal(r.status, 429); assert.equal(r.json.error.type, 'rate_limit_error'); },
+    'http-400': (r) => { assert.equal(r.status, 400); assert.equal(r.json.error.type, 'invalid_request_error'); },
+    redirect: (r) => { assert.equal(r.status, 307); assert.equal(r.headers.get('location'), '/v1/responses'); },
+    encoded: (r) => { assert.equal(r.status, 200); assert.equal(r.headers.get('content-encoding'), 'gzip'); assert.equal(JSON.parse(textR(r)).pass, true); },
+    'status-failed': (r) => { assert.equal(r.status, 200); assert.equal(r.json.status, 'failed'); assert.equal(r.json.error, null); assert.deepEqual(r.json.output, []); },
+    'error-set': (r) => { assert.equal(r.status, 200); assert.equal(r.json.status, 'completed'); assert.notEqual(r.json.error, null); assert.equal(typeof r.json.error.message, 'string'); },
+    'bad-object': (r) => { assert.equal(r.status, 200); assert.equal(r.json.object, 'chat.completion'); assert.equal(r.json.status, 'completed'); },
+    'echo-truncation-auto': (r) => { assert.equal(r.json.status, 'completed'); assert.equal(r.json.truncation, 'auto'); assert.equal(r.json.store, false); },
+    'echo-store-true': (r) => { assert.equal(r.json.status, 'completed'); assert.equal(r.json.store, true); assert.equal(r.json.truncation, 'disabled'); },
+  };
+  const NO_RESPONSE = ['stall', 'drop']; // tested on their own below: there is no reply to look at
+  assert.deepEqual([...Object.keys(expectations), ...NO_RESPONSE].sort(), [...OPENAI_ROUTE_MODES].sort());
+  for (const mode of Object.keys(expectations)) {
+    await withEndpoint({}, async (url) => { expectations[mode]!(await askR(url, `x [[mode:${mode}]]`)); });
+    await withEndpoint({ mode: mode as Mode }, async (url) => { expectations[mode]!(await askR(url, 'x')); });
+  }
+  await withEndpoint({ mode: 'empty' }, async (url) => {
+    assert.equal(JSON.parse(textR(await askR(url, 'x [[mode:normal]]'))).pass, true); // the marker wins over the flag
+  });
+});
+
+test('Responses route, the route-only modes are exactly the list and every other mode is shared with the Messages route', () => {
+  assert.deepEqual([...OPENAI_ONLY_MODES].sort(), ['bad-object', 'content-filter', 'echo-store-true', 'echo-truncation-auto', 'error-set', 'http-503', 'message-incomplete', 'phase-absent', 'phase-commentary', 'refusal-after-text', 'refusal-before-text', 'status-failed', 'truncated-reasoning', 'truncated-verdict-whole']);
+  assert.deepEqual([...MESSAGES_ONLY_MODES].sort(), ['http-529', 'stop-seq']);
+  assert.deepEqual(OPENAI_ROUTE_MODES.filter((m) => !(OPENAI_ONLY_MODES as readonly string[]).includes(m)).sort(), MODES.filter((m) => !(MESSAGES_ONLY_MODES as readonly string[]).includes(m)).sort());
+});
+
+test('Responses route, no counterpart: stop-seq, http-529 and [[redacted-thinking]] are answered 400 here, never as normal; the Messages route refuses the new modes', async () => {
+  await withEndpoint({}, async (url, logPath) => {
+    for (const p of ['x [[mode:stop-seq]]', 'x [[mode:http-529]]', 'x [[redacted-thinking]]']) {
+      const r = await askR(url, p);
+      assert.equal(r.status, 400, p);
+      assert.equal(r.json.error.type, 'invalid_request_error', p);
+      assert.match(r.json.error.message, /no counterpart/, p);
+    }
+    for (const mode of OPENAI_ONLY_MODES) {
+      const m = await ask(url, `x [[mode:${mode}]]`);
+      assert.equal(m.status, 400, mode);
+      assert.match(m.json.error.message, /no counterpart/, mode);
+    }
+    assert.ok(logOf(logPath).every((l) => l.response.status === 400));
+  });
+  // The flag has the same effect as the marker.
+  await withEndpoint({ mode: 'stop-seq' }, async (url) => { assert.equal((await askR(url, 'x')).status, 400); });
+  await withEndpoint({ mode: 'phase-absent' }, async (url) => { assert.equal((await ask(url, 'x')).status, 400); });
+});
+
+test('Responses route, thinking markers: [[thinking]] adds a reasoning item and 12 tokens; [[no-counter]] drops the details', async () => {
+  await withEndpoint({}, async (url) => {
+    const t = await askR(url, 'x [[thinking]]');
+    assert.deepEqual(types(t), ['reasoning', 'message/output_text']);
+    assert.equal(t.json.usage.output_tokens_details.reasoning_tokens, 12);
+    assert.equal(t.json.output[0].encrypted_content, 'ZmFrZS1lbmNyeXB0ZWQ=');
+    const n = await askR(url, 'x [[no-counter]]');
+    assert.equal('output_tokens_details' in n.json.usage, false);
+    const both = await askR(url, 'x [[thinking]] [[no-counter]]');
+    assert.deepEqual(types(both), ['reasoning', 'message/output_text']);
+    assert.equal('output_tokens_details' in both.json.usage, false);
+    assert.equal((await askR(url, 'x')).json.usage.output_tokens_details.reasoning_tokens, 0);
+  });
+});
+
+test('Responses route, fence, grade P and long reply markers work as on the Messages route', async () => {
+  await withEndpoint({}, async (url) => {
+    assert.match(textR(await askR(url, 'x [[fence]]')), /^```json\n\{"pass":true/);
+    assert.match(textR(await askR(url, 'x [[grade:p]]')), /\n\nGRADE: P$/);
+    assert.ok(textR(await askR(url, 'x [[long-reply]]')).startsWith('x'.repeat(20000)));
+  });
+  await withEndpoint({ longReply: 50 }, async (url) => {
+    assert.ok(textR(await askR(url, 'x')).startsWith('x'.repeat(50)));
+  });
+});
+
+test('Responses route, [[times:<n>:<mode>]] counts equal bodies as on the Messages route, in the one request sequence', async () => {
+  await withEndpoint({}, async (url, logPath) => {
+    const body = JSON.stringify({ model: 'judge-a', input: 'grade [[times:2:truncated]]' });
+    const go = async (): Promise<any> => (await fetch(`${url}/v1/responses`, { method: 'POST', body })).json();
+    const a = await go();
+    const b = await go();
+    const c = await go();
+    assert.deepEqual([a.status, b.status, c.status], ['incomplete', 'incomplete', 'completed']);
+    assert.deepEqual([a.id, c.id], ['resp_fake_0001', 'resp_fake_0003']);
+    assert.deepEqual(logOf(logPath).map((l) => l.mode), ['truncated', 'truncated', 'normal']);
+    // A mode with no counterpart under the marker is answered 400 too, and counted.
+    const d = (await (await fetch(`${url}/v1/responses`, { method: 'POST', body: JSON.stringify({ model: 'judge-a', input: 'grade [[times:1:stop-seq]]' }) })).json()) as any;
+    assert.match(d.error.message, /no counterpart/);
+    // The Messages route and this one share the sequence.
+    assert.equal((await ask(url, 'x')).json.id, 'msg_fake_0005');
+  });
+});
+
+test('Responses route, stall and drop: no reply, logged as NO_RESPONSE', async () => {
+  await withEndpoint({}, async (url, logPath) => {
+    const raw = async (prompt: string, timeoutMs = 4000): Promise<unknown> => {
+      try {
+        const r = await fetch(`${url}/v1/responses`, { method: 'POST', body: JSON.stringify({ model: 'judge-a', input: prompt }), signal: AbortSignal.timeout(timeoutMs) });
+        return r.status;
+      } catch (e) {
+        return (e as Error).name;
+      }
+    };
+    assert.equal(await raw('a [[mode:drop]]'), 'TypeError');
+    assert.equal(await raw('a [[mode:stall]]', 300), 'TimeoutError');
+    assert.deepEqual(logOf(logPath).map((l) => l.response), [{ status: 'NO_RESPONSE', body: 'drop' }, { status: 'NO_RESPONSE', body: 'stall' }]);
   });
 });

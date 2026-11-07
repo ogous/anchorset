@@ -3,16 +3,23 @@
  * several times through the recording grader this repository ships, and the answers come back into one file that
  * the importer reads.
  *
- *   node examples/importers/skill-evals/regrade.ts --flow <dir> --variant <name> --cases <cases.json> --reps <n>
+ *   node examples/importers/skill-evals/regrade.ts --wire <anthropic-messages/v1 | openai-responses/v1>
+ *        --flow <dir> --variant <name> --cases <cases.json> --reps <n>
  *        --rep <k> --draws <n> --template <file> --criterion <file> --model <judge id> --max-tokens <n>
- *        --thinking <NOT_SENT | JSON object> --effort <NOT_SENT | level> --max-reasks <0 to 3> --base-url <url>
- *        --reading <rule name> --out <file>
- *        [--select <json pointer>] [--system <file>] [--temperature <x>] [--timeout-ms <n>]
- *        [--api-version <v>] [--api-key-env <NAME>] [--go-on-and-count]
+ *        --effort <NOT_SENT | level> --max-reasks <0 to 3> --base-url <url> --reading <rule name> --out <file>
+ *        [--select <json pointer>] [--system <file>] [--temperature <x>] [--timeout-ms <n>] [--api-key-env <NAME>]
+ *        [--go-on-and-count]
+ *     and, by wire:
+ *        anthropic-messages/v1:  --thinking <NOT_SENT | JSON object>  [--api-version <v>]
+ *        openai-responses/v1:    --verbosity <NOT_SENT | low | medium | high>
  *
- * Every flag outside the brackets is required and has no default; `--base-url` is one of them: the endpoint decides where the
- * key goes, so it is stated, never inherited from the grader's default host. The script does not decide whether a thinking
- * setting or an effort level is allowed: it hands the two to the grader, and the grader decides.
+ * Every flag outside the brackets is required and has no default; `--wire` and `--base-url` are among them: the wire says how
+ * the request is built and the reply is read, and the endpoint decides where the key goes, so it is stated, never inherited
+ * from the grader's default host. `--wire` selects the set of required flags: a flag of the other wire is a usage error (64).
+ * `--max-tokens` keeps its name on both wires and is sent as the wire's output cap (`max_output_tokens` on the OpenAI wire,
+ * which takes no less than 16). The script does not decide whether a thinking setting or an effort level is allowed: it hands
+ * them to the grader, and the grader decides. The header's `graderConfig` holds `wire` beside the other settings, and the
+ * importer holds it to the wire of the records.
  *
  * `--reading` is the name of the rule each reply is read under, one of the two the shared module names (`READINGS`); it
  * is required and has no default. The script writes it into the header (`reading`), reads every finished reply under
@@ -58,8 +65,9 @@
  *      Later slots are not called and get no row. That slot is lost, and `--go-on-and-count` does not change this: no
  *      slot is ever called after a lost one. A slot the importer will refuse ends the re-grade too: the grader's record
  *      of it is read by the importer's own record check (`parseRecord`) and by the importer's own reading of a slot
- *      (`readSlot`: a last ask that stopped with anything but "end_turn", content that is not zero or more thinking
- *      blocks and one text block, or a finished reply that holds no verdict under the rule stated with `--reading`).
+ *      (`readSlot`: a last ask that stopped with anything but a finished stop ("end_turn"; on the OpenAI wire "completed"),
+ *      content that is not zero or more thinking blocks (reasoning items) and one text block (message), or a finished
+ *      reply that holds no verdict under the rule stated with `--reading`).
  *      The row is written, with its record, the re-grade ends with exit 2, and no later slot is paid for. With
  *      `--go-on-and-count` the re-grade goes on after such a slot instead, every such slot is counted, and it ends
  *      with exit 0: the script prints `slots the importer will refuse: <k>` (with "(the importer will refuse this
@@ -84,8 +92,8 @@ import { closeSync, openSync, readFileSync, writeSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { NOT_SENT, sha256Hex } from '../../../src/index.ts';
-import { gatewayVariableProblem, REASK_CEILING, TIMEOUT_MS_CEILING, decodeUtf8, GRADER_KEY_ENV_NAME, IMPORT_EXIT, ImportInputError, ImportRefusal, ImportUsageError, inputJsonText, isEntryPoint, isObject, judgeStopOf, oneLineIo, parseCasesFileShape, parseFlagList, parseJsonStrict, positiveIntFlag, printFailure, readingFromFlag, READINGS, readOrUsage, readSlot, runImporterAsProcess, typeName, valueTypeProblems, parseRecord } from '../shared.ts';
-import type { CasesFile, Io, Reading } from '../shared.ts';
+import { gatewayProblemFor, isWire, judgeStopOf, REASK_CEILING, TIMEOUT_MS_CEILING, decodeUtf8, GRADER_KEY_ENV_NAME, IMPORT_EXIT, ImportInputError, ImportRefusal, ImportUsageError, inputJsonText, isEntryPoint, isObject, oneLineIo, parseCasesFileShape, parseFlagList, parseJsonStrict, positiveIntFlag, printFailure, readingFromFlag, READINGS, readOrUsage, readSlot, runImporterAsProcess, typeName, valueTypeProblems, parseRecord, WIRE_ANTHROPIC, WIRE_OPENAI, WIRES } from '../shared.ts';
+import type { CasesFile, Io, Reading, Wire } from '../shared.ts';
 import { byCodeUnit, HEADER_COUNT_BOUND, readFlow, slotLabel, wholeReps, wholeRepSlots } from './flow.ts';
 import type { FlowSlot } from './flow.ts';
 import { checkTemplate, promptTextOf, renderTemplate } from './render.ts';
@@ -115,21 +123,31 @@ export const SCRIPT_FILES = [
   'examples/importers/skill-evals/strict.ts',
 ] as const;
 const REPO_ROOT = join(import.meta.dirname, '..', '..', '..');
-/** The variable the grader reads the key from when `--api-key-env` is not given. Used here only to keep the key out of the file. */
-const DEFAULT_KEY_ENV = 'ANTHROPIC_API_KEY';
+/** The variable the grader reads the key from when `--api-key-env` is not given, by wire. Used here only to keep the key out of the file. */
+const DEFAULT_KEY_ENV: Readonly<Record<Wire, string>> = { [WIRE_ANTHROPIC]: 'ANTHROPIC_API_KEY', [WIRE_OPENAI]: 'OPENAI_API_KEY' };
 const KEY_REMOVED = '[key removed]';
 const MAX_ERROR_CHARS = 2000;
 
-export const REQUIRED_FLAGS = ['--flow', '--variant', '--cases', '--reps', '--rep', '--draws', '--template', '--criterion', '--model', '--max-tokens', '--thinking', '--effort', '--max-reasks', '--base-url', '--reading', '--out'] as const;
-export const OPTIONAL_FLAGS = ['--select', '--system', '--temperature', '--timeout-ms', '--api-version', '--api-key-env'] as const;
+const COMMON_REQUIRED_FLAGS = ['--wire', '--flow', '--variant', '--cases', '--reps', '--rep', '--draws', '--template', '--criterion', '--model', '--max-tokens', '--effort', '--max-reasks', '--base-url', '--reading', '--out'] as const;
+const COMMON_OPTIONAL_FLAGS = ['--select', '--system', '--temperature', '--timeout-ms', '--api-key-env'] as const;
+/** The required and the optional flags of each wire; `--wire` selects the set. A flag of the other wire is a usage error that names its wire. */
+export const REQUIRED_FLAGS: Readonly<Record<Wire, readonly string[]>> = Object.freeze({
+  [WIRE_ANTHROPIC]: [...COMMON_REQUIRED_FLAGS, '--thinking'],
+  [WIRE_OPENAI]: [...COMMON_REQUIRED_FLAGS, '--verbosity'],
+});
+export const OPTIONAL_FLAGS: Readonly<Record<Wire, readonly string[]>> = Object.freeze({
+  [WIRE_ANTHROPIC]: [...COMMON_OPTIONAL_FLAGS, '--api-version'],
+  [WIRE_OPENAI]: [...COMMON_OPTIONAL_FLAGS],
+});
+/** The flags that only one wire takes, with that wire. */
+const WIRE_ONLY_FLAGS: readonly (readonly [string, Wire])[] = [['--thinking', WIRE_ANTHROPIC], ['--api-version', WIRE_ANTHROPIC], ['--verbosity', WIRE_OPENAI]];
 /** A switch takes no value. `--go-on-and-count`: do not stop at the first slot the importer will refuse (its record, its stop, or a reply with no verdict under the stated rule); count them. A lost slot (a call with no record) ends the re-grade with it as without it. */
 export const SWITCH_FLAGS = ['--go-on-and-count'] as const;
-type RequiredFlag = (typeof REQUIRED_FLAGS)[number];
-type OptionalFlag = (typeof OPTIONAL_FLAGS)[number] | (typeof SWITCH_FLAGS)[number];
-export type RegradeFlags = Record<RequiredFlag, string> & Partial<Record<OptionalFlag, string>>;
+/** The flags as parsed: the common required ones are always there; the wire's own (`--thinking`, `--verbosity`) and the optional ones may be missing. */
+export type RegradeFlags = Record<(typeof COMMON_REQUIRED_FLAGS)[number], string> & Partial<Record<'--thinking' | '--verbosity' | (typeof COMMON_OPTIONAL_FLAGS)[number] | '--api-version' | (typeof SWITCH_FLAGS)[number], string>>;
 
 export const USAGE =
-  `usage: node examples/importers/skill-evals/regrade.ts --flow <dir> --variant <name> --cases <cases.json> --reps <n> --rep <k> --draws <n> --template <file> --criterion <file> --model <judge id> --max-tokens <n> --thinking <NOT_SENT | JSON object> --effort <NOT_SENT | level> --max-reasks <0 to 3> --base-url <url> --reading <${READINGS.join(' | ')}> --out <file> [--select <json pointer>] [--system <file>] [--temperature <x>] [--timeout-ms <n>] [--api-version <v>] [--api-key-env <NAME>] [--go-on-and-count]`;
+  `usage: node examples/importers/skill-evals/regrade.ts --wire <${WIRES.join(' | ')}> --flow <dir> --variant <name> --cases <cases.json> --reps <n> --rep <k> --draws <n> --template <file> --criterion <file> --model <judge id> --max-tokens <n> --effort <NOT_SENT | level> --max-reasks <0 to 3> --base-url <url> --reading <${READINGS.join(' | ')}> --out <file> [--select <json pointer>] [--system <file>] [--temperature <x>] [--timeout-ms <n>] [--api-key-env <NAME>] [--go-on-and-count]   and, on anthropic-messages/v1: --thinking <NOT_SENT | JSON object> [--api-version <v>]; on openai-responses/v1: --verbosity <NOT_SENT | low | medium | high>`;
 
 // ---------------------------------------------------------------------------------------------------------------
 // What is injected
@@ -137,9 +155,16 @@ export const USAGE =
 
 /** The configuration handed to the grader: the stated settings, and a key only for a flag that was given. */
 export type GraderConfig = {
+  /** Stated with `--wire`, never defaulted. */
+  wire: Wire;
   model: string;
-  max_tokens: number;
-  thinking: typeof NOT_SENT | Record<string, unknown>;
+  /** The Anthropic wire's output cap; the OpenAI wire's is `max_output_tokens`. Exactly one of the two is there. */
+  max_tokens?: number;
+  max_output_tokens?: number;
+  /** Anthropic only. */
+  thinking?: typeof NOT_SENT | Record<string, unknown>;
+  /** OpenAI only. */
+  verbosity?: string;
   effort: string;
   /** The bound of re-asks per slot, stated with `--max-reasks`: 0 to 3, no default. */
   maxReasks: number;
@@ -186,7 +211,15 @@ export type RegradeDeps = {
  * stored answer, leave the flag out.
  */
 export function parseRegradeFlags(argv: readonly string[]): RegradeFlags {
-  return parseFlagList(argv, USAGE, REQUIRED_FLAGS, OPTIONAL_FLAGS, SWITCH_FLAGS) as RegradeFlags;
+  // `--wire` is read first: it selects the flags the rest must hold. A missing or unknown wire is a usage error.
+  const at = argv.indexOf('--wire');
+  const named = at < 0 ? undefined : argv[at + 1];
+  if (!isWire(named)) throw new ImportUsageError(`--wire is required and must be one of ${WIRES.join(', ')}${named === undefined ? '' : `, found ${JSON.stringify(named.slice(0, 60))}`}. ${USAGE}`);
+  // A flag of the other wire is not an unknown flag: the message says which wire it belongs to, as `regrade.py` does.
+  for (const [flag, belongs] of WIRE_ONLY_FLAGS) {
+    if (belongs !== named && argv.includes(flag)) throw new ImportUsageError(`${flag} is a flag of the ${belongs} wire only; the wire stated is ${named}. ${USAGE}`);
+  }
+  return parseFlagList(argv, USAGE, REQUIRED_FLAGS[named], OPTIONAL_FLAGS[named], SWITCH_FLAGS) as RegradeFlags;
 }
 
 /** A count: digits only, from 1 (the path's one count reader); with `max`, at most that. */
@@ -251,15 +284,16 @@ function timeoutMsOf(text: string): number {
 }
 
 /** The grader's configuration from the flags: a flag that was not given is a key that is not there. */
-function graderConfigOf(a: RegradeFlags): GraderConfig {
-  const config: GraderConfig = {
-    model: a['--model'],
-    max_tokens: positiveInt('--max-tokens', a['--max-tokens']),
-    thinking: thinkingOf(a['--thinking']),
-    effort: a['--effort'],
-    maxReasks: maxReasksOf(a['--max-reasks']),
-    baseUrl: a['--base-url'],
-  };
+function graderConfigOf(a: RegradeFlags, wire: Wire): GraderConfig {
+  const config: GraderConfig = { wire, model: a['--model'], effort: a['--effort'], maxReasks: maxReasksOf(a['--max-reasks']), baseUrl: a['--base-url'] };
+  const cap = positiveInt('--max-tokens', a['--max-tokens']);
+  if (wire === WIRE_OPENAI) {
+    config.max_output_tokens = cap;
+    config.verbosity = a['--verbosity'] as string;
+  } else {
+    config.max_tokens = cap;
+    config.thinking = thinkingOf(a['--thinking'] as string);
+  }
   if (a['--temperature'] !== undefined) config.temperature = decimal('--temperature', a['--temperature']);
   if (a['--timeout-ms'] !== undefined) config.timeoutMs = timeoutMsOf(a['--timeout-ms']);
   if (a['--api-version'] !== undefined) config.apiVersion = a['--api-version'];
@@ -371,7 +405,7 @@ function importerRefusal(record: Record<string, unknown>, reading: Reading): str
 function thought(record: Record<string, unknown>): boolean | undefined {
   const types = record['contentTypes'];
   if (!Array.isArray(types) || !types.every((t) => typeof t === 'string')) return undefined;
-  return types.includes('thinking') || types.includes('redacted_thinking');
+  return record['wire'] === WIRE_OPENAI ? types.includes('reasoning') : types.includes('thinking') || types.includes('redacted_thinking');
 }
 
 /** How many asks a record holds before its last, by its `reask.earlier`; undefined when the record holds no such list. */
@@ -409,10 +443,12 @@ export async function runRegrade(argv: readonly string[], deps: RegradeDeps): Pr
     const goOn = a['--go-on-and-count'] !== undefined;
     // One of the two rule names, or a usage error that lists both: read by the reader the importers read their flag with.
     const reading = readingFromFlag(a['--reading']);
-    const config = graderConfigOf(a);
-    const gateway = gatewayVariableProblem(deps.env['ANTHROPIC_BASE_URL'], config.baseUrl);
+    const wire = a['--wire'] as Wire;
+    const config = graderConfigOf(a, wire);
+    const gateway = gatewayProblemFor(wire, deps.env, config.baseUrl);
     if (gateway !== undefined) throw new ImportUsageError(gateway);
-    const keyText = deps.env[config.apiKeyEnv ?? DEFAULT_KEY_ENV];
+    const keyEnv = config.apiKeyEnv ?? DEFAULT_KEY_ENV[wire];
+    const keyText = deps.env[keyEnv];
     key = keyText === undefined || keyText === '' ? undefined : keyText;
 
     // The re-grade takes no bar (the importer checks the classes and labels against one): the shape of the file alone.
@@ -489,7 +525,7 @@ export async function runRegrade(argv: readonly string[], deps: RegradeDeps): Pr
     // The grader reads the key itself, and finds a missing one only at its first call, when the file would exist and
     // hold a row with an error. It is known here, so it is said here: nothing is built and nothing is created.
     if (key === undefined) {
-      throw new ImportUsageError(`the environment variable ${config.apiKeyEnv ?? DEFAULT_KEY_ENV} is not set (or is empty); the grader reads the key from it. Nothing was written and no call was made.`);
+      throw new ImportUsageError(`the environment variable ${keyEnv} is not set (or is empty); the grader reads the key from it. Nothing was written and no call was made.`);
     }
     let grader: Grader;
     try {
@@ -570,7 +606,7 @@ export async function runRegrade(argv: readonly string[], deps: RegradeDeps): Pr
     io.out(`slots graded: ${records.length} of ${prepared.length}, ${asks}, in the order case id then draw (source rep ${rep}, each stored output graded ${draws} time${draws === 1 ? '' : 's'})`);
     // A record is written for a slot whose last ask was cut, or stopped in any way but a finished reply; the importer
     // refuses a file that holds one. Printed with a zero too, so that its absence is never read as "none".
-    const unfinished = records.filter((r) => typeof r['stopReason'] !== 'string' || judgeStopOf(r['stopReason']) === undefined).length;
+    const unfinished = records.filter((r) => typeof r['stopReason'] !== 'string' || !isWire(r['wire']) || judgeStopOf(r['wire'], r['stopReason'], typeof r['incompleteReason'] === 'string' ? r['incompleteReason'] : undefined) !== 'end').length;
     io.out(`slots with no finished reply: ${unfinished}${unfinished > 0 ? ' (the importer will refuse this file)' : ''}`);
     // Printed with a zero too. Without --go-on-and-count the re-grade stopped at the first such slot, so a count above 0 is reached only with it.
     // The first 20 labels are named; the rest are counted.
@@ -581,7 +617,7 @@ export async function runRegrade(argv: readonly string[], deps: RegradeDeps): Pr
     io.out(`excluded cases (in the flow, not in the cases file; not graded): ${excludedCaseIds.length}${excludedCaseIds.length > 0 ? ` (${excludedCaseIds.join(', ')})` : ''}`);
     const others = wholeReps(flow);
     io.out(`reps of the flow that are whole: ${others.length} of ${flow.reps} (${others.join(', ')}); only rep ${rep} was required to be, and check.ts lists what is wrong with any other`);
-    io.out(unstated > 0 ? `replies with a thinking block: not stated (${unstated} of ${records.length} record(s) hold no contentTypes list)` : `replies with a thinking block: ${thinking.filter((t) => t === true).length} of ${records.length}`);
+    io.out(unstated > 0 ? `replies with reasoning: not stated (${unstated} of ${records.length} record(s) hold no contentTypes list)` : `replies with reasoning: ${thinking.filter((t) => t === true).length} of ${records.length}`);
     return IMPORT_EXIT.written;
   } catch (e) {
     return printFailure(io, e, (text) => scrub(text, key));

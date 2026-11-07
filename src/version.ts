@@ -1,6 +1,6 @@
 export const TOOL_NAME = 'anchorset';
 /** Kept equal to package.json "version" (checked by a test). */
-export const TOOL_VERSION = '0.3.0';
+export const TOOL_VERSION = '0.4.0';
 
 /** The schema string of a ratings file (`agree --ratings`) and of an anchor file (`drift --old`, `--new`); both are required in the file. */
 export const RATINGS_SCHEMA = 'anchorset.ratings/v2';
