@@ -10,7 +10,8 @@
         "source": "git-subdir",
         "url": "https://github.com/ogous/anchorset.git",
         "path": "plugin",
-        "sha": "f3afad22a036fa2f884f40eec56a1b4eb8d3a74d"
+        "ref": "v0.4.0",
+        "sha": "b1428bbfea918c825f8685694a9cac13cc39ba59"
       },
       "license": "Apache-2.0"
     }
