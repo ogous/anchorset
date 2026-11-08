@@ -14,6 +14,7 @@ The installed package holds these documents, for the version installed, at `node
 - [Judge change](https://raw.githubusercontent.com/ogous/anchorset/main/docs/JUDGE_CHANGE.md): the plan, the report and what each number means.
 - [Importers](https://raw.githubusercontent.com/ogous/anchorset/main/docs/IMPORTERS.md): promptfoo, Inspect and the eval-building skill, step by step.
 - [promptfoo](https://raw.githubusercontent.com/ogous/anchorset/main/docs/PROMPTFOO.md): what a change of your `llm-rubric` judge does to your grades, from a promptfoo result file.
+- [Inspect](https://raw.githubusercontent.com/ogous/anchorset/main/docs/INSPECT.md): what a change of your `model_graded_qa` judge does to your grades, from an Inspect log of your system.
 - [Comparison](https://raw.githubusercontent.com/ogous/anchorset/main/docs/COMPARISON.md): anchorset next to promptfoo, DeepEval and Langfuse.
 - [Migrations](https://raw.githubusercontent.com/ogous/anchorset/main/docs/MIGRATIONS.md): the format versions, and how an older file moves.
 

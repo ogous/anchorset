@@ -207,7 +207,8 @@ node src/cli.ts judge-change --plan "$OUT/pf-plan.json" --bar "$OUT/pf/bar.json"
 You start from an Inspect log of your system's run, with one answer per case. The example script `regrade.py`
 grades it with Inspect's `model_graded_qa` scorer. The judge replies with a letter, so the labels in your bar file
 are letters: see [`cases.json`](../examples/importers/inspect/cases.json) and
-[`bar.json`](../examples/importers/inspect/bar.json). `python` below is the Python that has `inspect_ai`.
+[`bar.json`](../examples/importers/inspect/bar.json). `python` below is the Python that has `inspect_ai`. For your own eval,
+[INSPECT.md](INSPECT.md) walks through it, from your log to the `judge-change` report.
 
 For the free pass, set `$OUT` if it is not set (`OUT="$(mktemp -d)"`). Then stop the stand-in if it runs, and
 start it in a second terminal so that it answers with grade letters:
@@ -508,7 +509,7 @@ give the helper `--label-rule worst --estimate-draws 0,1,2,3,4,5`. Then set two 
 - Anthropic's Messages API and OpenAI's own Responses API only. Other servers that speak OpenAI's format are not
   tested. OpenAI's pages, as read on 2026-11-06, do not say which models reject or ignore `temperature` or an effort
   word; the record says what was sent.
-- The API address: `https`, or `http` to `127.0.0.1` (not `localhost`), written in its plain form, as in
+- The API address: `https`, or `http` to `127.0.0.1` or `[::1]` (not `localhost`), written in its plain form, as in
   `https://gateway.example/anthropic`. An unusual spelling of a host or a port is refused, and so is a user name, a
   query, `..` or a `%` escape. A reply the server compresses is refused too.
 - The two grading scripts are written in two languages and can react differently to a malformed reply from a server:

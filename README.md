@@ -411,7 +411,7 @@ below, an example importer makes the files `judge-change` reads:
   your system, or you write them in a file. [PROMPTFOO.md](docs/PROMPTFOO.md) walks through it.
 - **Inspect**, `inspect_ai` 0.3.275 and 0.3.286; any other is refused for the grading. It reads your Inspect log, which may
   come from any version the tested tool can read (one it cannot read is refused): the run records its sha256 and the
-  version it states, and it must state how many answers it holds.
+  version it states, and it must state how many answers it holds. [INSPECT.md](docs/INSPECT.md) walks through it.
 - **The result folder of Claude's eval-building skill**, for evals with one question and one answer per case. It
   reads that folder.
 
@@ -480,6 +480,7 @@ It does not run your evals. `write-run` writes a run file only from what your ow
 - [Judge change](docs/JUDGE_CHANGE.md): the plan, the report and what each number means.
 - [Importers](docs/IMPORTERS.md): promptfoo, Inspect and the eval-building skill, step by step.
 - [promptfoo](docs/PROMPTFOO.md): what a change of your `llm-rubric` judge does to your grades.
+- [Inspect](docs/INSPECT.md): what a change of your `model_graded_qa` judge does to your grades.
 - [Comparison](docs/COMPARISON.md): anchorset next to promptfoo, DeepEval and Langfuse.
 - [Migrations](docs/MIGRATIONS.md): the format versions of 0.4.0, and how a file of 0.3.0, 0.2.0 or 0.1.0 moves.
 
