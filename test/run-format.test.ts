@@ -76,6 +76,10 @@ test('docs/RUN_FORMAT.md names every field and every value of a closed list that
     ...STOPS, ...FAIL_REASONS, ...TRANSPORT_REASONS, ...JUDGE_UNMEASURED_REASONS,
     ...PACKET_BASES,
     GAP, NOT_SENT, NO_JUDGE, NO_SEED,
+    // The recorded conditions of a v4 file.
+    'calls', 'conditions', 'requestHash', 'submission', 'sentAt', 'servedModel', 'receivedAt', 'usage', 'serving',
+    'inputTokensTotal', 'cacheReadTokens', 'cacheWriteTokens', 'outputTokens', 'concurrency', 'servingKeys', 'submissions',
+    'sharedWith', 'submittedAt', 'endedAt', 'recordedAt', 'provider-batch', 'client-group', 'NOT_RETURNED', 'RETURNED_NULL',
   ].filter((w) => !named(w));
   assert.deepEqual(missing, [], `not named in docs/RUN_FORMAT.md: ${missing.join(', ')}`);
   // The call shape the document lists is the whole closed schema: 24 keys with `schema` and `extras`.

@@ -1,9 +1,12 @@
 // Regenerates the synthetic demo data in this folder: node examples/refund-bot/generate.ts
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ANCHOR_SCHEMA, barHash, CALL_SHAPE_SCHEMA, caseSetHash, callShapeHash, hashOf, NO_JUDGE, NOT_SENT, outputHashOf, packetHashOf, parseBarFile, RATINGS_SCHEMA, RUN_SCHEMA, sha256Hex } from '../../src/index.ts';
+import { ANCHOR_SCHEMA, barHash, CALL_SHAPE_SCHEMA, caseSetHash, callShapeHash, hashOf, NO_JUDGE, NOT_SENT, outputHashOf, packetHashOf, parseBarFile, RATINGS_SCHEMA, sha256Hex } from '../../src/index.ts';
 import { seedFromString } from '../../src/rng.ts';
 import type { BarFile, CallShape, Case, Draw, RunArtifact, RunIdentity } from '../../src/index.ts';
+
+/** The run schema these example files are written in: the earlier one, which the library still reads. They record no model call (`calls`), so they stay as they were. */
+const RUN_SCHEMA = 'anchorset.run/v3';
 
 const dir = import.meta.dirname;
 const write = (name: string, value: unknown): void => writeFileSync(join(dir, name), `${JSON.stringify(value, null, 2)}\n`);

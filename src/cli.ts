@@ -26,6 +26,8 @@ import { EXIT_CODES, gateAdmission, gateExitCode, gateRuns, judgeDiff, judgeFlip
 import type { AdmissionItem, FlipLabel, JudgeDiff, JudgeFlips, OwnVariation } from './regression.ts';
 import { extraKeys, finalAttempt, incompleteCounts, incompleteDetail, judgeRetries } from './scoring.ts';
 import { repeatFlips, STORED_OUTPUTS_DECLARED } from './flips.ts';
+import { conditionsReport, percentText } from './conditions.ts';
+import type { CacheShare, ConditionsReport, CopiesRecord, RoleRecord, Spread, Tally } from './conditions.ts';
 import { unknownOutputHashes } from './stability.ts';
 import type { FlipShare, RepeatFlipReport } from './stability.ts';
 import type { GateRunResult, JudgeControl } from './regression.ts';
@@ -63,6 +65,13 @@ const USAGE_FLIPS = `  anchorset flips --run <run.json> [--stored-outputs system
       --stored-outputs: says the graded texts are stored ones whose system stop nobody observed. Needs recorded
       packets, a known judge and rubric, one output in each case, and at least one unknown stop. It is not
       recorded in any hash.`;
+const USAGE_CONDITIONS = `  anchorset conditions --run <run.json> [--other <run.json>] [--json]
+      What one run, or two side by side, recorded about how they were run: the identity as declared, the route and the
+      harness of each role, and the recorded conditions (the model id each call came back with, the response's serving
+      labels, the cache reads, the submissions and when they went out, how the draws of a case went out, where the
+      run declares drawsPerCopy whether the copies of a case went out together or apart, and with --other, how many
+      paired requests hash alike). A description: it compares nothing that can refuse, and never exits
+      1 or 2. A run that records no calls prints "not recorded".`;
 const USAGE_JUDGE_CHANGE = `  anchorset judge-change --plan <plan.json> --bar <bar.json> --inputs <dir> [--ledger <path>] [--json]
       Two judges graded the same stored outputs; reports what changed in the labels. <dir> must hold
       only the files the plan names by sha256, and may also hold the plan, the bar and the --ledger file,
@@ -104,12 +113,13 @@ const COMMAND_USAGE: Readonly<Record<string, string>> = {
   drift: `${USAGE_DRIFT}\n${USAGE_LEDGER_NOTE}`,
   flips: USAGE_FLIPS,
   'judge-change': USAGE_JUDGE_CHANGE,
+  conditions: USAGE_CONDITIONS,
   'write-run': USAGE_WRITE_RUN,
   validate: USAGE_VALIDATE,
 };
 
 const USAGE = `usage:
-${[USAGE_WRITE_RUN, USAGE_VALIDATE, USAGE_GATE, USAGE_AGREE, USAGE_DRIFT, USAGE_LEDGER_NOTE, USAGE_FLIPS, USAGE_JUDGE_CHANGE].join('\n')}
+${[USAGE_WRITE_RUN, USAGE_VALIDATE, USAGE_GATE, USAGE_AGREE, USAGE_DRIFT, USAGE_LEDGER_NOTE, USAGE_FLIPS, USAGE_JUDGE_CHANGE, USAGE_CONDITIONS].join('\n')}
 
 ${USAGE_FOOTER}`;
 
@@ -1406,7 +1416,7 @@ function judgeChangeRows(files: readonly JudgeChangeInput[], plan: JudgeChangePl
 }
 
 /** A manifest, every file it names (read from the manifest's folder, keyed by the path as the manifest gives it) and the rows, built into a run. */
-function buildFromInput(manifestPath: string, gradesPath: string): ReturnType<typeof runFromInput> & { reads: InputFile[] } {
+function buildFromInput(manifestPath: string, gradesPath: string): ReturnType<typeof runFromInput> & { reads: InputFile[]; inputSchema: string } {
   const read = readJsonFile(manifestPath);
   let manifest;
   try {
@@ -1438,7 +1448,7 @@ function buildFromInput(manifestPath: string, gradesPath: string): ReturnType<ty
     { role: 'grades', path: gradesPath, sha256: sha256Hex(grades) },
     ...built.facts.inputs,
   ];
-  return { ...built, reads };
+  return { ...built, reads, inputSchema: manifest.schema };
 }
 
 /** Writes `text` to `out` as a new file, or not at all: a temporary file, then a link, which fails if `out` exists. */
@@ -1520,7 +1530,7 @@ function cmdWriteRun(argv: readonly string[], io: Io): number {
   const out = str(flags, 'out') as string;
   // Before anything is read: a file that is there is never overwritten, and the check costs nothing.
   if (existsSync(out)) throw new UsageError(`${out} exists; write-run never overwrites --out`);
-  const { run, bar, facts, reads } = buildFromInput(str(flags, 'manifest') as string, str(flags, 'grades') as string);
+  const { run, bar, facts, reads, inputSchema } = buildFromInput(str(flags, 'manifest') as string, str(flags, 'grades') as string);
   const text = `${JSON.stringify(run, null, 2)}\n`;
   const items = gateAdmission(run, run, bar);
   writeNewFile(out, text);
@@ -1531,7 +1541,7 @@ function cmdWriteRun(argv: readonly string[], io: Io): number {
       kind: 'written',
       out,
       fileSha256,
-      input: RUN_INPUT_SCHEMA,
+      input: inputSchema,
       inputs: reads,
       origin: facts.origin,
       declarations: facts.declarations,
@@ -1545,7 +1555,7 @@ function cmdWriteRun(argv: readonly string[], io: Io): number {
   const t = textIo(io);
   t.out(`run written to ${out}`);
   t.out(`  sha256 ${fileSha256}`);
-  t.out(`  from ${RUN_INPUT_SCHEMA} · origin "${facts.origin}", as the manifest states · ${plural(facts.rows, 'row')}`);
+  t.out(`  from ${inputSchema} · origin "${facts.origin}", as the manifest states · ${plural(facts.rows, 'row')}`);
   for (const f of reads) t.out(`  read ${pad(f.role, 18)}${f.sha256}  ${f.path}`);
   printFacts(t, facts, facts.declarations);
   t.out('');
@@ -1599,6 +1609,7 @@ function cmdValidate(argv: readonly string[], io: Io): number {
   let reads: InputFile[];
   let declarations: Declaration[] = [];
   let origin: string | undefined;
+  let inputSchema: string | undefined;
   if (runPath !== undefined) {
     const r = parseRun('run', runPath);
     const barPath = str(flags, 'bar') as string;
@@ -1611,6 +1622,7 @@ function cmdValidate(argv: readonly string[], io: Io): number {
     ({ run, bar, reads } = built);
     declarations = built.facts.declarations;
     origin = built.facts.origin;
+    inputSchema = built.inputSchema;
   }
   const baseline = baselinePath === undefined ? undefined : parseRun('baseline', baselinePath);
   const original = rejudgePath === undefined ? undefined : parseRun('rejudge-of', rejudgePath);
@@ -1686,7 +1698,7 @@ function cmdValidate(argv: readonly string[], io: Io): number {
       inputs: reads,
       ...(origin === undefined ? {} : { origin, declarations }),
       barHash: barHash(bar),
-      format: RUN_SCHEMA,
+      format: run.schema,
       ...factsJson(facts),
       ...(caseSets === undefined ? {} : { caseSets }),
       noGradeByRun,
@@ -1704,7 +1716,7 @@ function cmdValidate(argv: readonly string[], io: Io): number {
   const subject = runPath ?? `${manifestPath as string} with ${gradesPath as string}`;
   const vs = baseline === undefined ? 'against itself' : `against the baseline ${baselinePath as string}${original === undefined ? '' : `, re-judged from ${rejudgePath as string}`}`;
   t.out(`validate: ${subject}, ${vs}, bar ${short(barHash(bar))}`);
-  t.out(`  format: valid (${RUN_SCHEMA})${runPath === undefined ? `, built in memory from ${RUN_INPUT_SCHEMA}; nothing written` : ''}`);
+  t.out(`  format: valid (${run.schema})${runPath === undefined ? `, built in memory from ${inputSchema as string}; nothing written` : ''}`);
   for (const f of reads) t.out(`  read ${pad(f.role, 18)}${f.sha256}  ${f.path}`);
   printFacts(t, facts, declarations);
   if (caseSets !== undefined && (caseSets.baselineOnly.length > 0 || caseSets.runOnly.length > 0)) {
@@ -1741,6 +1753,148 @@ function cmdValidate(argv: readonly string[], io: Io): number {
   return code;
 }
 
+const tallyText = (t: Tally): string => (t.length === 0 ? 'none' : t.map((x) => `${x.value} (${plural(x.calls, 'call')})`).join(', '));
+const cacheText = (c: CacheShare): string => {
+  const left = c.callsLeftOut === 0 ? '' : `; ${plural(c.callsLeftOut, 'call')} left out (a counter not recorded)`;
+  return c.share === 'none'
+    ? `no share: no call with both counters${left}`
+    : `${c.share.numerator} / ${c.share.denominator} input tokens (${percentText(c.share.tenthsOfPercent)}) over ${plural(c.callsCounted, 'call')}${left}`;
+};
+const spreadText = (x: Spread): string => (x === 'none' ? 'no case' : `${x.minMs} to ${x.maxMs} ms over ${plural(x.cases, 'case')}`);
+const submissionsText = (r: RoleRecord): string => {
+  if (r.submissions === 'not recorded') return 'not recorded';
+  const s = r.submissions;
+  if (s.count === 0) return 'none listed';
+  return `${s.count} (${s.byKind.map((k) => `${k.calls} ${k.value}`).join(', ')}), sizes ${s.sizes.join(', ')}; shared with ${s.sharedWith.length === 0 ? 'no other model' : s.sharedWith.map((x) => x.value).join(', ')}; submitted ${s.submittedFirst === 'none' ? 'at times not recorded' : s.submittedFirst === s.submittedLast ? `at ${s.submittedFirst}` : `from ${s.submittedFirst} to ${s.submittedLast}`}`;
+};
+
+/** The text of the conditions report: one column per run, and with two runs the state of each categorical row. */
+function printConditions(io: Io, r: ConditionsReport, names: readonly string[]): void {
+  const two = r.runs === 2;
+  io.out(`recorded conditions of ${two ? 'two runs' : 'one run'}: a description of what the files hold. It compares nothing that can refuse, and has no verdict.`);
+  names.forEach((n, i) => io.out(`  ${two ? (i === 0 ? 'run' : 'other') : 'run'}: ${n}`));
+  io.out('');
+  io.out(two ? 'identity, as declared: a comparison refuses when one of these differs or is unknown, unless it is allowed' : 'identity, as declared');
+  for (const row of r.identity) {
+    const v = (x: string | number | undefined): string => (typeof x === 'string' ? short(x) : String(x));
+    io.out(`  ${pad(row.field, 22)}${two ? `${pad(v(row.first), 28)}${pad(v(row.second), 28)}${row.state as string}` : v(row.first)}`);
+  }
+  for (const x of r.route) {
+    const st = (a: string, b: string | undefined): string => (two ? `  ${a === b && a !== 'UNKNOWN' ? 'same' : a === 'UNKNOWN' || b === 'UNKNOWN' ? 'unknown' : 'differs'}` : '');
+    io.out(`  ${pad(`${x.role} endpoint`, 22)}${x.endpoint.join('  |  ')}${st(x.endpoint[0], x.endpoint[1])}`);
+    io.out(`  ${pad(`${x.role} harness`, 22)}${x.harnessVersion.join('  |  ')}${st(x.harnessVersion[0], x.harnessVersion[1])}`);
+  }
+  for (const k of r.callShapeKeys) io.out(`  ${k.role} call-shape keys that differ or are unknown: ${k.keys.length === 0 ? 'none' : k.keys.join('; ')}`);
+  io.out('');
+  io.out('recorded conditions, per role, over the calls each slot stands on: no command refuses on these');
+  for (const role of r.roles) {
+    if (!role.first.recorded && (role.second === undefined || !role.second.recorded)) {
+      io.out(`  ${role.role}: not recorded${two ? ' in either run' : ''} (no calls, no conditions block)`);
+      continue;
+    }
+    io.out(`  ${role.role}`);
+    const side = (rec: RoleRecord | undefined, f: (x: RoleRecord) => string): string => (rec === undefined ? '' : !rec.recorded ? 'not recorded' : f(rec));
+    const line = (label: string, f: (x: RoleRecord) => string, state?: string): void => {
+      if (!two) return io.out(`    ${pad(label, 20)}${side(role.first, f)}`);
+      io.out(`    ${pad(label, 20)}run: ${side(role.first, f)}`);
+      io.out(`    ${pad('', 20)}other: ${side(role.second, f)}${state === undefined ? '' : `  -> ${state}`}`);
+    };
+    line('calls', (x) => String(x.calls));
+    line('model ids returned', (x) => tallyText(x.servedModels), role.states?.servedModels);
+    const keys = [...new Set([...role.first.serving.map((x) => x.key), ...(role.second?.serving ?? []).map((x) => x.key)])].sort();
+    for (const key of keys) line(key, (x) => tallyText(x.serving.find((y) => y.key === key)?.values ?? []), role.states?.serving.find((y) => y.key === key)?.state);
+    line('cache read share', (x) => cacheText(x.cache));
+    line('submissions', submissionsText);
+    line('concurrency', (x) => String(x.concurrency), role.states?.concurrency);
+  }
+  io.out('');
+  const draws = (label: string, d: ConditionsReport['draws']['first']): void => {
+    const t = d.together;
+    if (t.cases > 0 && t.notRecorded === t.cases) return io.out(`  ${label}calls not recorded`);
+    io.out(`  ${label}${t.cases === 0 ? 'no case has two or more draws' : `of ${plural(t.cases, 'case')} with two or more draws: all in one submission ${t.together} · each in its own ${t.apart} · mixed ${t.mixed} · submission not recorded ${t.unknown} · calls not recorded ${t.notRecorded}`}`);
+    if (t.cases > 0) io.out(`  ${label}time between a case's draws, by send time: ${spreadText(d.spreads.bySendTime)}; by submission time, where a send time is not recorded: ${spreadText(d.spreads.bySubmissionTime)}; left out ${d.spreads.casesLeftOut}`);
+  };
+  io.out("how the draws of a case went out (the judge's calls, or the system's in a run graded by code):");
+  draws(two ? 'run: ' : '', r.draws.first);
+  if (r.draws.second !== undefined) draws('other: ', r.draws.second);
+  printCopies(io, r, two);
+  if (r.requestHashes !== undefined && r.requestHashes.pairs + r.requestHashes.unpairedFirst + r.requestHashes.unpairedSecond > 0) {
+    const h = r.requestHashes;
+    io.out('');
+    io.out(`request hashes, paired by slot, role and order (never by hash): equal on ${h.equal}, differ on ${h.differ}, not recorded on ${h.unknown} of ${plural(h.pairs, 'pair')}; unpaired calls: ${h.unpairedFirst} in the run, ${h.unpairedSecond} in the other`);
+  }
+}
+
+/** "copy 1 is draws 0-2, copy 2 is draws 3-5": every copy when a case has four or fewer, else the first two and the last. */
+function copyPartition(k: number, perCase: unknown): string {
+  const n = typeof perCase === 'number' ? perCase / k : 0;
+  const one = (c: number): string => `copy ${c} is draws ${(c - 1) * k}${k === 1 ? '' : `-${c * k - 1}`}`;
+  if (n <= 4) return Array.from({ length: n }, (_, i) => one(i + 1)).join(', ');
+  return `${one(1)}, ${one(2)}, \u2026, ${one(n)}`;
+}
+
+/** The copies lines, for the runs that declare drawsPerCopy; nothing when neither does. */
+function printCopies(io: Io, r: ConditionsReport, two: boolean): void {
+  const { first, second } = r.copies;
+  if (first === 'not declared' && (second === undefined || second === 'not declared')) return;
+  const perCase = r.identity.find((row) => row.field === 'drawsPerCase');
+  const declared = [first, second].filter((x): x is CopiesRecord => x !== undefined && x !== 'not declared');
+  // One partition in the heading when one run declares, or both declare the same k over the same draw count.
+  const sameK = declared.length < 2 || ((declared[0] as CopiesRecord).drawsPerCopy === (declared[1] as CopiesRecord).drawsPerCopy && perCase?.first === perCase?.second);
+  const perCaseOf = (i: 0 | 1): unknown => (i === 0 ? perCase?.first : perCase?.second);
+  const k0 = (declared[0] as CopiesRecord).drawsPerCopy;
+  const declaringIndex: 0 | 1 = first === 'not declared' ? 1 : 0;
+  io.out('');
+  io.out(sameK
+    ? `how the copies of a case went out (drawsPerCopy ${k0}: ${copyPartition(k0, perCaseOf(declaringIndex))}):`
+    : 'how the copies of a case went out:');
+  const lines = (label: string, c: CopiesRecord | 'not declared' | undefined, i: 0 | 1): void => {
+    if (c === undefined) return;
+    if (c === 'not declared') return io.out(`  ${label}copies not declared`);
+    if (!sameK) io.out(`  ${label}drawsPerCopy ${c.drawsPerCopy}: ${copyPartition(c.drawsPerCopy, perCaseOf(i))}`);
+    const t = c.together;
+    const w = c.within;
+    if (t.cases > 0 && t.notRecorded === t.cases) return io.out(`  ${label}calls not recorded`);
+    io.out(`  ${label}${t.cases === 0 ? 'no case has two or more copies' : `of ${plural(t.cases, 'case')} with two or more copies: all in one submission ${t.together} \u00b7 each in its own ${t.apart} \u00b7 mixed ${t.mixed} \u00b7 submission not recorded ${t.unknown} \u00b7 calls not recorded ${t.notRecorded}`}`);
+    io.out(`  ${label}of ${plural(w.copies, 'copy', 'copies')}: own draws in one submission ${w.one} \u00b7 in more than one ${w.split} \u00b7 submission not recorded ${w.unknown} \u00b7 calls not recorded ${w.notRecorded}`);
+    if (t.cases > 0) io.out(`  ${label}time between a case's copies, by send time: ${spreadText(c.spreads.bySendTime)}; by submission time, where a send time is not recorded: ${spreadText(c.spreads.bySubmissionTime)}; left out ${c.spreads.casesLeftOut}`);
+  };
+  lines(two ? 'run: ' : '', first, 0);
+  lines('other: ', second, 1);
+}
+
+function cmdConditions(argv: readonly string[], io: Io): number {
+  const flags = parseFlags(argv, { run: 'string', other: 'string', json: 'boolean' }, ['run']);
+  const read = (flag: string, path: string): { run: RunArtifact; sha256: string } => {
+    const r = readJsonFile(path);
+    try {
+      return { run: parseRunArtifact(r.json), sha256: sha256Hex(r.bytes) };
+    } catch (e) {
+      if (e instanceof InputError) throw new InputError(e.code, e.problems.map((p) => `--${flag} ${path}: ${p}`));
+      throw e;
+    }
+  };
+  const runPath = str(flags, 'run') as string;
+  const otherPath = str(flags, 'other');
+  const a = read('run', runPath);
+  const b = otherPath === undefined ? undefined : read('other', otherPath);
+  const report = conditionsReport(a.run, b?.run);
+  // Two runs graded by a judge set two judges side by side: the two fixed sentences go with them.
+  const judges = b !== undefined && a.run.identity.judgeDefinitionHash !== NO_JUDGE && b.run.identity.judgeDefinitionHash !== NO_JUDGE;
+  const files = [{ role: 'run', path: runPath, sha256: a.sha256, schema: a.run.schema }, ...(b === undefined ? [] : [{ role: 'other', path: otherPath as string, sha256: b.sha256, schema: b.run.schema }])];
+  if (flags.has('json')) {
+    io.out(JSON.stringify({ ...contract(REPORT_SCHEMAS.conditions), kind: 'description', files, ...report, ...(judges ? { statements: [...FIXED_SENTENCES] } : {}), exitCode: EXIT_CODES.OK }, null, 2));
+    return EXIT_CODES.OK;
+  }
+  const t = textIo(io);
+  printConditions(t, report, files.map((f) => `${f.path} (${f.schema}, sha256 ${short(f.sha256)})`));
+  if (judges) {
+    t.out('');
+    for (const line of FIXED_SENTENCES) t.out(line);
+  }
+  return EXIT_CODES.OK;
+}
+
 export function main(argv: readonly string[], io: Io): number {
   const [cmd, ...rest] = argv;
   // Every line below names something the user gave (a flag, a path, a field of a file): one line each, whatever it holds.
@@ -1768,6 +1922,8 @@ export function main(argv: readonly string[], io: Io): number {
         return cmdWriteRun(rest, io);
       case 'validate':
         return cmdValidate(rest, io);
+      case 'conditions':
+        return cmdConditions(rest, io);
       case '--help':
       case '-h':
         io.out(USAGE);

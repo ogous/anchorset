@@ -329,7 +329,7 @@ const refusalLines = (found: string, set: readonly string[]): string[] => [
   `usage error: inspect_ai ${found} is installed, and this importer was tested on inspect_ai ${set.join(', ')}.`,
   "Your system's log need not come from a tested version: it is read for its stored answers, and the run records its",
   'sha256 and the version it states. A log the tested tool cannot read is refused; one it misreads may not be detected. Grade from a separate environment:',
-  `python -m venv .anchorset-grade && .anchorset-grade/bin/pip install inspect_ai==${set[set.length - 1]}`,
+  `python -m venv .anchorset-grade && .anchorset-grade/bin/pip install inspect_ai==${set[set.length - 1]} agent-client-protocol==0.12.1`,
   'Nothing was written and no call was made.',
 ];
 

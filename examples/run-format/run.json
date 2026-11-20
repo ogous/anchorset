@@ -1,5 +1,5 @@
 {
-  "schema": "anchorset.run/v3",
+  "schema": "anchorset.run/v4",
   "identity": {
     "caseSetHash": "834f5ed304b1c175672aecad9f00c41f1eca8658e60f4131b2ea84838ec4e4e6",
     "rubricHash": "77648c7319e3f23c744251c186c247477669aa568ee782c63fbf1ff65c5d0330",

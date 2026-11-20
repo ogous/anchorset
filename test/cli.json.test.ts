@@ -35,6 +35,7 @@ test('every --json report names its contract and the tool as its first two keys'
     ['agree', ['agree', '--ratings', ex('ratings.json'), '--json']],
     ['drift', [...driftArgs, '--json']],
     ['flips', ['flips', '--run', ex('judged.json'), '--json']],
+    ['conditions', ['conditions', '--run', ex('baseline.json'), '--other', ex('candidate.json'), '--json']],
   ];
   for (const [command, args] of cases) {
     const r = run(...args);
@@ -51,6 +52,7 @@ test('every --json report names its contract and the tool as its first two keys'
     flips: 'anchorset.flips-report/v2',
     'write-run': 'anchorset.write-run-report/v1',
     validate: 'anchorset.validate-report/v1',
+    conditions: 'anchorset.conditions-report/v1',
     refusal: 'anchorset.refusal/v2',
   });
   // The gate's object keeps `kind` and `exitCode`, which the plugin and the verdict lines are read by.

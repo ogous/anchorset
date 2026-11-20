@@ -20,9 +20,10 @@ You need:
 - A clone of this repository. The importers are examples under `examples/importers/`. Run every command on this
   page from the repository root.
 - For promptfoo: version 0.123.1 or 0.125.1 exactly (`npm install -g promptfoo@0.125.1`). Any other version is refused.
-- For Inspect: `inspect_ai` 0.3.275 or 0.3.286 exactly (`pip install inspect_ai==0.3.286`), on Python 3.10 or later. Any
-  other version is refused. The log of your system's own run may come from any version: see
-  [What is and is not pinned](#what-is-and-is-not-pinned).
+- For Inspect: `inspect_ai` 0.3.275 or 0.3.286 exactly, on Python 3.10 or later
+  (`pip install inspect_ai==0.3.286 agent-client-protocol==0.12.1`; without the second pin, a fresh install gets
+  agent-client-protocol 1.0.0, which these two releases cannot run with). Any other version is refused. The log of
+  your system's own run may come from any version: see [What is and is not pinned](#what-is-and-is-not-pinned).
 - For the skill's result folder: no tool.
 - An API key for the judge's provider, for the paid step only: `ANTHROPIC_API_KEY` for Anthropic's Messages API,
   `OPENAI_API_KEY` for OpenAI's Responses API.
@@ -255,7 +256,7 @@ node src/cli.ts judge-change --plan "$OUT/in-plan.json" --bar examples/importers
 **If it stops:**
 
 - `usage error: inspect_ai <version> is installed` → your own log does not need to change. Grade from a separate
-  environment: `python -m venv .anchorset-grade && .anchorset-grade/bin/pip install inspect_ai==0.3.286`. A graded file
+  environment: `python -m venv .anchorset-grade && .anchorset-grade/bin/pip install inspect_ai==0.3.286 agent-client-protocol==0.12.1`. A graded file
   from an untested version gives `IMPORT_TOOL_VERSION` at import.
 - `refused: the source log cannot be replayed` → the message lists each sample and the reason. Every sample needs
   one question, one target and one answer, each as plain text, and the log must state how many answers it holds:

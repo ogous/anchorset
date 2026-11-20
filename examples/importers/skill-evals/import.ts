@@ -46,7 +46,7 @@
  * well-formed text), `./regrade.ts` (constants only), the library's public entry and Node built-ins.
  */
 import { join } from 'node:path';
-import { barHash, callShapeHash, caseSetHash, GAP, hashOf, isSha256Hex, NOT_SENT, outputHashOf, packetHashOf, RUN_SCHEMA, sha256Hex } from '../../../src/index.ts';
+import { barHash, callShapeHash, caseSetHash, GAP, hashOf, isSha256Hex, NOT_SENT, outputHashOf, packetHashOf, sha256Hex } from '../../../src/index.ts';
 import type { BarFile, CallShape, Draw } from '../../../src/index.ts';
 import {
   assertBarHasLabels,
@@ -87,6 +87,12 @@ import { GRADER_FILE, REGRADE_SCHEMA, SCRIPT, SCRIPT_FILES } from './regrade.ts'
 import { promptTextOf, renderTemplate, templateProblems } from './render.ts';
 import { parsePointer, SELECTOR_SYNTAX, selectorLabel, trySelect, WHOLE_TURN } from './selector.ts';
 import { isWellFormedText, UNPAIRED_SURROGATE } from './strict.ts';
+
+/**
+ * The run schema this importer writes: the earlier one, which the library still reads. The importer records no model
+ * call (`calls`) and no submission (`conditions`) yet, so its files, and the plans that bind them, stay as they were.
+ */
+const IMPORTED_RUN_SCHEMA = 'anchorset.run/v3';
 
 /** The tool's name, as the run names it. */
 export const TOOL = 'skill-evals';
@@ -822,7 +828,7 @@ function convertLines(lines: ReturnType<typeof readLines>, sourceSha256: string,
   const barDigest = barHash(bar);
   const shownAs = pointer === undefined ? 'the whole assistant turn' : `the value at JSON Pointer ${JSON.stringify(pointer)} of the assistant turn`;
   const run: Record<string, unknown> = {
-    schema: RUN_SCHEMA,
+    schema: IMPORTED_RUN_SCHEMA,
     identity: {
       caseSetHash: caseSet,
       rubricHash: judge.rubricHash,

@@ -133,7 +133,7 @@ pluginTest('every command and flag the skill names is in the usage text of the C
   const usage = printed.join('\n');
   const table = skill.slice(skill.indexOf('| The user wants | Command |'), skill.indexOf('## Rules'));
   const commands = [...table.matchAll(/\| `([a-z-]+) /g)].map((m) => m[1]);
-  assert.deepEqual([...new Set(commands)].sort(), ['agree', 'drift', 'flips', 'gate', 'judge-change', 'validate', 'write-run']);
+  assert.deepEqual([...new Set(commands)].sort(), ['agree', 'conditions', 'drift', 'flips', 'gate', 'judge-change', 'validate', 'write-run']);
   for (const c of commands) assert.ok(usage.includes(`anchorset ${c} `), c);
   for (const flag of new Set([...skill.matchAll(/--[a-z][a-z-]*/g)].map((m) => m[0]))) {
     assert.ok(flag === '--help' || usage.includes(flag), flag);
@@ -146,7 +146,7 @@ pluginTest('every command and flag the skill names is in the usage text of the C
     return usage.slice((starts[i] as { at: number }).at, starts[i + 1]?.at ?? usage.length);
   };
   const rows = [...table.matchAll(/\| `([a-z-]+) ([^`]*)`/g)];
-  assert.equal(rows.length, 8);
+  assert.equal(rows.length, 9);
   for (const row of rows) {
     const own = usageOf(row[1] as string);
     for (const flag of (row[2] as string).match(/--[a-z][a-z-]*/g) ?? []) assert.ok(own.includes(flag), `${row[1]} ${flag}`);
@@ -160,7 +160,7 @@ pluginTest('every command and flag the skill names is in the usage text of the C
 pluginTest('the rules of the skill are the reviewed text, byte for byte', () => {
   const skill = read('plugin/skills/anchorset/SKILL.md');
   const rules = skill.slice(skill.indexOf('## Rules'));
-  assert.equal(createHash('sha256').update(rules, 'utf8').digest('hex'), '828f1b38a534b105e85a8ef7a1d7bd00fd6113dbfe9ceb175a6afbc5882d2a74');
+  assert.equal(createHash('sha256').update(rules, 'utf8').digest('hex'), 'b4062bd9b37ec4073f916613fcdec2fb783f58f127ccf080ac524cf1b84871ca');
 });
 
 // The plugin is a guide and nothing else: no script, no hook, no server, no command file.

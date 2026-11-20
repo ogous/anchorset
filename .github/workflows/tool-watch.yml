@@ -52,6 +52,9 @@ jobs:
           else
             mkdir "$WORK/env" && npm install --prefix "$WORK/env" "promptfoo@$LATEST"
           fi
+          # The runner sets AZURE_EXTENSION_DIR (the Azure CLI's extension folder, not a key); the fixture script refuses
+          # every AZURE_ variable, so unset this one name here and keep the script's rule as it is.
+          unset AZURE_EXTENSION_DIR
           bash examples/importers/watch-candidate.sh "$TOOL" "$LATEST" "$WORK/env"
 
   report:

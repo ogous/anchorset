@@ -61,7 +61,8 @@ type NamedKey = Exclude<keyof CallShape, 'schema' | 'extras'>;
 type Check = (v: unknown) => string | undefined;
 
 const TOKEN_RE = /^[a-z0-9][a-z0-9._-]*$/;
-const EXTRAS_KEY_RE = /^[a-z0-9_]+(\.[A-Za-z0-9_-]+)+$/;
+/** The grammar of a provider key, "namespace.name": the extras of a call shape, and the serving keys of a run's call records. Internal. */
+export const EXTRAS_KEY_RE = /^[a-z0-9_]+(\.[A-Za-z0-9_-]+)+$/;
 const norm = (s: string): string => s.toLowerCase().replace(/[-_ ./]/g, '');
 
 const oneOf = (allowed: readonly string[]): Check => (v) => (typeof v === 'string' && allowed.includes(v) ? undefined : `must be one of ${allowed.join(', ')}`);

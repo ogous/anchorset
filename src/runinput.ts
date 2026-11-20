@@ -6,11 +6,11 @@ import { InputError } from './errors.ts';
 import type { InputErrorCode } from './errors.ts';
 import { barHash, parseBarFile } from './gate.ts';
 import type { BarFile } from './gate.ts';
-import { canonicalJson, findIllFormed, findNulls, GAP, hashOf, IDENTITY_FIELDS, isSha256Hex, keySegment, MAX_DRAWS_PER_CASE, NO_JUDGE, NO_SEED, outputHashOf, parseJsonBytes, parseJsonText, readsAsGap, sha256Hex, utf8Text } from './identity.ts';
+import { canonicalJson, findIllFormed, findInexactIntegers, findNulls, GAP, hashOf, IDENTITY_FIELDS, isSha256Hex, keySegment, MAX_DRAWS_PER_CASE, NO_JUDGE, NO_SEED, NOT_RETURNED, outputHashOf, parseJsonBytes, parseJsonText, readsAsGap, RETURNED_NULL, sha256Hex, utf8Text } from './identity.ts';
 import type { Gap, IdentityField, NoSeed } from './identity.ts';
 import { FAIL_REASONS, finalAttempt, JUDGE_UNMEASURED_REASONS, STOPS, TRANSPORT_REASONS, unknownStops } from './scoring.ts';
 import type { Attempt, Case, Draw } from './scoring.ts';
-import { RUN_INPUT_SCHEMA } from './version.ts';
+import { RUN_INPUT_SCHEMA, RUN_INPUT_SCHEMA_V1 } from './version.ts';
 
 /*
  * The run-input format (`anchorset.run-input/v1`) and the one writer from it to the run artifact. A manifest states what
@@ -55,7 +55,7 @@ export type PacketsValue = { basis: 'recorded' } | { basis: 'declared'; source: 
 
 /** A manifest that has passed parseRunInputManifest. Every key it did not state is here as "UNKNOWN" or absent. */
 export type RunInputManifest = {
-  schema: typeof RUN_INPUT_SCHEMA;
+  schema: typeof RUN_INPUT_SCHEMA | typeof RUN_INPUT_SCHEMA_V1;
   origin: 'produced';
   graded: 'by-judge' | 'by-code';
   bar: string;
@@ -70,9 +70,12 @@ export type RunInputManifest = {
   /** Absent exactly when graded by code. */
   judge?: Side & { definition: HashedValue; gradedReplyStop?: JudgeStopWord };
   packets?: PacketsValue;
+  /** v2 only: how each role's requests went out, as the run records it (conditions.ts); checked with the run it is written into. */
+  conditions?: unknown;
 };
 
-const MANIFEST_KEYS = ['schema', 'origin', 'graded', 'bar', 'caseCount', 'drawsPerCase', 'cases', 'sameForEveryCase', 'expectByClass', 'rubric', 'seed', 'system', 'judge', 'packets'] as const;
+const MANIFEST_KEYS_V1 = ['schema', 'origin', 'graded', 'bar', 'caseCount', 'drawsPerCase', 'cases', 'sameForEveryCase', 'expectByClass', 'rubric', 'seed', 'system', 'judge', 'packets'] as const;
+const MANIFEST_KEYS = [...MANIFEST_KEYS_V1, 'conditions'] as const;
 const SYSTEM_KEYS = ['modelRequested', 'modelServed', 'prompt', 'tools', 'harnessVersion', 'settings'] as const;
 const JUDGE_KEYS = ['modelRequested', 'modelServed', 'definition', 'harnessVersion', 'settings', 'gradedReplyStop'] as const;
 const DERIVED = ['caseSetHash', 'barHash', 'systemCallShapeHash', 'judgeCallShapeHash'] as const;
@@ -113,7 +116,7 @@ function pathOf(v: unknown, at: string, p: Problems): string {
 function identityText(v: unknown, at: string, p: Problems): string {
   if (v === undefined || v === GAP) return GAP;
   if (typeof v !== 'string' || v === '') p.add(`${at}: must be a non-empty string, or "${GAP}"`);
-  else if (v === NO_JUDGE || v === NO_SEED) p.add(`${at}: "${v}" is a marker the run reserves; write the value, or "${GAP}"`);
+  else if (v === NO_JUDGE || v === NO_SEED || v === NOT_RETURNED || v === RETURNED_NULL) p.add(`${at}: "${v}" is a marker the run reserves; write the value, or "${GAP}"`);
   else if (readsAsGap(v)) p.add(`${at}: ${q(v)} reads as a gap; write the value, or "${GAP}" for one you do not know`);
   else return v;
   return GAP;
@@ -202,8 +205,10 @@ export function parseRunInputManifest(json: unknown): RunInputManifest {
   const illFormed: string[] = [];
   findIllFormed(json, 'manifest', illFormed);
   for (const n of illFormed) p.add(n);
-  closedKeys(json, MANIFEST_KEYS, 'manifest', p);
-  if (json['schema'] !== RUN_INPUT_SCHEMA) p.add(`manifest.schema: must be "${RUN_INPUT_SCHEMA}"`);
+  const v1 = json['schema'] === RUN_INPUT_SCHEMA_V1;
+  closedKeys(json, v1 ? MANIFEST_KEYS_V1 : MANIFEST_KEYS, 'manifest', p);
+  if (v1 && 'conditions' in json) p.add(`manifest.conditions: a key of "${RUN_INPUT_SCHEMA}"; write that schema to state it`);
+  if (json['schema'] !== RUN_INPUT_SCHEMA && !v1) p.add(`manifest.schema: must be "${RUN_INPUT_SCHEMA}" (or "${RUN_INPUT_SCHEMA_V1}", which is still read)`);
   if (json['origin'] !== 'produced') {
     p.add(`manifest.origin: ${json['origin'] === undefined ? 'is required' : `is ${JSON.stringify(json['origin'])}`}; it must be "produced": write-run reads only rows that your own eval code wrote. A result file of another tool goes through that tool's importer, where one exists (docs/IMPORTERS.md)`);
   }
@@ -287,7 +292,7 @@ export function parseRunInputManifest(json: unknown): RunInputManifest {
   }
   p.throwIfAny();
   return {
-    schema: RUN_INPUT_SCHEMA,
+    schema: v1 ? RUN_INPUT_SCHEMA_V1 : RUN_INPUT_SCHEMA,
     origin: 'produced',
     graded: graded as RunInputManifest['graded'],
     bar,
@@ -301,6 +306,7 @@ export function parseRunInputManifest(json: unknown): RunInputManifest {
     system,
     ...(judge === undefined ? {} : { judge }),
     ...(packets === undefined ? {} : { packets }),
+    ...('conditions' in json && !v1 ? { conditions: json['conditions'] } : {}),
   };
 }
 
@@ -355,12 +361,12 @@ function jsonLines(bytes: Uint8Array, name: string, p: Problems): Line[] {
 const CASE_FIELD_KEYS = ['class', 'expect', 'input'] as const;
 type CaseField = (typeof CASE_FIELD_KEYS)[number];
 const SLOT_KEYS = ['case', 'draw', 'attempt'] as const;
-const ROW_KEYS = [...SLOT_KEYS, 'grade', 'failed', 'unmeasured', 'role', 'detail', 'answer', 'answerHash', 'stop', 'judgeStop', 'packetHash', ...CASE_FIELD_KEYS] as const;
+const ROW_KEYS = [...SLOT_KEYS, 'grade', 'failed', 'unmeasured', 'role', 'detail', 'answer', 'answerHash', 'stop', 'judgeStop', 'packetHash', 'calls', ...CASE_FIELD_KEYS] as const;
 
 /** A row read: where it goes, the attempt it records, and the case fields it carries. */
 export type GradeRow = { line: number; caseId: string; draw?: number; attempt?: number; record: Attempt; fields: Partial<Record<CaseField, unknown>> };
 
-type RowContext = { byJudge: boolean; packets: PacketsValue | undefined; gradedReplyStop: JudgeStopWord | undefined };
+type RowContext = { byJudge: boolean; packets: PacketsValue | undefined; gradedReplyStop: JudgeStopWord | undefined; callsAllowed: boolean };
 
 /** A stop word, or "UNKNOWN" when the row leaves it out; on a failed row it is required and may be "NOT_SENT". Moved from the example writer. */
 function stopOf(v: unknown, at: string, failedRow: boolean, p: Problems, name = 'stop'): string {
@@ -423,7 +429,7 @@ function attemptOf(r: Obj, at: string, ctx: RowContext, p: Problems): Attempt | 
   const allowedOn = (extra: readonly string[], what: string): void => {
     for (const k of Object.keys(r)) {
       if (!(ROW_KEYS as readonly string[]).includes(k)) p.add(`${at}: unknown key ${q(k)} (a row's keys are ${ROW_KEYS.join(', ')})`);
-      else if (![...SLOT_KEYS, ...CASE_FIELD_KEYS, ...extra].includes(k)) p.add(`${at}: ${k} is not allowed on ${what}`);
+      else if (![...SLOT_KEYS, ...CASE_FIELD_KEYS, 'calls', ...extra].includes(k)) p.add(`${at}: ${k} is not allowed on ${what}`);
     }
   };
   if (kind === 'grade') {
@@ -496,8 +502,35 @@ export function parseGradeRows(bytes: Uint8Array, manifest: RunInputManifest, na
   return rows;
 }
 
+/**
+ * The model calls a row records (v2): the same records the run holds, except that a call may give `request`, the
+ * parameters object as sent, which is hashed here (hashOf) and not kept, in place of `requestHash`. A call that gives
+ * neither records the hash as "UNKNOWN". Each record is checked with the run it is written into.
+ */
+function callsOf(v: unknown, at: string, ctx: RowContext, p: Problems): unknown[] | undefined {
+  if (!ctx.callsAllowed) {
+    p.add(`${at}: calls is a key of "${RUN_INPUT_SCHEMA}"; write that schema in the manifest to record the calls`);
+    return undefined;
+  }
+  if (!Array.isArray(v)) {
+    p.add(`${at}: calls must be a list of call records`);
+    return undefined;
+  }
+  return v.map((c, k) => {
+    if (!isObj(c) || !('request' in c)) return isObj(c) && !('requestHash' in c) ? { ...c, requestHash: GAP } : c;
+    if ('requestHash' in c) p.add(`${at}: calls[${k}] gives both request and requestHash; give one`);
+    const { request, ...rest } = c;
+    if (!isObj(request)) p.add(`${at}: calls[${k}].request must be the request's parameters object, as sent`);
+    // A number past 2^53 - 1 in the request would hash as another number: two requests could hash alike.
+    const inexact: string[] = [];
+    findInexactIntegers(request, `${at}: calls[${k}].request`, inexact);
+    for (const x of inexact) p.add(x);
+    return { ...rest, requestHash: hashOf(request) };
+  });
+}
+
 function readRows(bytes: Uint8Array, m: RunInputManifest, name: string, p: Problems): GradeRow[] {
-  const ctx: RowContext = { byJudge: m.graded === 'by-judge', packets: m.packets, gradedReplyStop: m.judge?.gradedReplyStop };
+  const ctx: RowContext = { byJudge: m.graded === 'by-judge', packets: m.packets, gradedReplyStop: m.judge?.gradedReplyStop, callsAllowed: m.schema === RUN_INPUT_SCHEMA };
   const out: GradeRow[] = [];
   for (const { line, value: r } of jsonLines(bytes, name, p)) {
     const at = `${name} line ${line}`;
@@ -513,6 +546,10 @@ function readRows(bytes: Uint8Array, m: RunInputManifest, name: string, p: Probl
       fields[f] = r[f];
     }
     const record = attemptOf(r, at, ctx, p);
+    if (record !== undefined && 'calls' in r) {
+      const calls = callsOf(r['calls'], at, ctx, p);
+      if (calls !== undefined) (record as { calls?: unknown[] }).calls = calls;
+    }
     if (record === undefined || typeof c !== 'string') continue;
     out.push({ line, caseId: c, ...(draw === undefined ? {} : { draw }), ...(attempt === undefined ? {} : { attempt }), record, fields });
   }
@@ -839,6 +876,7 @@ export function runFromInput(m: RunInputManifest, rowBytes: Uint8Array, files: R
     draws,
     packetBasis: !byJudge ? NO_JUDGE : m.packets === undefined ? GAP : m.packets.basis,
     ...(m.packets?.basis === 'declared' ? { packetSource: m.packets.source } : {}),
+    ...(m.conditions === undefined ? {} : { conditions: m.conditions }),
   };
   const json = JSON.parse(JSON.stringify(value_)) as unknown;
   const bad = runArtifactProblems(json);
@@ -857,6 +895,7 @@ export function runFromInput(m: RunInputManifest, rowBytes: Uint8Array, files: R
         const s = drawList[Number(d[1])];
         return `${names.grades}: slot ${s === undefined ? d[1] : `${s.caseId}#${s.drawIndex}`}${x.slice(d[0].length)}`;
       }
+      if (x.startsWith('artifact.conditions')) return `manifest${x.slice('artifact'.length)}`;
       return `the run written from this input: ${x}`;
     }));
   }

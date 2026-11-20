@@ -280,7 +280,7 @@ describe('write-run: an input that is not in its format is refused (exit 65), ev
   };
   const good = jsonl(rows());
   // The manifest.
-  refused('a wrong schema', manifest({ schema: 'anchorset.run-input/v0' }), good, /manifest\.schema: must be "anchorset\.run-input\/v1"/);
+  refused('a wrong schema', manifest({ schema: 'anchorset.run-input/v0' }), good, /manifest\.schema: must be "anchorset\.run-input\/v2" \(or "anchorset\.run-input\/v1", which is still read\)/);
   refused('an unknown key', manifest({ vibe: 'good' }), good, /manifest\.vibe: unknown key/);
   refused('an identity field by its own name, with where it is stated', manifest({ systemModelServed: 'x' }), good, /manifest\.systemModelServed: unknown key; state it as system\.modelServed/);
   refused('origin missing', without(manifest(), 'origin'), good, /manifest\.origin: is required; it must be "produced"[^\n]*docs\/IMPORTERS\.md/);
@@ -469,5 +469,78 @@ describe('the example input of the format page', () => {
     // q04 holds a 2 under a floor at 4: four of five pass, 0.800, which meets the bar of 0.5.
     assert.match(g.stdout, /reply_quality {3}floor {11}4\/5 0\.800 {5}4\/5 0\.800, 0 new {6}0\.500 {3}ok/);
     assert.match(g.stdout, /^draws per case: 1 — /m);
+  });
+});
+
+describe('write-run, run-input v2: the calls of each row and the manifest conditions', () => {
+  const V2 = { schema: 'anchorset.run-input/v2' };
+  const judgeCall = (id: string): Obj => ({
+    role: 'judge',
+    request: { model: 'judge-model', messages: [{ role: 'user', content: `grade ${id}` }] },
+    submission: 'batch-1',
+    sentAt: '2026-11-08T10:00:00Z',
+    servedModel: 'judge-model-2026-02-01',
+    receivedAt: 'UNKNOWN',
+    usage: { inputTokensTotal: 100, cacheReadTokens: 80, cacheWriteTokens: 0, outputTokens: 5 },
+    serving: { 'provider.service_tier': 'standard' },
+  });
+  const conditions = { judge: { concurrency: 'UNKNOWN', servingKeys: ['provider.service_tier'], submissions: [{ id: 'batch-1', kind: 'provider-batch', size: 3, sharedWith: [], submittedAt: '2026-11-08T10:00:00Z', endedAt: 'NOT_RETURNED', recordedAt: 'UNKNOWN' }] } };
+
+  it('a request object is hashed (hashOf) and not kept; the run is anchorset.run/v4 with the calls and the conditions', () => {
+    const { run, stdout } = ok(manifest({ ...V2, conditions }), jsonl(rows((id) => ({ calls: [judgeCall(id)] }))));
+    assert.equal(run.schema, 'anchorset.run/v4');
+    assert.match(stdout, /from anchorset\.run-input\/v2/);
+    const call = run.draws[0]?.attempts[0]?.calls?.[0] as Record<string, unknown>;
+    // Independent recomputation: the canonical JSON of the request object, keys sorted, hashed with sha256.
+    const canonical = '{"messages":[{"content":"grade q01","role":"user"}],"model":"judge-model"}';
+    assert.equal(call['requestHash'], sha256(canonical));
+    assert.equal('request' in call, false);
+    assert.deepEqual(run.conditions, conditions);
+  });
+
+  it('a call that gives neither request nor requestHash records the hash as UNKNOWN; one that gives both is refused', () => {
+    const neither = (id: string): Obj => {
+      const { request: _r, ...rest } = judgeCall(id);
+      return rest;
+    };
+    const { run } = ok(manifest({ ...V2, conditions }), jsonl(rows((id) => ({ calls: [neither(id)] }))));
+    assert.equal((run.draws[0]?.attempts[0]?.calls?.[0] as Record<string, unknown>)['requestHash'], 'UNKNOWN');
+    const dir = setup(manifest({ ...V2, conditions }), jsonl(rows((id) => ({ calls: [{ ...judgeCall(id), requestHash: sha256('x') }] }))));
+    const r = writeRun(dir);
+    assert.equal(r.status, 65);
+    assert.match(r.stderr, /calls\[0\] gives both request and requestHash; give one/);
+  });
+
+  it('a v1 manifest still reads, writes run/v4, and refuses calls and conditions; a bad call names its line', () => {
+    const { run, stdout } = ok(manifest(), jsonl(rows()));
+    assert.equal(run.schema, 'anchorset.run/v4');
+    assert.match(stdout, /from anchorset\.run-input\/v1/);
+    const withCalls = writeRun(setup(manifest(), jsonl(rows((id) => ({ calls: [judgeCall(id)] })))));
+    assert.equal(withCalls.status, 65);
+    assert.match(withCalls.stderr, /calls is a key of "anchorset\.run-input\/v2"/);
+    const withCond = writeRun(setup(manifest({ conditions }), jsonl(rows())));
+    assert.equal(withCond.status, 65);
+    assert.match(withCond.stderr, /manifest\.conditions: a key of "anchorset\.run-input\/v2"/);
+    const bad = writeRun(setup(manifest({ ...V2, conditions }), jsonl(rows((id) => ({ calls: [{ ...judgeCall(id), sentAt: 'today' }] })))));
+    assert.equal(bad.status, 65);
+    assert.match(bad.stderr, /grades\.jsonl line 1 \(slot q01#0, attempt 0\): calls\[0\]\.sentAt: must be a UTC time/);
+    const badCond = writeRun(setup(manifest({ ...V2, conditions: { judge: { ...conditions.judge, concurrency: 0 } } }), jsonl(rows((id) => ({ calls: [judgeCall(id)] })))));
+    assert.equal(badCond.status, 65);
+    assert.match(badCond.stderr, /manifest\.conditions\.judge\.concurrency: must be a positive integer/);
+  });
+
+  it('manifest conditions.drawsPerCopy is written into the run and checked against the draw count', () => {
+    const conditions12 = { judge: { ...conditions.judge, submissions: [{ ...conditions.judge.submissions[0], size: 12 }] } };
+    const four = (over: (id: string, d: number) => Obj): Obj[] => IDS.flatMap((id) => [0, 1, 2, 3].map((d) => row(id, { draw: d, ...over(id, d) })));
+    const { run } = ok(manifest({ ...V2, drawsPerCase: 4, conditions: { ...conditions12, drawsPerCopy: 2 } }), jsonl(four((id) => ({ calls: [judgeCall(id)] }))));
+    assert.equal(run.identity.drawsPerCase, 4);
+    assert.equal(run.conditions?.drawsPerCopy, 2);
+    const notDivisor = writeRun(setup(manifest({ ...V2, drawsPerCase: 4, conditions: { ...conditions12, drawsPerCopy: 3 } }), jsonl(four((id) => ({ calls: [judgeCall(id)] })))));
+    assert.equal(notDivisor.status, 65);
+    assert.match(notDivisor.stderr, /manifest\.conditions\.drawsPerCopy: 3 does not divide identity\.drawsPerCase 4/);
+    // No draw column: one draw per case, so a copy of one draw is one copy per case: refused.
+    const single = writeRun(setup(manifest({ ...V2, conditions: { ...conditions12, drawsPerCopy: 1 } }), jsonl(rows((id) => ({ calls: [judgeCall(id)] })))));
+    assert.equal(single.status, 65);
+    assert.match(single.stderr, /manifest\.conditions\.drawsPerCopy: 1 of identity\.drawsPerCase 1 is one copy per case/);
   });
 });

@@ -11,16 +11,19 @@ export {
   isSha256Hex,
   NO_JUDGE,
   NO_SEED,
+  NOT_RETURNED,
   oneLine,
   outputHashOf,
   packetHashOf,
   parseJsonBytes,
   parseJsonText,
   readsAsGap,
+  RETURNED_NULL,
   sha256Hex,
   utf8Text,
 } from './identity.ts';
-export type { ComparableOptions, Gap, IdentityField, NoJudge, NoSeed, RunIdentity } from './identity.ts';
+export type { ComparableOptions, Gap, IdentityField, NoJudge, NoSeed, NotReturned, ReturnedNull, RunIdentity } from './identity.ts';
+export type { CallRecord, Counter, RoleConditions, RunConditions, Submission, Usage } from './conditions.ts';
 export { FAIL_REASONS, JUDGE_UNMEASURED_REASONS, STOPS, TRANSPORT_REASONS } from './scoring.ts';
 export type { Attempt, Case, ClassSpec, Direction, Draw, FailedAttempt, FailReason, FoldedCase, GradedAttempt, IncompleteCase, JudgeRetries, JudgeUnmeasuredReason, PacketHash, Stop, TransportReason, UnmeasuredAttempt } from './scoring.ts';
 export { barHash, parseBarFile } from './gate.ts';
@@ -38,7 +41,7 @@ export type { DriftClass, DriftOptions, DriftReport, JudgeControlledDelta, Label
 export { LEDGER_SCHEMA, readLedger } from './ledger.ts';
 export type { AgreementBinding, DriftBinding, GateInputs, JudgeChangeBinding, JudgeChangeLedgerRecord, LedgerKind, LedgerRecord, RatingsLedgerKind, RatingsLedgerRecord, RunLedgerKind, RunLedgerRecord } from './ledger.ts';
 export { caseSetHash, parseRunArtifact, RUN_SCHEMA } from './artifact.ts';
-export type { PacketBasis, RunArtifact } from './artifact.ts';
+export type { PacketBasis, RunArtifact, RunSchema } from './artifact.ts';
 export { JUDGE_CHANGE_PLAN_SCHEMA, judgeChangeRuns, parseJudgeChangePlan, REFERENCE_SCHEMA, RESAMPLE_SCHEMA, TIE_BREAK_SCHEMA } from './judgechange.ts';
 export type { AgreementSpread, GateReport, JudgeChangeInput, JudgeChangePlan, JudgeChangeReport, JudgeSide, LabelRule, MapReport, OverSeeds, PacketEquality, PairGate, PassRates, Placebo, RaterAgreement, ReferenceFile, ReferencePacketLabel, ReferenceReport, ResampleFile, SpreadReport, TieBreakFile, Withheld } from './judgechange.ts';
 export type { FoldCut } from './cutmap.ts';

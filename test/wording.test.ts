@@ -72,6 +72,9 @@ function outputs(): Out[] {
   // The no-grade refusals.
   both('gate refusal: incomplete baseline', true, 'gate', '--baseline', put(refundRun({ grades: { ...FOUR, q01: ['4', '!parse-failure', '-'] } })), '--candidate', base, '--bar', BAR);
   both('flips refusal: incomplete run', true, 'flips', '--run', put(refundRun({ grades: { ...FOUR, q01: ['4', '!content-filter', '4'] } })));
+  // conditions: two judged runs side by side (the fixed sentences close it), and the example runs that record calls.
+  both('conditions: two judged runs', true, 'conditions', '--run', base, '--other', put(refundRun({ grades: FOUR, identity: NEW_JUDGE })));
+  both('conditions: the example runs with calls', true, 'conditions', '--run', join(root, 'examples', 'conditions', 'january.json'), '--other', join(root, 'examples', 'conditions', 'february.json'));
   both('gate refusal: no answer', false, 'gate', '--baseline', put(refundRun({ grades: { ...FOUR, q01: ['4', 'E', '4'] } })), '--candidate', base, '--bar', BAR);
   // The judge-flip list, computed (three draws, with a no-grade case and a case of two answers), refused, and on one draw.
   const original = refundRun({ grades: OLD_GRADES, answer: twoAnswers });
@@ -119,7 +122,7 @@ const touched = (): Out[] => (cached ??= outputs());
 
 test('no output of a touched command holds a forbidden word, in text or under --json; the one kept sentence aside', () => {
   const all = touched();
-  assert.equal(all.length, 39);
+  assert.equal(all.length, 43);
   const found = all.flatMap((o) => offending(o.text).map((w) => `${o.what}: "${w}"`));
   assert.deepEqual(found, []);
   // Every output was printed: none of them is empty.

@@ -1,6 +1,6 @@
 # The command line and CI
 
-For anyone who runs anchorset from a script or from CI, the service that checks each change: the seven commands,
+For anyone who runs anchorset from a script or from CI, the service that checks each change: the eight commands,
 what each exit code means, and how to gate when the judge changed.
 
 ## The commands
@@ -14,6 +14,7 @@ what each exit code means, and how to gate when the judge changed.
 | `drift` | Two anchor files: one judge, the same items, two dates |
 | `flips` | One run file with several draws per case |
 | `judge-change` | A plan, a bar file and a folder of run files |
+| `conditions` | One run file, or two: it prints what they recorded about how they were run, including, where a run declares `drawsPerCopy`, whether the copies of a case went out together or apart ([RUN_FORMAT.md](RUN_FORMAT.md#recorded-conditions)) |
 
 The file formats are in [RUN_FORMAT.md](RUN_FORMAT.md), [RATINGS_FORMAT.md](RATINGS_FORMAT.md) and
 [JUDGE_CHANGE.md](JUDGE_CHANGE.md). Each command on the example data, from the root of a clone:
@@ -26,9 +27,10 @@ node src/cli.ts agree --ratings examples/refund-bot/ratings.json
 node src/cli.ts drift --old examples/refund-bot/anchor_old.json --new examples/refund-bot/anchor_new.json --flag handoff
 node src/cli.ts flips --run examples/refund-bot/judged.json
 node src/cli.ts judge-change --plan examples/judge-change/plan.json --bar examples/judge-change/bar.json --inputs examples/judge-change/runs
+node src/cli.ts conditions --run examples/conditions/january.json --other examples/conditions/february.json
 ```
 
-`write-run` and `validate` exit 0. `gate` exits 1, because the example holds a regression. The other four exit 0. `--help` prints every flag. When
+`write-run` and `validate` exit 0. `gate` exits 1, because the example holds a regression. The other five exit 0. `--help` prints every flag. When
 anchorset is installed from npm, the command is `anchorset` where this page shows `node src/cli.ts`.
 
 `flips --stored-outputs system-side-not-compared` says that the graded answers are stored ones whose system stop nobody saw. The report says so first, and `gate` never takes such a file. [RUN_FORMAT.md](RUN_FORMAT.md) lists what the file needs.
@@ -41,9 +43,9 @@ neither can `rubricHash` when a judge graded the runs.
 
 | Code | Meaning |
 |---|---|
-| 0 | `gate`: no regression, and every pass bar is met. `write-run`: the run file was written, also when it holds `"UNKNOWN"` values. `validate`: `gate` would take the run. The other four: the report was printed, whatever it shows. |
+| 0 | `gate`: no regression, and every pass bar is met. `write-run`: the run file was written, also when it holds `"UNKNOWN"` values. `validate`: `gate` would take the run. The other five: the report was printed, whatever it shows. |
 | 1 | `gate` only: a regression. A case broke, a class is below its pass bar, a non-compensable class (`"nonCompensable": true` in the bar file) has a failing case, a class has no case in the run, or a case is unfinished in the candidate. |
-| 2 | Refused. The comparison can't be trusted, and the message names what differs or is unknown. From `validate`: `gate` would refuse the run, and every reason is listed. `write-run` never exits 2: it compares nothing. |
+| 2 | Refused. The comparison can't be trusted, and the message names what differs or is unknown. From `validate`: `gate` would refuse the run, and every reason is listed. `write-run` never exits 2: it compares nothing. Nor does `conditions`: it compares nothing that can refuse. |
 | 64 | Usage error: a flag is missing, unknown or cannot be used here. For `write-run`, also: `--out` exists, or cannot be written. |
 | 65 | Invalid input: a file can't be read or is not in its format, or `--flag` names a label the files do not have. |
 | 70 | Internal error in anchorset. It says nothing about your runs. |

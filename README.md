@@ -24,6 +24,11 @@ With anchorset you can:
   flipped between the two judges, in each direction.
 - **Bring in results from any provider**: `write-run` turns one JSON line per graded answer into a run file, and
   `validate` lists every reason `gate` would refuse it, all at once.
+- **Show how two runs were run**: a run file can record, for each model call, the model id the response named, a hash
+  of the request, the batch it went in and when, the cache reads and the response's serving labels. `conditions`
+  prints what one run or two recorded, side by side, including, where a run says how its draws form copies, whether
+  the copies of a case went out together or apart, so you can say which recorded conditions matched between them and
+  which did not.
 
 It is a command-line tool. The `anchorset` command calls no model: it reads files that your own eval code writes in
 its formats.
@@ -32,7 +37,7 @@ Four words used on this page: a **grader** is whoever gives the label, a person 
 grader that is a model. An **item** is what the rating files call a case. A **packet** is what a grader was shown
 for one item.
 
-Version 0.4.0, by Ogous Chan Ali.
+Version 0.5.0, by Ogous Chan Ali.
 
 ## Try it
 
@@ -122,7 +127,7 @@ compares runs whose draw counts differ, and `flips` needs at least two draws per
 your own code wrote; for another tool's result file, use its importer (see below).
 [The run format](docs/RUN_FORMAT.md#from-your-evals-rows) lists every key.
 
-## The five methods
+## The six methods
 
 | Question | Method |
 |---|---|
@@ -131,13 +136,14 @@ your own code wrote; for another tool's result file, use its importer (see below
 | [Did my judge shift over time?](#drift-is-my-judge-still-grading-the-same-way) | `drift` |
 | [How much does my judge wobble?](#flips-how-noisy-is-my-judge) | `flips` |
 | [What did a judge upgrade, or a move to another provider, do?](#judge-change-i-swapped-the-judge-what-changed) | `judge-change` |
+| [How were my two runs run, call by call?](#conditions-how-were-my-two-runs-run) | `conditions` |
 
 Two more commands get your results in: `write-run` and `validate` ([Get your results in](#get-your-results-in)). When
 the judge changed between your baseline and your candidate, `gate --rejudge-of` gates across the change and lists
 the cases that flipped between the two judges (under [`gate`](#gate-did-my-new-version-get-worse)).
 
-`gate` is the only one that gives a pass/fail verdict. The other four are measurements: they show you numbers and
-you decide.
+`gate` is the only one that gives a pass/fail verdict. Four are measurements: they show you numbers and you decide.
+`conditions` describes: it prints what the files recorded and compares nothing that can refuse.
 
 Each example below runs on made-up data in this repository. The output is what the command prints; `…` marks lines
 left out here. In the first four examples each answer gets one of three labels: `none` (fine as it is), `review`, or
@@ -401,6 +407,56 @@ node src/cli.ts judge-change --plan <plan file> --bar <bar file> --inputs <folde
 the example grading scripts below; the report measures the whole grading path, not the model alone). To gate a release across one, use `gate --rejudge-of` (under
 [`gate`](#gate-did-my-new-version-get-worse)): it lists the baseline's cases whose result moved between the two judges.
 
+### `conditions`: how were my two runs run?
+
+Two runs can name the same model, send the same requests and still get different grades. `conditions` prints what
+each run file recorded about how it was run: the identity, the route each role posted to, and, where the run records
+its calls, for the calls each grade stands on (the judge call that gave it and the system calls that produced the
+graded answer; the calls of an attempt that was asked again are not counted), the model id each response named, the response's serving labels, the cache reads, the batches and when
+they went out, how the draws of each case went out, whether the copies of each case went out together or apart
+(where the run says how its draws form copies), and how many paired requests hash alike.
+
+```sh
+npm run --silent demo:conditions
+```
+
+```text
+recorded conditions of two runs: a description of what the files hold. It compares nothing that can refuse, and has no verdict.
+…
+  judge
+    calls               run: 8
+                        other: 8
+    model ids returned  run: example-judge-2026-02-01 (8 calls)
+                        other: example-judge-2026-02-01 (8 calls)  -> same
+    example.service_tier run: standard (8 calls)
+                        other: standard (8 calls)  -> same
+    example.speed       run: NOT_RETURNED (8 calls)
+                        other: standard (8 calls)  -> differs
+    cache read share    run: 0 / 7200 input tokens (0.0%) over 8 calls
+                        other: 6400 / 7200 input tokens (88.9%) over 8 calls
+…
+how the draws of a case went out (the judge's calls, or the system's in a run graded by code):
+  run: of 4 cases with two or more draws: all in one submission 4 · each in its own 0 · mixed 0 · submission not recorded 0 · calls not recorded 0
+…
+  other: of 4 cases with two or more draws: all in one submission 0 · each in its own 4 · mixed 0 · submission not recorded 0 · calls not recorded 0
+…
+request hashes, paired by slot, role and order (never by hash): equal on 16, differ on 0, not recorded on 0 of 16 pairs; unpaired calls: 0 in the run, 0 in the other
+…
+```
+
+The two runs asked the same model with requests that hash alike and got the same model id back. In the second, the
+responses carried a `speed` label the first did not, most of each judge prompt came from the cache, and the two draws
+of each case went in two batches an hour apart. It says what differed; it does not say that any of it moved a grade.
+
+On your own files (`--other` is optional; with one run it prints that run alone):
+
+```sh
+node src/cli.ts conditions --run <run file> --other <run file>
+```
+
+The fields are optional, under "Recorded conditions" in [the run format](docs/RUN_FORMAT.md#recorded-conditions). A
+run that records no calls prints "not recorded".
+
 ## Use it with what you already run
 
 `judge-change` needs both judges to grade the same stored answers. If your stored answers come from one of the tools
@@ -482,7 +538,7 @@ It does not run your evals. `write-run` writes a run file only from what your ow
 - [promptfoo](docs/PROMPTFOO.md): what a change of your `llm-rubric` judge does to your grades.
 - [Inspect](docs/INSPECT.md): what a change of your `model_graded_qa` judge does to your grades.
 - [Comparison](docs/COMPARISON.md): anchorset next to promptfoo, DeepEval and Langfuse.
-- [Migrations](docs/MIGRATIONS.md): the format versions of 0.4.0, and how a file of 0.3.0, 0.2.0 or 0.1.0 moves.
+- [Migrations](docs/MIGRATIONS.md): the format versions of 0.5.0, and how a file of 0.4.0, 0.3.0, 0.2.0 or 0.1.0 moves.
 
 The installed package holds these documents at `node_modules/anchorset/docs/`, for an agent or a reader working
 offline. [llms.txt](llms.txt) lists them for a coding agent.
@@ -492,8 +548,8 @@ offline. [llms.txt](llms.txt) lists them for a coding agent.
 Node 22.21 or later. No runtime dependencies. It can also be used as a TypeScript library.
 
 Issues and pull requests are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). The code is under Apache-2.0 and the
-docs under CC-BY-4.0. To cite the tool, use [CITATION.cff](CITATION.cff). This version, 0.4.0, is archived at
-[doi:10.5281/zenodo.24033690](https://doi.org/10.5281/zenodo.24033690), and
+docs under CC-BY-4.0. To cite the tool, use [CITATION.cff](CITATION.cff). This version, 0.5.0, is archived at
+[doi:10.5281/zenodo.24398356](https://doi.org/10.5281/zenodo.24398356), and
 [doi:10.5281/zenodo.23358089](https://doi.org/10.5281/zenodo.23358089) always resolves to the latest version. Version
 0.1.0, the one the paper used, is archived at [doi:10.5281/zenodo.23358090](https://doi.org/10.5281/zenodo.23358090),
 and the study's data and analysis at [doi:10.5281/zenodo.23358200](https://doi.org/10.5281/zenodo.23358200).

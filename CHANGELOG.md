@@ -3,6 +3,39 @@
 All notable changes to this project are recorded here. Each file format carries its own schema string;
 `docs/MIGRATIONS.md` lists them, and from 0.1.0 on it says how a file moves when one changes.
 
+## 0.5.0 (2026-11-20)
+
+What changed since 0.4.0: a run file can record how each model call went, and a new command, `conditions`, prints it.
+No verdict or comparison reads what the calls record; a record that is malformed or contradicts the run is invalid
+input (exit 65), as any malformed field is. `docs/MIGRATIONS.md` says how files move.
+
+- **Run files are `anchorset.run/v4`.** An attempt may carry `calls`, the model calls it made, each with the model id
+  the response named, a hash of the request, the batch it went in, when it was sent and received, its token counts with
+  the cache reads and writes, and the response's serving labels. A run may carry `conditions`: per role, how many calls
+  were in flight and each batch with its size, the other models in it and its times. `anchorset.run/v3` files still
+  read, as before.
+- **Two new markers**, `NOT_RETURNED` (the response did not carry the key) and `RETURNED_NULL` (it carried null), sit
+  beside `UNKNOWN` in a call's record. They are reserved: no label or model id may spell one.
+- **`conditions`** prints what one run, or two side by side, recorded: the identity, the route and harness of each role
+  and, over the calls each grade stands on (not those of an attempt asked again), the model ids returned, the serving
+  labels, the cache-read share with its counts, the batches, how the draws of each case went out and the time between
+  them, and how many paired requests hash alike. Where a run says how its draws form copies (`conditions.drawsPerCopy`,
+  for a design that asks each case as two or more groups of draws), it also prints whether the copies of each case went
+  out together or apart, and the time between them. It refuses nothing and never exits 1 or 2. `npm run demo:conditions`
+  runs it on a synthetic example.
+- **`write-run`** reads `anchorset.run-input/v2`, whose rows may carry `calls` (a call may give the request itself, which
+  is hashed and not kept) and whose manifest may carry `conditions`. It writes `anchorset.run/v4`, from a v1 manifest
+  too.
+- **`validate`** names the schema of the run it read, and `write-run` that of the manifest; the `judge-change` report
+  names the schema of the run files it read, so reports on v3 files print what they printed.
+- **Inspect's install line names `agent-client-protocol==0.12.1`.** agent-client-protocol 1.0.0 (2026-11-09) dropped a
+  module that inspect_ai 0.3.275 and 0.3.286 import, and neither release bounds it, so a fresh install of either fails
+  inside `eval()`. The docs, `regrade.py`'s messages and CI now install the last release before 1.0.0 beside them.
+- **The Claude Code plugin** runs `npx anchorset@0.5.0`, names `conditions`, and its rules say how to report it: a
+  description of what the run files recorded, never a sign that two runs match or that a model changed. In this
+  release's commit the catalog still names 0.4.0's plugin (`v0.4.0`, by `sha`), so an install from it gets 0.4.0's
+  skill; a later commit, made once npm serves 0.5.0, moves the pin to this release's tag.
+
 ## 0.4.0 (2026-11-07)
 
 What changed since 0.3.0. The library and its seven commands are unchanged: every format `anchorset` reads or writes

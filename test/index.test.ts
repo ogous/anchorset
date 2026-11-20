@@ -83,7 +83,7 @@ test('no export lets a caller write a verdict, a fold, a lone coefficient or a l
 test('the public API exposes the schema ids and the documented defaults, not the internal field lists', () => {
   assert.equal(typeof api.outputHashOf, 'function');
   assert.deepEqual(api.REJUDGE_BOOTSTRAP_DEFAULTS, { iterations: 2000, seed: 1, alpha: 0.05 });
-  assert.equal(api.RUN_SCHEMA, 'anchorset.run/v3');
+  assert.equal(api.RUN_SCHEMA, 'anchorset.run/v4');
   assert.equal((api as Record<string, unknown>)['LEDGER_SCHEMA'], 'anchorset.ledger/v3');
   assert.equal((api as Record<string, unknown>)['JUDGE_FIELDS'], undefined);
   // The wrappers behind the reports stay internal.
@@ -99,12 +99,13 @@ test('the strict reader is public: parseJsonBytes names a key given twice, and i
   assert.equal((api as Record<string, unknown>)['duplicateKeyProblem'], undefined);
   const read = api.parseJsonBytes(readFileSync(join(import.meta.dirname, '..', 'examples', 'refund-bot', 'baseline.json')));
   assert.ok('json' in read);
-  if ('json' in read) assert.equal(api.parseRunArtifact(read.json).schema, api.RUN_SCHEMA);
+  // The demo's run files are the earlier schema, which is still read.
+  if ('json' in read) assert.equal(api.parseRunArtifact(read.json).schema, 'anchorset.run/v3');
 });
 
 test('the contract constants of the ratings, anchor, run-input and report files are public', () => {
   assert.equal(api.RATINGS_SCHEMA, 'anchorset.ratings/v2');
-  assert.equal(api.RUN_INPUT_SCHEMA, 'anchorset.run-input/v1');
+  assert.equal(api.RUN_INPUT_SCHEMA, 'anchorset.run-input/v2');
   assert.equal(api.ANCHOR_SCHEMA, 'anchorset.anchor/v1');
   assert.deepEqual(api.REPORT_SCHEMAS, {
     gate: 'anchorset.gate-report/v2',
@@ -113,6 +114,7 @@ test('the contract constants of the ratings, anchor, run-input and report files 
     flips: 'anchorset.flips-report/v2',
     'write-run': 'anchorset.write-run-report/v1',
     validate: 'anchorset.validate-report/v1',
+    conditions: 'anchorset.conditions-report/v1',
     refusal: 'anchorset.refusal/v2',
   });
 });
@@ -160,7 +162,7 @@ test('docs/MIGRATIONS.md is the list of the schema strings of this version: ever
     api.RUN_SCHEMA, api.CALL_SHAPE_SCHEMA, api.LEDGER_SCHEMA, api.JUDGE_CHANGE_PLAN_SCHEMA, api.REFERENCE_SCHEMA, api.TIE_BREAK_SCHEMA,
     api.RESAMPLE_SCHEMA, api.RATINGS_SCHEMA, api.ANCHOR_SCHEMA, api.RUN_INPUT_SCHEMA, ...Object.values(api.REPORT_SCHEMAS),
   ];
-  assert.equal(strings.length, 17);
+  assert.equal(strings.length, 18);
   for (const x of strings) assert.ok(page.includes(`\`${x}\``), `docs/MIGRATIONS.md does not list ${x}`);
   for (const m of page.matchAll(/`([A-Z][A-Z_]*_SCHEMAS?)(?:\.(\w+))?`/g)) {
     const [, name, key] = m as unknown as [string, string, string | undefined];
@@ -168,7 +170,7 @@ test('docs/MIGRATIONS.md is the list of the schema strings of this version: ever
     if (key !== undefined) assert.ok(Object.hasOwn(api.REPORT_SCHEMAS, key), `REPORT_SCHEMAS.${key}`);
   }
   // The run schema versions the bar: a change of the bar format did not move a string of its own.
-  assert.equal(api.RUN_SCHEMA, 'anchorset.run/v3');
+  assert.equal(api.RUN_SCHEMA, 'anchorset.run/v4');
   assert.match(page.replace(/\s+/g, ' '), /A change of the bar format is a change of the run schema/);
 });
 

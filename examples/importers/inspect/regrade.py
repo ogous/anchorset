@@ -457,6 +457,12 @@ def tested_versions_refusal(e: TestedVersionsProblem) -> int:
     return EXIT_USAGE
 
 
+# The tested inspect_ai releases require agent-client-protocol>=0.12.0 with no upper bound, and import acp.helpers, which
+# its 1.0.0 dropped; a fresh install of one of them therefore fails inside eval(). Every install line names the last
+# release before 1.0.0. Drop the pin only when every listed version is one that no longer imports acp.helpers.
+ACP_PIN = "agent-client-protocol==0.12.1"
+
+
 def missing_package(e: ModuleNotFoundError) -> int:
     """A package this script needs is not installed: one line on stderr that says what to install, and exit 64, never a traceback."""
     name = e.name or ""
@@ -465,9 +471,9 @@ def missing_package(e: ModuleNotFoundError) -> int:
     except TestedVersionsProblem as problem:
         return tested_versions_refusal(problem)
     if name == "inspect_ai" or name.startswith("inspect_ai."):
-        print(f"usage error: the Python module {e.name!r} is not installed. Install a tool version this importer was tested with: pip install inspect_ai=={newest}", file=sys.stderr)
+        print(f"usage error: the Python module {e.name!r} is not installed. Install a tool version this importer was tested with: pip install inspect_ai=={newest} {ACP_PIN}", file=sys.stderr)
     else:
-        print(f"usage error: the Python module {e.name!r} is not installed (it is a dependency of inspect_ai, or of the scripts beside this one). Install a tool version this importer was tested with, which brings its dependencies: pip install inspect_ai=={newest}", file=sys.stderr)
+        print(f"usage error: the Python module {e.name!r} is not installed (it is a dependency of inspect_ai, or of the scripts beside this one). Install a tool version this importer was tested with, which brings its dependencies: pip install inspect_ai=={newest} {ACP_PIN}", file=sys.stderr)
     return EXIT_USAGE
 
 
@@ -485,7 +491,7 @@ def tool_version_problem(tested: list[str]) -> str | None:
         f"usage error: inspect_ai {one_line(found)} is installed, and this importer was tested on inspect_ai {', '.join(tested)}.\n"
         "Your system's log need not come from a tested version: it is read for its stored answers, and the run records its\n"
         "sha256 and the version it states. A log the tested tool cannot read is refused; one it misreads may not be detected. Grade from a separate environment:\n"
-        f"python -m venv .anchorset-grade && .anchorset-grade/bin/pip install inspect_ai=={tested[-1]}\n"
+        f"python -m venv .anchorset-grade && .anchorset-grade/bin/pip install inspect_ai=={tested[-1]} {ACP_PIN}\n"
         "Nothing was written and no call was made."
     )
 

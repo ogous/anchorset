@@ -1,6 +1,6 @@
 {
   "name": "anchorset",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "license": "Apache-2.0",
   "author": "Ogous Chan Ali",
   "description": "Regression tests for your LLM evals, and checks on the judge that grades them.",
@@ -54,6 +54,7 @@
     "demo:drift": "node src/cli.ts drift --old examples/refund-bot/anchor_old.json --new examples/refund-bot/anchor_new.json --flag handoff",
     "demo:flips": "node src/cli.ts flips --run examples/refund-bot/judged.json",
     "demo:judge-change": "node src/cli.ts judge-change --plan examples/judge-change/plan.json --bar examples/judge-change/bar.json --inputs examples/judge-change/runs",
+    "demo:conditions": "node src/cli.ts conditions --run examples/conditions/january.json --other examples/conditions/february.json",
     "demo": "node src/cli.ts gate --baseline examples/refund-bot/baseline.json --candidate examples/refund-bot/candidate.json --bar examples/refund-bot/bar.json --allow-differ systemModelServed,systemCallShapeHash"
   },
   "devDependencies": {

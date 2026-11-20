@@ -196,7 +196,8 @@ test('judge change: the report carries its provenance, and names what moved', ()
   const r = judgeChangeRuns(files, barFile, plan);
   assert.equal(r.planHash, hashOf(plan));
   assert.equal(r.barHash, barHash(barFile));
-  assert.deepEqual(r.contracts, { run: 'anchorset.run/v3', plan: 'anchorset.judge-change-plan/v1' });
+  // The schema of the run files read: these are written by this version.
+  assert.deepEqual(r.contracts, { run: 'anchorset.run/v4', plan: 'anchorset.judge-change-plan/v1' });
   assert.deepEqual(r.inputs.map((f) => [f.system, f.role, f.name]), [['A', 'old-judge', 'Aold.json'], ['A', 'new-judge', 'Anew.json'], ['B', 'old-judge', 'Bold.json'], ['B', 'new-judge', 'Bnew.json']]);
   assert.ok(r.inputs.every((f) => f.sha256 === shaOf(files.find((x) => x.name === f.name) as JudgeChangeInput) && f.packetBasis === 'recorded' && !('packetSource' in f)));
   assert.deepEqual(r.judges.moved, [

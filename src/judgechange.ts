@@ -1,4 +1,4 @@
-import { assertSameOutputs, comparePackets, judgeRejected, listed, runArtifactProblems, RUN_SCHEMA, samePacket, systemFacts } from './artifact.ts';
+import { assertSameOutputs, comparePackets, judgeRejected, listed, runArtifactProblems, samePacket, systemFacts } from './artifact.ts';
 import type { RunArtifact } from './artifact.ts';
 import { callShapeDiff } from './callshape.ts';
 import { fitCut, foldOfCase, sortItems, tieBreakU } from './cutmap.ts';
@@ -1303,6 +1303,14 @@ export const ONE_ESTIMATE_DRAW = 'not measured (one draw per case)';
  * Measures a judge change on stored outputs. Throws InputError for invalid input and RefusalError
  * for a comparison it will not stand behind; otherwise it returns points and provenance.
  */
+/**
+ * The run schema the report names: the one the input files carry, so a recomputation of a published measurement on v3
+ * files prints what it printed; where the files carry both, the two sorted and joined by a comma.
+ */
+function runSchemasRead(schemas: readonly string[]): string {
+  return [...new Set(schemas)].sort().join(',');
+}
+
 export function judgeChangeRuns(files: readonly JudgeChangeInput[], barFile: BarFile, plan: JudgeChangePlan): JudgeChangeReport {
   return judgeChangeWithReading(files, barFile, plan).report;
 }
@@ -1808,7 +1816,7 @@ export function judgeChangeWithReading(files: readonly JudgeChangeInput[], barFi
   const report: JudgeChangeReport = {
     kind: 'measurement',
     tool: { name: TOOL_NAME, version: TOOL_VERSION },
-    contracts: { run: RUN_SCHEMA, plan: JUDGE_CHANGE_PLAN_SCHEMA },
+    contracts: { run: runSchemasRead(pairs.flatMap((p) => [p.old.run.schema, p.new.run.schema])), plan: JUDGE_CHANGE_PLAN_SCHEMA },
     planHash: hashOf(plan),
     barHash: actualBar,
     inputs: pairs.flatMap((p) =>

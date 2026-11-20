@@ -1,6 +1,6 @@
 ---
 name: anchorset
-description: Use when the user wants to turn their own eval's graded results into a run file, check whether a run is ready to gate, compare two LLM eval runs or gate a change on an eval (in CI too), gate across a change of LLM judge, measure what replacing or changing an LLM judge does to the labels, check agreement between raters or a judge's drift on anchor items, or count label flips between repeat draws. Runs the anchorset CLI and reports what it printed.
+description: Use when the user wants to turn their own eval's graded results into a run file, check whether a run is ready to gate, compare two LLM eval runs or gate a change on an eval (in CI too), gate across a change of LLM judge, measure what replacing or changing an LLM judge does to the labels, check agreement between raters or a judge's drift on anchor items, count label flips between repeat draws, or show what two runs recorded about how they were run, call by call (the model id each response named, request hashes, batches, cache reads, serving labels). Runs the anchorset CLI and reports what it printed.
 ---
 
 # anchorset
@@ -17,10 +17,10 @@ not in this text: in a pipeline, call the tool directly.
 Always run this exact version, never a range and never `latest`:
 
 ```
-npx anchorset@0.4.0 <command> ...
+npx anchorset@0.5.0 <command> ...
 ```
 
-It needs Node 22.21 or later. `npx anchorset@0.4.0 --help` prints the usage text and exits 0; read it before the first
+It needs Node 22.21 or later. `npx anchorset@0.5.0 --help` prints the usage text and exits 0; read it before the first
 call of a session, and follow it where it differs from this page. If the package cannot be fetched, stop and report that; never fall back
 to another version or to `latest`.
 
@@ -34,6 +34,7 @@ to another version or to `latest`.
 | agreement between raters who were shown the same packets | `agree --ratings <file.json>` |
 | one judge's verdicts on the same anchor items, before and after | `drift --old <file.json> --new <file.json> --flag <label,...>` |
 | label flips among the repeat draws of one run | `flips --run <run.json>` |
+| what one run, or two side by side, recorded about how they were run: the model id each call came back with, request hashes, the submissions (batches or groups) and their times, cache reads, serving labels, and, where a run declares `drawsPerCopy`, whether a case's copies went out in the same submissions | `conditions --run <run.json> [--other <run.json>]` |
 | to measure a judge change on stored outputs of promptfoo, Inspect or a skill-evals flow | an example importer of the repository; see "Other eval tools" below |
 
 Every command takes `--json`, which prints one JSON object on stdout instead of the text report when the command
@@ -43,7 +44,7 @@ with `code`, `fields` and `message`, and `judgeDiff` or `noGrade` with `statemen
 and nothing is written to stderr but, under `--ledger`, the `ledger:` line. `validate` refuses no comparison itself:
 on exit 2 it prints its own report, on stdout, as `"kind": "preflight"` under `--json`, and lists in it every
 refusal `gate` would make. A usage error (64) and invalid input (65) are text on stderr, under `--json` too. Run files, bar files, plans and rating files have documented formats in the
-`docs/` folder of https://github.com/ogous/anchorset. Where anchorset 0.4.0 is installed in the project, the same
+`docs/` folder of https://github.com/ogous/anchorset. Where anchorset 0.5.0 is installed in the project, the same
 documents, for that version, are in `node_modules/anchorset/docs/`. Result files of other eval tools do not go into these commands
 directly: the repository has example importers, run from a checkout at the release tag, and each one says what it needs.
 
@@ -84,7 +85,8 @@ the next:
    its judge-flip list as rule 6 says.
 
 `judge-change`, `agree`, `drift` and `flips` are measurements, for when the user asks about the judge itself. They
-give no verdict.
+give no verdict. `conditions` describes what the run files recorded about how the runs were run, call by call; it gives no verdict
+either, and it shows nothing that the files did not record.
 
 ## Rules
 
@@ -97,6 +99,9 @@ give no verdict.
      never exits 1 or 2.
    - `judge-change`, `flips`, `agree`, `drift`: these are measurements. 0 means a report was printed, and 2 means
      refused. They never exit 1. Never call their exit 0 "passed", and never call their report a gate.
+   - `conditions`: a description of what the run files recorded. 0 means its report was printed; it refuses nothing
+     and never exits 1 or 2. Never call its exit 0 "passed" or a sign that the runs match, and never call its report
+     a gate.
    - 64 is a usage error and 65 is invalid input. Neither is a result about the runs, and neither is any other
      exit code.
 2. **A verdict needs the tool's own verdict.** In the text output, the last line `gate` prints, or the line before
@@ -106,8 +111,9 @@ give no verdict.
    stderr as well as stdout. `validate` gives no verdict: its report counts when it exited 0 or 2 and ends with
    `result: READY for gate (exit 0)` or `result: NOT READY for gate (exit 2)` (under `--json`, `"kind": "preflight"`
    and its `exitCode`); quote that line, and on exit 2 every refusal it lists. If none of these is there (the package could not be fetched, the process crashed, the
-   output was cut, the JSON does not parse), say that there is no result, whatever the exit code was. The same holds for a measurement: its report counts only
-   when the process exited 0 and the output is whole.
+   output was cut, the JSON does not parse), say that there is no result, whatever the exit code was. The same holds for a measurement and for `conditions`: its report counts only
+   when the process exited 0 and the output is whole (a `conditions` report under `--json` is `"kind": "description"`
+   with `"exitCode": 0`).
 3. **After exit 2, report the refusal as printed, with the fields it names, and stop.** Present no number from that
    run. Do not compute one from the files. The `next:` steps a refusal prints (`judgeDiff.next` under `--json`, also
    inside a `validate` report) are the user's to take: quote them, and run none of them unless the user asks for that
@@ -145,7 +151,14 @@ give no verdict.
    `Identities are as declared in the run files;` (`statements` under `--json`). A `judge-change` report under
    `--json` holds neither: quote its figures from its text report, which ends with them as `note:` lines (run it
    without `--json`, and without `--ledger` if the `--json` run was recorded). Never say that a judge is right, better, equivalent or safe to
-   switch to: the tool does not measure it.
+   switch to: the tool does not measure it. From a `conditions` report, quote each line you use whole, with its
+   `not recorded`, `unknown`, `left out` and unpaired counts, say that it describes what the run files record as
+   their code declared it, and quote the two sentences above where the report ends with them. A `same` says that two
+   recorded values are equal, and equal request hashes that the recorded hashes are equal; neither says what was sent
+   or what answered. Never say from the report that two runs were run alike or are equivalent, that a model or what
+   served it changed or did not, or that a recorded difference (a model id, a serving label, a cache share, a
+   submission, how draws or copies went out) explains a difference in grades or in any result: the tool measures none
+   of it. Its identity rows do not say whether `gate` would take the runs; `validate` says that.
 7. **Never write a run file, a run-input manifest, a bar, or a ratings or anchor file** unless the user asks for that
    file by name, and never run `write-run` on a manifest the user has not approved. Write the rows file `write-run`
    reads only when the user asks for it, and only from what their own eval code recorded; never turn another eval
@@ -161,6 +174,13 @@ give no verdict.
    showed the packet. Write
    `UNKNOWN` for one the user does not know, and the tool then refuses or withholds what needs it; if they cannot
    name every label of the scale, do not write the file.
+   A row's `calls` and a manifest's `conditions` are statements too, and so is a key left out of them: a call with no
+   `submission` was sent on its own, a call with no `servedModel`, `receivedAt`, `usage` and `serving` got no reply,
+   and `[]` is an attempt that made no call. Write them only from what the user's code recorded for each call, with
+   `UNKNOWN` where the format takes it; leave out `calls` where the calls were not recorded and `drawsPerCopy` where
+   the user does not state how the draws formed copies, since neither takes `UNKNOWN`. Never compute a `requestHash`
+   or give a `request` the user's code did not record as sent, and add no key to a run file to get a line of the
+   `conditions` report unless the user states its value and asks for that file by name.
    When the user asks for a judge-change measurement, you may write the plan (with `examples/importers/make-plan.ts`, run from a checkout at the release tag, and the flag values the user names), holding only the values the importer printed and the choices
    the user names, and the layout of a cases file for their approval; show both and wait for approval before any command reads them. Never fill in a class or an
    expected label yourself: a cases file holds only the classes and expected labels the user stated. A bar is

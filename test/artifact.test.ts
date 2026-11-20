@@ -100,11 +100,12 @@ test('the retry rule: parseRunArtifact refuses an attempt after a final judge re
   for (const reason of ['timeout', 'transport', 'server-error', 'rate-limited']) assert.deepEqual(problemsOf(valid(identity, draw(unmeasured('system', reason), graded))), [], reason);
 });
 
-test('the run schema is v3; a file with any other schema string gets the one plain message', () => {
-  assert.equal(RUN_SCHEMA, 'anchorset.run/v3');
-  for (const other of ['anchorset.run/v0', 'anchorset.run/v1', 'anchorset.run/v2', 'anchorset.run/v4', 'run']) {
+test('the run schema written is v4 and v3 is still read; a file with any other schema string gets the one plain message', () => {
+  assert.equal(RUN_SCHEMA, 'anchorset.run/v4');
+  for (const read of ['anchorset.run/v3', 'anchorset.run/v4']) assert.deepEqual(problemsOf({ ...valid(), schema: read }), [], read);
+  for (const other of ['anchorset.run/v0', 'anchorset.run/v1', 'anchorset.run/v2', 'anchorset.run/v5', 'run']) {
     const p = problemsOf({ ...valid(), schema: other }).filter((q) => q.startsWith('artifact.schema'));
-    assert.deepEqual(p, ['artifact.schema: must be "anchorset.run/v3"'], other);
+    assert.deepEqual(p, ['artifact.schema: must be "anchorset.run/v4" (or "anchorset.run/v3", which is still read)'], other);
   }
 });
 
@@ -182,8 +183,8 @@ test('run/v3: packetBasis says where the packet hashes came from, and a declared
   assert.ok(problemsOf({ ...judged, packetBasis: GAP }).some((p) => p.includes('artifact.packetBasis')));
 });
 
-test('parseRunArtifact: a run whose seed is "NO_SEED" is a valid anchorset.run/v3 file, and the schema string does not move for it', () => {
-  assert.equal(RUN_SCHEMA, 'anchorset.run/v3');
+test('parseRunArtifact: a run whose seed is "NO_SEED" is a valid run file, and the schema string does not move for it', () => {
+  assert.equal(RUN_SCHEMA, 'anchorset.run/v4');
   const run = { ...valid(), identity: { ...valid().identity, seed: NO_SEED } };
   assert.deepEqual(problemsOf(run), []);
   assert.equal(parseRunArtifact(JSON.parse(JSON.stringify(run))).identity.seed, 'NO_SEED');

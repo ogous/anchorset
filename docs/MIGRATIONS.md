@@ -1,17 +1,18 @@
 # Migrations
 
-Look up here the version string a file should carry in anchorset 0.4.0, and how a file of 0.3.0, 0.2.0 or 0.1.0 moves.
-Each format names its version in a `schema` field, and a file with any other version string is invalid input (exit 65).
-Later changes of a format will be listed here.
+Look up here the version string a file should carry in anchorset 0.5.0, and how a file of 0.4.0, 0.3.0, 0.2.0 or
+0.1.0 moves. Each format names its version in a `schema` field, and a file with any other version string is invalid
+input (exit 65), except the earlier version a format still reads, named in its row. Later changes of a format will be
+listed here.
 
-## The version strings at 0.4.0
+## The version strings at 0.5.0
 
 Files you write:
 
 | Format | Version string | Read by |
 |---|---|---|
-| Run file | `anchorset.run/v3` | `gate`, `flips`, `judge-change`, `validate` |
-| Run-input manifest, from which `write-run` writes a run file | `anchorset.run-input/v1` | `write-run`, `validate --manifest` |
+| Run file | `anchorset.run/v4` (`anchorset.run/v3` is still read) | `gate`, `flips`, `judge-change`, `validate`, `conditions` |
+| Run-input manifest, from which `write-run` writes a run file | `anchorset.run-input/v2` (`anchorset.run-input/v1` is still read) | `write-run`, `validate --manifest` |
 | Settings of a model call (`callShapes`), a part of a run file | `anchorset.callshape/v1` | `gate`, `flips`, `judge-change` |
 | Ratings file | `anchorset.ratings/v2` | `agree` |
 | Anchor file | `anchorset.anchor/v1` | `drift` |
@@ -32,11 +33,44 @@ Files and output anchorset writes:
 | `flips` report | `anchorset.flips-report/v2` | `flips --json` |
 | `write-run` report | `anchorset.write-run-report/v1` | `write-run --json` |
 | `validate` report | `anchorset.validate-report/v1` | `validate --json`, on exit 0 and on exit 2 |
+| `conditions` report | `anchorset.conditions-report/v1` | `conditions --json` |
 | Refusal | `anchorset.refusal/v2` | Any command with `--json`, when it refuses |
 
 The files you write are described in [RUN_FORMAT.md](RUN_FORMAT.md) (the run-input manifest under "From your eval's
 rows"), [RATINGS_FORMAT.md](RATINGS_FORMAT.md) and [JUDGE_CHANGE.md](JUDGE_CHANGE.md), the tie-break draws and resample
 indices under "Draws you supply". The study manifest has no page; [`examples/judge-change/manifest.json`](../examples/judge-change/manifest.json) is an example.
+
+## From 0.4.0 to 0.5.0
+
+0.5.0 lets a run file record how each model call went: the model id it came back with, a hash of the request, the
+submission it went out in, when it was sent and received, its token counts with the cache reads and writes, and the
+serving labels of the response. A new command, `conditions`, prints what one run, or two side by side, recorded. No
+verdict or comparison of `gate`, `flips` or `judge-change` reads what the calls record; a record that is malformed or
+contradicts the run is invalid input (exit 65).
+
+| Format | Version string | Read or written by |
+|---|---|---|
+| Run file ([RUN_FORMAT.md](RUN_FORMAT.md), "Recorded conditions") | `anchorset.run/v4` | written by `write-run`; read by every command that reads a run |
+| Run-input manifest | `anchorset.run-input/v2` | `write-run`, `validate --manifest` |
+| `conditions` report | `anchorset.conditions-report/v1` | `conditions --json` |
+
+- **Run files.** `anchorset.run/v4` is `anchorset.run/v3` with two optional keys: `calls` on an attempt and
+  `conditions` at the top, which may also say how the draws of a case form copies (`drawsPerCopy`). Every v3 file still reads, and reads as before. A file that says `anchorset.run/v3` and holds
+  `calls` or `conditions` is invalid input: write `anchorset.run/v4`.
+- **`write-run`** writes `anchorset.run/v4`, also from a v1 manifest. A v2 manifest may carry `conditions`, and its rows
+  `calls`; a v1 manifest that holds either is invalid input.
+- **Two reserved values.** `NOT_RETURNED` (the response did not carry the key) and `RETURNED_NULL` (it carried the key
+  with null) are now reserved, as `UNKNOWN` is. A label in a bar file, a ratings file or an anchor file, or a model id
+  in a run's identity, that spells one of them is invalid input.
+- **`RUN_SCHEMA` and `RUN_INPUT_SCHEMA`** now hold the versions written, `anchorset.run/v4` and
+  `anchorset.run-input/v2`. Code that compares a file's `schema` with `RUN_SCHEMA` sees `anchorset.run/v3` on the
+  files of 0.4.0, which still read. The type `RunArtifact['schema']` is `RunSchema`, either string.
+- **Reports.** `validate` prints the schema of the run it read (`format`), and `write-run` that of the manifest
+  (`input`). The `judge-change` report names the schema of the run files it read in `contracts.run`, so a report on v3
+  files prints `anchorset.run/v3`, as before.
+- **The example importers, and the refund-bot and judge-change example files,** still write and hold
+  `anchorset.run/v3`: they record no calls yet. The `conditions` example and `examples/run-format/run.json` are
+  `anchorset.run/v4`.
 
 ## From 0.3.0 to 0.4.0
 
@@ -141,5 +175,5 @@ empty `fields` list and zero counts. Nothing else in the report moved.
 Two formats have no version string of their own:
 
 - **The bar file.** It is versioned with the run file. A change of the bar format is a change of the run schema,
-  so it would change `anchorset.run/v3`.
+  so it would change `anchorset.run/v4`.
 - **The `judge-change` report.** Its JSON names the run and plan versions it was made under, in `contracts`.

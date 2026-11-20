@@ -6,8 +6,8 @@ import { judgeControlledDelta } from './drift.ts';
 import type { JudgeControlledDelta } from './drift.ts';
 import { barHash, evaluate, parseBarFile, splitBarFile } from './gate.ts';
 import type { BarFile, GateResult } from './gate.ts';
-import { assertComparable, DRAW_COUNT_FIELD, GAP, gateNeverWaives, hashOf, IDENTITY_FIELDS, JUDGE_FIELDS, NO_JUDGE } from './identity.ts';
-import type { IdentityField } from './identity.ts';
+import { assertComparable, diffState, DRAW_COUNT_FIELD, GAP, gateNeverWaives, hashOf, IDENTITY_FIELDS, JUDGE_FIELDS, NO_JUDGE } from './identity.ts';
+import type { DiffState, IdentityField } from './identity.ts';
 import { FIXED_SENTENCES } from './judgechange.ts';
 import { assertStopsKnown, extraKeys, finalAttempt, foldRun, incompleteCounts, incompleteDetail, judgeRetries, unknownStops } from './scoring.ts';
 import type { Case, ClassSpec, Draw, FailReason, FoldedCase, FoldRunResult, IncompleteCase } from './scoring.ts';
@@ -435,7 +435,7 @@ function judgeFlips(originalFold: FoldRunResult, rejudgedFold: FoldRunResult, or
 
 /** The six judge rows of a refusal's judge diff, in the order they are printed. */
 export const JUDGE_DIFF_FIELDS = ['judgeModelRequested', 'judgeModelServed', 'judgeDefinitionHash', 'rubricHash', 'judgeCallShapeHash', 'judgeHarnessVersion'] as const satisfies readonly IdentityField[];
-export type JudgeDiffState = 'same' | 'differs' | 'unknown' | 'no-judge';
+export type JudgeDiffState = DiffState;
 /**
  * The cost of re-grading the `from` run's stored answers, as counts: its slots (cases times the draw count) and how many
  * of them hold an answer to grade (a final attempt graded, or left without a grade by the judge). A slot the system
@@ -483,11 +483,7 @@ export function judgeDiff(from: RunArtifact, to: RunArtifact, refusal: RefusalEr
   const differsHere = (f: IdentityField): boolean => !gapHere(f) && a[f] !== b[f];
   if (refusal.code === 'IDENTITY_GAP' && !fs.every(gapHere)) return undefined;
   if (refusal.code === 'IDENTITY_MISMATCH' && (!fs.every((f) => gapHere(f) || differsHere(f)) || !fs.some(differsHere))) return undefined;
-  const stateOf = (f: (typeof JUDGE_DIFF_FIELDS)[number]): JudgeDiffState => {
-    if (f !== 'rubricHash' && (a[f] === NO_JUDGE || b[f] === NO_JUDGE)) return a[f] === b[f] ? 'same' : 'no-judge';
-    if (a[f] === GAP || b[f] === GAP) return 'unknown';
-    return a[f] === b[f] ? 'same' : 'differs';
-  };
+  const stateOf = (f: (typeof JUDGE_DIFF_FIELDS)[number]): JudgeDiffState => diffState(a[f], b[f], f !== 'rubricHash');
   const fields = JUDGE_DIFF_FIELDS.map((field) => ({ field, from: String(a[field]), to: String(b[field]), state: stateOf(field) }));
   const req = fields[0] as { state: JudgeDiffState };
   const served = fields[1] as { state: JudgeDiffState };

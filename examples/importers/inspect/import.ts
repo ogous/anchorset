@@ -17,7 +17,7 @@
  * This file imports only from `../shared.ts`, the library's public entry and Node built-ins.
  */
 import { join } from 'node:path';
-import { barHash, callShapeHash, caseSetHash, GAP, hashOf, isSha256Hex, NOT_SENT, outputHashOf, packetHashOf, readsAsGap, RUN_SCHEMA, sha256Hex } from '../../../src/index.ts';
+import { barHash, callShapeHash, caseSetHash, GAP, hashOf, isSha256Hex, NOT_SENT, outputHashOf, packetHashOf, readsAsGap, sha256Hex } from '../../../src/index.ts';
 import type { BarFile } from '../../../src/index.ts';
 import {
   shown,
@@ -52,6 +52,12 @@ import {
   ungradedRefusal,
 } from '../shared.ts';
 import type { CasesFile, GraderRecord, Io, RecordedSlot, SkeletonRow, TestedSet, Wire } from '../shared.ts';
+
+/**
+ * The run schema this importer writes: the earlier one, which the library still reads. The importer records no model
+ * call (`calls`) and no submission (`conditions`) yet, so its files, and the plans that bind them, stay as they were.
+ */
+const IMPORTED_RUN_SCHEMA = 'anchorset.run/v3';
 
 const SCORER = 'model_graded_qa';
 const SLOTS = ['question', 'answer', 'criterion', 'instructions'] as const;
@@ -465,7 +471,7 @@ export function buildInspectRun(bytes: Uint8Array, fileName: string, stated: Cas
       }),
     }));
   const run = {
-    schema: RUN_SCHEMA,
+    schema: IMPORTED_RUN_SCHEMA,
     identity: {
       caseSetHash: caseSetH,
       rubricHash,

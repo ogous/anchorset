@@ -24,6 +24,16 @@ export type NoJudge = typeof NO_JUDGE;
 export const NO_SEED = 'NO_SEED';
 export type NoSeed = typeof NO_SEED;
 
+/**
+ * Two markers for what a provider's response held, used only in the per-call records of a run (`calls`): the response
+ * did not carry the key, and the recorder looked for it (`NOT_RETURNED`); or it carried the key with the value null
+ * (`RETURNED_NULL`, since null itself is never written). Both differ from GAP, which says the value was not recorded.
+ */
+export const NOT_RETURNED = 'NOT_RETURNED';
+export type NotReturned = typeof NOT_RETURNED;
+export const RETURNED_NULL = 'RETURNED_NULL';
+export type ReturnedNull = typeof RETURNED_NULL;
+
 export type RunIdentity = {
   caseSetHash: string | Gap;
   rubricHash: string | Gap;
@@ -587,8 +597,8 @@ export function validateIdentity(x: unknown, prefix = 'identity'): string[] {
       continue;
     } else if (HASH_FIELDS.has(f)) {
       if (!isSha256Hex(v)) problems.push(`${at}: must be a full 64-char lowercase sha256 hex or "${GAP}"`);
-    } else if (typeof v !== 'string' || v.length === 0 || v === NO_JUDGE) {
-      problems.push(`${at}: must be a non-empty string or "${GAP}" ("${NO_JUDGE}" is reserved for the judge fields and "${NO_SEED}" for the seed)`);
+    } else if (typeof v !== 'string' || v.length === 0 || v === NO_JUDGE || v === NOT_RETURNED || v === RETURNED_NULL) {
+      problems.push(`${at}: must be a non-empty string or "${GAP}" ("${NO_JUDGE}" is reserved for the judge fields and "${NO_SEED}" for the seed; "${NOT_RETURNED}" and "${RETURNED_NULL}" are for a call's record)`);
     } else if (readsAsGap(v)) {
       problems.push(`${at}: "${v}" reads as a gap; record an unknown value as "${GAP}"`);
     }
@@ -609,6 +619,19 @@ export function parseIdentity(x: unknown): RunIdentity {
 }
 
 /** Names of the fields whose values differ. */
+/** How one value stands in two records: the one rule behind the judge diff of a refusal and the conditions table. */
+export type DiffState = 'same' | 'differs' | 'unknown' | 'no-judge';
+/**
+ * The state of one value in two records. `judgeField`: a field a run without a judge records as NO_JUDGE, where one side's
+ * NO_JUDGE against a value is 'no-judge' and both sides' is 'same'. Otherwise unknown on either side is 'unknown', and
+ * only then are the two compared.
+ */
+export function diffState(x: unknown, y: unknown, judgeField = false): DiffState {
+  if (judgeField && (x === NO_JUDGE || y === NO_JUDGE)) return x === y ? 'same' : 'no-judge';
+  if (x === GAP || y === GAP) return 'unknown';
+  return x === y ? 'same' : 'differs';
+}
+
 export function identityDiff(a: RunIdentity, b: RunIdentity): IdentityField[] {
   return IDENTITY_FIELDS.filter((f) => a[f] !== b[f]);
 }

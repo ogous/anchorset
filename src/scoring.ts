@@ -2,7 +2,9 @@ import { NOT_SENT } from './callshape.ts';
 import type { NotSent } from './callshape.ts';
 import { InputError, RefusalError } from './errors.ts';
 import { NA } from './stats.ts';
-import { appendAll, GAP, INEXACT_INTEGER, isSha256Hex, keySegment, MAX_DRAWS_PER_CASE, NO_JUDGE } from './identity.ts';
+import { placementProblems } from './conditions.ts';
+import type { CallRecord } from './conditions.ts';
+import { appendAll, GAP, INEXACT_INTEGER, isSha256Hex, keySegment, MAX_DRAWS_PER_CASE, NO_JUDGE, NOT_RETURNED, RETURNED_NULL } from './identity.ts';
 import type { Gap, NoJudge } from './identity.ts';
 
 /** Ordered labels, lowest first. */
@@ -41,13 +43,13 @@ export type PacketHash = string | Gap | NoJudge;
  * The system answered and was graded, by the judge or (judgeStop NO_JUDGE) by code. A stored output
  * may record its system stop as UNKNOWN; that is not completion, and the fold refuses it.
  */
-export type GradedAttempt = { kind: 'graded'; label: string; outputHash: string; systemStop: Stop | Gap; judgeStop: Stop | NoJudge; packetHash: PacketHash };
+export type GradedAttempt = { kind: 'graded'; label: string; outputHash: string; systemStop: Stop | Gap; judgeStop: Stop | NoJudge; packetHash: PacketHash; calls?: CallRecord[] };
 /**
  * The system failed on its own: truncated (it hit the declared output budget), client-error (the
  * provider rejected the system's request, 4xx) or system-error (the system under test returned its
  * own error). `outputHash` is the hash of the failure record when there is no output (see outputHashOf).
  */
-export type FailedAttempt = { kind: 'failed'; reason: FailReason; detail: string; outputHash: string; systemStop: Stop | NotSent };
+export type FailedAttempt = { kind: 'failed'; reason: FailReason; detail: string; outputHash: string; systemStop: Stop | NotSent; calls?: CallRecord[] };
 /** No response from the provider. Nothing about the system or the judge was measured. */
 export const TRANSPORT_REASONS = Object.freeze(['timeout', 'transport', 'server-error', 'rate-limited'] as const);
 export type TransportReason = (typeof TRANSPORT_REASONS)[number];
@@ -67,8 +69,8 @@ export type JudgeUnmeasuredReason = (typeof JUDGE_UNMEASURED_REASONS)[number];
  * not final (JUDGE_FINAL_REASONS), a retry re-grades that same output.
  */
 export type UnmeasuredAttempt =
-  | { kind: 'unmeasured'; role: 'system'; reason: TransportReason; detail: string }
-  | { kind: 'unmeasured'; role: 'judge'; reason: JudgeUnmeasuredReason; detail: string; outputHash: string; systemStop: Stop | Gap; packetHash: string | Gap };
+  | { kind: 'unmeasured'; role: 'system'; reason: TransportReason; detail: string; calls?: CallRecord[] }
+  | { kind: 'unmeasured'; role: 'judge'; reason: JudgeUnmeasuredReason; detail: string; outputHash: string; systemStop: Stop | Gap; packetHash: string | Gap; calls?: CallRecord[] };
 export type Attempt = GradedAttempt | FailedAttempt | UnmeasuredAttempt;
 /** An attempt that measured the system. */
 export type Measured = GradedAttempt | FailedAttempt;
@@ -122,7 +124,7 @@ export function attemptsProblems(attempts: unknown, at: string, judged?: boolean
       if (!isSha256Hex(a['outputHash'])) problems.push(`${aAt}.outputHash: must be a full sha256 of the output (or of the failure record)`);
     }
     if (a['kind'] === 'graded') {
-      appendAll(problems, extraKeys(a, ['kind', 'label', 'outputHash', 'systemStop', 'judgeStop', 'packetHash'], aAt));
+      appendAll(problems, extraKeys(a, ['kind', 'label', 'outputHash', 'systemStop', 'judgeStop', 'packetHash', 'calls'], aAt));
       if (typeof a['label'] !== 'string' || a['label'] === '') problems.push(`${aAt}.label: must be a non-empty label`);
       const stop = a['systemStop'];
       if (stop === 'max-tokens') problems.push(`${aAt}.systemStop: a truncated answer is recorded as failed: truncated, not graded`);
@@ -138,7 +140,7 @@ export function attemptsProblems(attempts: unknown, at: string, judged?: boolean
       // Without the identity, the attempt's own judgeStop says whether a judge graded it.
       appendAll(problems, packetProblems(a['packetHash'], judged ?? judge !== NO_JUDGE, aAt));
     } else if (a['kind'] === 'failed') {
-      appendAll(problems, extraKeys(a, ['kind', 'reason', 'detail', 'outputHash', 'systemStop'], aAt));
+      appendAll(problems, extraKeys(a, ['kind', 'reason', 'detail', 'outputHash', 'systemStop', 'calls'], aAt));
       const reason = a['reason'];
       if (!FAIL_REASONS.includes(reason as FailReason)) problems.push(`${aAt}.reason: must be one of ${FAIL_REASONS.join(', ')}`);
       if (typeof a['detail'] !== 'string') problems.push(`${aAt}.detail: must be a string`);
@@ -146,10 +148,10 @@ export function attemptsProblems(attempts: unknown, at: string, judged?: boolean
       if (a['systemStop'] !== want) problems.push(`${aAt}.systemStop: must be "${want}" for reason ${String(reason)}`);
     } else if (a['kind'] === 'unmeasured') {
       if (a['role'] === 'system') {
-        appendAll(problems, extraKeys(a, ['kind', 'role', 'reason', 'detail'], aAt));
+        appendAll(problems, extraKeys(a, ['kind', 'role', 'reason', 'detail', 'calls'], aAt));
         if (!TRANSPORT_REASONS.includes(a['reason'] as TransportReason)) problems.push(`${aAt}.reason: must be one of ${TRANSPORT_REASONS.join(', ')} for a system that gave no response`);
       } else if (a['role'] === 'judge') {
-        appendAll(problems, extraKeys(a, ['kind', 'role', 'reason', 'detail', 'outputHash', 'systemStop', 'packetHash'], aAt));
+        appendAll(problems, extraKeys(a, ['kind', 'role', 'reason', 'detail', 'outputHash', 'systemStop', 'packetHash', 'calls'], aAt));
         if (judged === false) problems.push(`${aAt}: a run graded by code has no judge attempt`);
         if (!JUDGE_UNMEASURED_REASONS.includes(a['reason'] as JudgeUnmeasuredReason)) problems.push(`${aAt}.reason: must be one of ${JUDGE_UNMEASURED_REASONS.join(', ')}`);
         if (!isSha256Hex(a['outputHash'])) problems.push(`${aAt}.outputHash: must be the full sha256 of the output the judge could not grade`);
@@ -162,7 +164,15 @@ export function attemptsProblems(attempts: unknown, at: string, judged?: boolean
     } else {
       problems.push(`${aAt}.kind: must be "graded", "failed" or "unmeasured"`);
     }
+    // The calls the attempt made, where it records them: each record on its own, and where it may sit. A judge retry
+    // (the attempt after one the judge could not grade) re-grades the output already given and calls no system.
+    const prev: unknown = attempts[i - 1];
+    const retry = isObj(prev) && prev['kind'] === 'unmeasured' && prev['role'] === 'judge';
+    appendAll(problems, placementProblems(a, aAt, retry, judged, TRANSPORT_REASONS));
   });
+  // The calls of a slot are recorded on every attempt or on none: a slot that records some leaves no attempt's calls to guess.
+  const withCalls = attempts.filter((a: unknown) => isObj(a) && 'calls' in a).length;
+  if (withCalls > 0 && withCalls < attempts.length) problems.push(`${at}: calls is recorded on ${withCalls} of ${attempts.length} attempts; record it on every attempt of the slot, or on none`);
   // A judge retry re-grades the output the system already produced. Calling the system again after a
   // judge failure would drop that output, and judge failures (a content filter above all) can
   // correlate with exactly the outputs that matter.
@@ -255,7 +265,7 @@ export function finalAttempt(d: Draw): Attempt {
 }
 
 /** Values the library uses as markers; a label that spelled one would be read as the marker. */
-const RESERVED = new Set<string>([GAP, NO_JUDGE, NOT_SENT, NA]);
+const RESERVED = new Set<string>([GAP, NO_JUDGE, NOT_SENT, NA, NOT_RETURNED, RETURNED_NULL]);
 
 /**
  * The most labels one label set, or the categories of one agreement report, may hold. A table of

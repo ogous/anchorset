@@ -55,6 +55,7 @@ failed. Most runs have one line per answer.
 | `draw` | Every line or none | The draw, counted from 0. Leave it out when each case has one answer |
 | `attempt` | Every line or none | 0, 1, 2… within a draw, when a call was asked again. Leave it out when nothing was |
 | `class`, `expect`, `input` | Every line or none | The case's class, expected label and input, when the rows hold them |
+| `calls` | Optional, manifest `anchorset.run-input/v2` | The model calls this attempt made, in order ([Recorded conditions](#recorded-conditions)). A call may give `request`, the parameters object as sent, in place of `requestHash`: `write-run` hashes it and does not keep it |
 
 A line with a `failed` reason or an `unmeasured` one takes no `grade`. An answer cut at its cap is a `failed` line
 with `truncated`, never a graded one, and it carries its `answer` (or `answerHash`); a `client-error` or
@@ -120,7 +121,7 @@ One JSON object. An unknown key is refused, and so is `null`. Leave out what you
 
 | Key | Required | What it is |
 |---|---|---|
-| `schema` | Yes | `"anchorset.run-input/v1"` |
+| `schema` | Yes | `"anchorset.run-input/v2"`. A manifest of `"anchorset.run-input/v1"` still reads; it takes no `conditions`, and its rows no `calls` |
 | `origin` | Yes | `"produced"`: your own code ran the cases and wrote the rows |
 | `graded` | Yes | `"by-judge"` or `"by-code"` |
 | `bar` | Yes | The path of the bar file |
@@ -134,6 +135,7 @@ One JSON object. An unknown key is refused, and so is `null`. Leave out what you
 | `system` | No | `modelRequested`, `modelServed`, `prompt` and `tools` (hashed values), `harnessVersion`, `settings` |
 | `judge` | No; not with `"by-code"` | `modelRequested`, `modelServed`, `definition` (a hashed value: the judge's prompt, tools and output format), `harnessVersion`, `settings`, `gradedReplyStop` |
 | `packets` | No | `{"basis": "recorded"}` or `{"basis": "declared", "source": "<text>"}`, and then every judge line has its `packetHash` |
+| `conditions` | No | How each role's requests went out, written into the run as it is ([Recorded conditions](#recorded-conditions)) |
 
 Each of a case's `input`, `class` and `expect` comes from one place for the whole run: the case file, the rows, or
 the manifest. Two places are refused, also when they agree.
@@ -175,7 +177,7 @@ messages twice each, and a judge grades each answer from 1 to 5. The data is mad
 
 ```json
 {
-  "schema": "anchorset.run/v3",
+  "schema": "anchorset.run/v4",
   "identity": {
     "caseSetHash": "834f5ed304b1c175672aecad9f00c41f1eca8658e60f4131b2ea84838ec4e4e6",
     "rubricHash": "77648c7319e3f23c744251c186c247477669aa568ee782c63fbf1ff65c5d0330",
@@ -448,12 +450,13 @@ sha256: 64 characters, digits and the letters a to f in lowercase.
 
 | Field | What it means | If you do not know it |
 |---|---|---|
-| `schema` | Always `"anchorset.run/v3"` | Always known |
+| `schema` | `"anchorset.run/v4"`. A file of `"anchorset.run/v3"` still reads: it has no `calls` and no `conditions` | Always known |
 | `identity` | What produced the run: the cases, the models, the prompts, the settings | See the next table |
 | `callShapes` | The settings of each model call, under `system` and `judge` | `judge` is `"NO_JUDGE"` when code grades |
 | `cases` | Every case of the run | Always known |
 | `draws` | One record for each case and draw | A draw you leave out makes its case incomplete |
 | `packetBasis`, `packetSource` | Where the packet hashes come from | See "The packet" below |
+| `conditions` | Optional: how each role's requests went out | See [Recorded conditions](#recorded-conditions) |
 
 ### `identity`
 
@@ -494,7 +497,7 @@ object (`{}` for none) or `"UNKNOWN"`.
 | Field | The value, when sent |
 |---|---|
 | `schema` | Always `"anchorset.callshape/v1"` |
-| `endpoint` | The API and the route, as text. It cannot be `"NOT_SENT"` |
+| `endpoint` | The API and the route your code posted to, as text, such as `https://api.example.com/v1/messages`. Name the Batch route for a Batch call, so a Batch run and a regular one differ here. It cannot be `"NOT_SENT"` |
 | `apiVersion` | The API version, as text |
 | `betaFlags` | A list of beta flags in lowercase, sorted, none twice |
 | `thinkingMode` | `off`, `adaptive`, `budgeted` or `between-tools` |
@@ -552,6 +555,7 @@ An attempt has a `kind`:
 | `systemStop` | failed | `max-tokens` with `truncated`; `"NOT_SENT"` with the other two reasons | Always known |
 | `judgeStop` | graded | Why the judge stopped: `end` or `tool-use` | Always known. `"NO_JUDGE"` when code grades |
 | `packetHash` | graded, unmeasured by the judge | The sha256 of what the judge was shown for this answer | `"UNKNOWN"`. `"NO_JUDGE"` when code grades |
+| `calls` | any, in a v4 file | The model calls the attempt made ([Recorded conditions](#recorded-conditions)) | Leave it out |
 
 #### What may be asked again
 
@@ -605,6 +609,97 @@ judge's own instructions belong in `judgeDefinitionHash`.
 The tool only compares packet hashes. Any sha256 works if you make it the same way in every run. `gate` reads no
 packet for its verdict. `flips` needs `recorded`. `judge-change` takes `recorded` or `declared`.
 
+## Recorded conditions
+
+Two runs with the same model id, settings and prompts can still be graded differently. A run file can record how each
+call went, so that you can show what matched between two runs and what did not. `anchorset conditions` prints it
+([CLI.md](CLI.md)). These fields are optional. No command refuses a comparison over them, and none changes a verdict
+or an exit code. A record that contradicts itself or the run's identity is invalid input, as any malformed field is.
+
+### `calls`, on an attempt
+
+The model calls the attempt made, in the order your code sent them. Leave `calls` out when you did not record them;
+`[]` means the attempt made no call. Record it on every attempt of a draw, or on none.
+
+| Field | What it is | If you do not know it |
+|---|---|---|
+| `role` | `"system"` or `"judge"` | Always known |
+| `requestHash` | A sha256 of the request's parameters as sent, hashed as the identity hashes are (keys sorted, no spaces). For a Batch item, its parameters (`params` or `body`) without the batch's own wrapper and id | `"UNKNOWN"` |
+| `submission` | The id of the batch, or of a group your code sent together. Leave it out for a call sent on its own | `"UNKNOWN"` |
+| `sentAt` | When your code sent it, in UTC: `2026-11-08T10:00:00Z`, a fraction of a second allowed. For a call in a batch, when your code submitted the batch | `"UNKNOWN"` |
+
+A call that got a reply also has these four, all together; a call that got none has none of them:
+
+| Field | What it is | If you do not know it |
+|---|---|---|
+| `servedModel` | The model id the response named | `"UNKNOWN"`. `"NOT_RETURNED"` when the response had no model id |
+| `receivedAt` | When your code received it, in UTC. For a call in a batch, write `"UNKNOWN"` unless the result gives a time for that call, and then say in your harness which time it is | `"UNKNOWN"` |
+| `usage` | `inputTokensTotal`, `cacheReadTokens`, `cacheWriteTokens`, `outputTokens`: whole numbers | Each `"UNKNOWN"`, `"NOT_RETURNED"` or `"RETURNED_NULL"` |
+| `serving` | Every serving label you looked for in the response, by the names your `servingKeys` list, such as `provider.service_tier` | `"NOT_RETURNED"` when the response did not carry it, `"RETURNED_NULL"` when it carried null |
+
+`inputTokensTotal` counts every prompt token, cache reads and writes included, and the two cache counts are parts of
+it. From an Anthropic response: `input_tokens + cache_read_input_tokens + cache_creation_input_tokens`, with
+`cache_read_input_tokens` and `cache_creation_input_tokens` as the two parts. From an OpenAI Responses response:
+`input_tokens`, `input_tokens_details.cached_tokens` and `input_tokens_details.cache_write_tokens` where the response
+has it, `"NOT_RETURNED"` where it does not. If one count you add up is not known, the total is `"UNKNOWN"`.
+
+Where calls sit: a graded attempt ends with its one judge call, after the system's calls; an attempt that asks the
+judge again carries the judge's call only. A system that gave no response has its last call without a reply, and no
+judge call. Where the run's `identity` knows a role's served model, every call of that role with a reply must name the
+same id. If your calls came back from more than one model, write that role's served model as `"UNKNOWN"`: the
+comparisons that read it then refuse, as for any unknown served model.
+
+### `conditions`, at the top
+
+```json
+"conditions": {
+  "judge": {
+    "concurrency": "UNKNOWN",
+    "servingKeys": ["provider.service_tier"],
+    "submissions": [
+      { "id": "batch-1", "kind": "provider-batch", "size": 600, "sharedWith": [],
+        "submittedAt": "2026-11-08T10:00:00Z", "endedAt": "2026-11-08T10:31:12Z", "recordedAt": "2026-11-08T10:33:40Z" }
+    ]
+  },
+  "drawsPerCopy": 3
+}
+```
+
+`system`, `judge` and `drawsPerCopy` are each optional; a run graded by code has no `judge`.
+
+`drawsPerCopy` says how the draws of each case form copies, for a design that asks each case more than once as a
+group of draws (for example two copies of three grades). The draws of a case form copies of this many draws, in draw
+order: copy 1 is draws 0 to k−1, copy 2 is draws k to 2k−1, and so on. `identity.drawsPerCase` must be a whole
+multiple of it, two copies or more; `1` makes each draw its own copy. Leave it out when a case was asked once, or when
+you do not know how the draws formed copies: it takes no `"UNKNOWN"`. A design whose copies are not consecutive
+draws numbers its draws so that they are.
+
+`system` and `judge` each hold:
+
+| Field | What it is | If you do not know it |
+|---|---|---|
+| `concurrency` | How many calls were in flight at once, for calls sent one by one | `"UNKNOWN"`; also for a run sent only in batches |
+| `servingKeys` | The serving labels you looked for, as `namespace.key`, sorted. `[]` for none | Always known |
+| `submissions` | Each batch or group: `id`, `kind` (`provider-batch` or `client-group`), `size` (calls in it), `sharedWith` (other model ids sent in it, sorted, `[]` for none), `submittedAt` (when the batch or group was submitted), `endedAt` (when the provider says it ended, or `"NOT_RETURNED"`), `recordedAt` (when your code recorded the results) | `"UNKNOWN"` for any of the last five |
+
+A call's `submission` names an `id` of its role's list, and a `size` is at least the number of calls that name it.
+
+`anchorset conditions` reads a call with no `submission` as a submission of its own, shared with no other call: two
+draws whose calls were each sent on their own went out apart, and a copy of such draws went out in more than one
+submission. It counts a draw with no recorded call of the role it reads (the judge's in a run with a judge) under
+"calls not recorded", also where the run recorded calls on other slots.
+
+It reads, for each slot, the calls its grade stands on: the judge call of the last attempt, and the system calls of
+the attempt that produced the graded answer. The calls of an attempt that was asked again are in the file but not in
+the report: the call count, model ids, serving labels, cache share, draws, copies and request hashes leave them out.
+
+With two runs, a row of model ids or of a serving label reads `same` when both runs hold the same set of values,
+whatever the number of calls with each, `differs` when the sets differ, and `unknown` when either run did not record
+the role, holds no reply, or holds `"UNKNOWN"`. The counts beside each value are printed; compare them yourself.
+
+For calls in a batch, the time between a case's draws or copies is the time between the submissions they went in. It
+does not say when the provider ran each call, which a run does not record.
+
 ## What you do not know
 
 A value you did not record is written as `"UNKNOWN"`. Do not guess it, and do not write `null`, "n/a" or "none":
@@ -615,7 +710,8 @@ the tool refuses those. A file with unknowns is valid, but an unknown blocks eve
 - `flips` needs `drawsPerCase`, at least two draws per case and every `systemStop`. For a run a judge graded, it also needs recorded packets, `rubricHash` and all five judge fields. With `--stored-outputs system-side-not-compared` a `systemStop` may be `"UNKNOWN"`: the run needs a judge, at least one unknown stop, and one output in each case, one hash, one outcome and one stop.
 - `judge-change` has its own list, in [JUDGE_CHANGE.md](JUDGE_CHANGE.md).
 
-`"NOT_SENT"`, `"NO_JUDGE"` and `"NO_SEED"` count as known.
+`"NOT_SENT"`, `"NO_JUDGE"` and `"NO_SEED"` count as known. So do `"NOT_RETURNED"` and `"RETURNED_NULL"` in a call's
+record: they say what the response held.
 
 `validate --run <run file> --bar <bar file>` names every unknown that `gate` would refuse, all at once, where `gate`
 stops at the first. It also says whether `flips` and `judge-change` can read the file.
@@ -651,4 +747,4 @@ A comparison the tool will not make gives `REFUSED`, a code, and exit code 2.
 - The settings and hashes are what your code declared. The tool cannot check what ran.
 - For `judge-change`, every draw of a case must grade one stored answer. The example above does not.
 - At most 1,000,000 draws per run and 1,000 labels.
-- The tool reads `anchorset.run/v3` only. [MIGRATIONS.md](MIGRATIONS.md) lists the format versions.
+- The tool reads `anchorset.run/v4` and `anchorset.run/v3`, and writes v4. [MIGRATIONS.md](MIGRATIONS.md) lists the format versions.

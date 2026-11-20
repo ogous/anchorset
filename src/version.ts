@@ -1,13 +1,18 @@
 export const TOOL_NAME = 'anchorset';
 /** Kept equal to package.json "version" (checked by a test). */
-export const TOOL_VERSION = '0.4.0';
+export const TOOL_VERSION = '0.5.0';
 
 /** The schema string of a ratings file (`agree --ratings`) and of an anchor file (`drift --old`, `--new`); both are required in the file. */
 export const RATINGS_SCHEMA = 'anchorset.ratings/v2';
 export const ANCHOR_SCHEMA = 'anchorset.anchor/v1';
 
-/** The schema string of a run-input manifest (`write-run --manifest`, `validate --manifest`), required in the file. Its rows carry none. */
-export const RUN_INPUT_SCHEMA = 'anchorset.run-input/v1';
+/**
+ * The schema string of a run-input manifest (`write-run --manifest`, `validate --manifest`), required in the file. Its rows
+ * carry none. v2 adds the per-call records on rows (`calls`) and the manifest's `conditions`; a v1 manifest is still read.
+ */
+export const RUN_INPUT_SCHEMA = 'anchorset.run-input/v2';
+/** The earlier run-input schema, still read. Internal. */
+export const RUN_INPUT_SCHEMA_V1 = 'anchorset.run-input/v1';
 
 /**
  * The contract string each `--json` object of a command carries as `schema`, beside `tool`: the reports, and the
@@ -22,5 +27,6 @@ export const REPORT_SCHEMAS = Object.freeze({
   flips: 'anchorset.flips-report/v2',
   'write-run': 'anchorset.write-run-report/v1',
   validate: 'anchorset.validate-report/v1',
+  conditions: 'anchorset.conditions-report/v1',
   refusal: 'anchorset.refusal/v2',
 } as const);

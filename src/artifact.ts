@@ -3,10 +3,18 @@ import type { CallShape } from './callshape.ts';
 import { InputError, RefusalError } from './errors.ts';
 import { appendAll, findIllFormed, findUnhashable, GAP, hashOf, integerProblem, isSha256Hex, MAX_DRAWS_PER_CASE, NO_JUDGE, validateIdentity } from './identity.ts';
 import type { Gap, NoJudge, RunIdentity } from './identity.ts';
+import { conditionsProblems, runCallProblems } from './conditions.ts';
+import type { RunConditions } from './conditions.ts';
 import { attemptsProblems, extraKeys, finalAttempt, slotProblems } from './scoring.ts';
 import type { Attempt, Case, Draw, FailReason } from './scoring.ts';
 
-export const RUN_SCHEMA = 'anchorset.run/v3';
+/** The run schema this version writes. */
+export const RUN_SCHEMA = 'anchorset.run/v4';
+/** The earlier schema it still reads: the same artifact without `calls` and `conditions`. Internal. */
+export const RUN_SCHEMA_V3 = 'anchorset.run/v3';
+/** Every run schema this version reads, oldest first. Internal. */
+export const RUN_SCHEMAS_READ: readonly string[] = Object.freeze([RUN_SCHEMA_V3, RUN_SCHEMA]);
+export type RunSchema = typeof RUN_SCHEMA_V3 | typeof RUN_SCHEMA;
 
 /**
  * Where a run's packet hashes came from: recorded from what the rater was shown, declared afterwards
@@ -17,7 +25,7 @@ export type PacketBasis = 'recorded' | 'declared' | Gap | NoJudge;
 
 /** The one run artifact: identity, the call shapes its hashes came from, the case set, and every draw. */
 export type RunArtifact = {
-  schema: typeof RUN_SCHEMA;
+  schema: RunSchema;
   identity: RunIdentity;
   callShapes: { system: CallShape; judge: CallShape | NoJudge };
   cases: Case[];
@@ -25,6 +33,8 @@ export type RunArtifact = {
   packetBasis: PacketBasis;
   /** Required with packetBasis "declared", and absent otherwise: the documentation the view was taken from. */
   packetSource?: string;
+  /** v4 only, optional: how each role's requests went out (conditions.ts). Read by no verdict. */
+  conditions?: RunConditions;
 };
 
 /**
@@ -45,7 +55,7 @@ function isObject(x: unknown): x is Record<string, unknown> {
  */
 export function runArtifactProblems(json: unknown): string[] {
   if (!isObject(json)) return ['artifact: must be an object'];
-  const problems: string[] = extraKeys(json, ['schema', 'identity', 'callShapes', 'cases', 'draws', 'packetBasis', 'packetSource'], 'artifact');
+  const problems: string[] = extraKeys(json, ['schema', 'identity', 'callShapes', 'cases', 'draws', 'packetBasis', 'packetSource', 'conditions'], 'artifact');
   // Before any hash is taken: a string that is not text has no hash, and the declared hashes are checked only on a sound record.
   // A value that has no canonical JSON is not read any further: a caller that parsed the file itself may hand in a number
   // that is not finite, a value nested too deep or one that holds itself, and the checks below would hash it or walk it for ever.
@@ -55,7 +65,18 @@ export function runArtifactProblems(json: unknown): string[] {
   if (unhashable.length > 0) return [...problems, ...unhashable];
   findIllFormed(json, 'artifact', problems);
   const schema = json['schema'];
-  if (schema !== RUN_SCHEMA) problems.push(`artifact.schema: must be "${RUN_SCHEMA}"`);
+  if (!RUN_SCHEMAS_READ.includes(schema as string)) problems.push(`artifact.schema: must be "${RUN_SCHEMA}" (or "${RUN_SCHEMA_V3}", which is still read)`);
+  if (schema === RUN_SCHEMA_V3) {
+    // A v3 file holds no v4 key: a reader of either version must read one file one way.
+    if ('conditions' in json) problems.push(`artifact.conditions: not a key of "${RUN_SCHEMA_V3}"; write schema "${RUN_SCHEMA}"`);
+    const draws3 = Array.isArray(json['draws']) ? json['draws'] : [];
+    draws3.forEach((d: unknown, i) => {
+      if (!isObject(d) || !Array.isArray(d['attempts'])) return;
+      d['attempts'].forEach((a: unknown, j) => {
+        if (isObject(a) && 'calls' in a) problems.push(`artifact.draws[${i}].attempts[${j}].calls: not a key of "${RUN_SCHEMA_V3}"; write schema "${RUN_SCHEMA}"`);
+      });
+    });
+  }
   appendAll(problems, validateIdentity(json['identity'], 'artifact.identity'));
   const identity = isObject(json['identity']) ? json['identity'] : {};
   const judged = identity['judgeDefinitionHash'] !== NO_JUDGE;
@@ -138,7 +159,9 @@ export function runArtifactProblems(json: unknown): string[] {
     if (hashed) problems.push(`artifact.packetBasis: "${GAP}" but an attempt carries a packet hash; say whether the hashes were recorded or declared`);
   }
 
+  if ('conditions' in json) appendAll(problems, conditionsProblems(json['conditions'], 'artifact.conditions', judged, isObject(json['identity']) ? json['identity']['drawsPerCase'] : undefined));
   if (problems.length === 0) appendAll(problems, declaredHashProblems(json as RunArtifact));
+  if (problems.length === 0) appendAll(problems, runCallProblems(json as RunArtifact as unknown as Parameters<typeof runCallProblems>[0]));
   return problems;
 }
 

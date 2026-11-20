@@ -1,0 +1,526 @@
+{
+  "schema": "anchorset.run/v4",
+  "identity": {
+    "caseSetHash": "3e37f5e358de477972a7d9e6aa07fc79fac58868fa184c407533cb2eef05211c",
+    "rubricHash": "270c2818b8a3e8fa633a8e6d2611ac8b53e49ce48c77e5a47b3812802842b575",
+    "barHash": "7427ac45882381d8b1e936285ac864cba6c3d79f8d5b44a191266ff11b143e3b",
+    "systemModelRequested": "example-model-a",
+    "systemModelServed": "example-model-a-2026-01-15",
+    "systemCallShapeHash": "2ddee5a8cffd2cf37317f483153fb659d3aefb307dc5d736a02dc219a732d72a",
+    "systemPromptHash": "ed25a9112870e50c44f239ff0af352fdcda3d80e0c97efd42a70b4346f45a91f",
+    "systemToolsHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "systemHarnessVersion": "refund-harness 1.5.0",
+    "judgeDefinitionHash": "9949efec8ce19dd476d9ae79128cfd29819c481f1c49502d8473f4685e4c952f",
+    "judgeModelRequested": "example-judge",
+    "judgeModelServed": "example-judge-2026-02-01",
+    "judgeCallShapeHash": "44f11278b28ad34326ca643813bf970c568cde07dc98faed63593c6932c4f000",
+    "judgeHarnessVersion": "refund-harness 1.5.0",
+    "seed": "NO_SEED",
+    "drawsPerCase": 2
+  },
+  "callShapes": {
+    "system": {
+      "schema": "anchorset.callshape/v1",
+      "endpoint": "https://api.example.com/v1/messages",
+      "apiVersion": "2026-01-01",
+      "betaFlags": [],
+      "thinkingMode": "off",
+      "thinkingBudgetTokens": "NOT_SENT",
+      "effort": "NOT_SENT",
+      "toolChoice": "none",
+      "toolChoiceName": "NOT_SENT",
+      "strictTools": "NOT_SENT",
+      "parallelToolUse": "NOT_SENT",
+      "temperature": "NOT_SENT",
+      "topP": "NOT_SENT",
+      "topK": "NOT_SENT",
+      "frequencyPenalty": "NOT_SENT",
+      "presencePenalty": "NOT_SENT",
+      "samplingSeed": "NOT_SENT",
+      "maxOutputTokens": 512,
+      "stopSequences": "NOT_SENT",
+      "responseFormat": {
+        "kind": "text"
+      },
+      "contextPolicy": "none",
+      "stream": false,
+      "timeoutMs": 60000,
+      "extras": {}
+    },
+    "judge": {
+      "schema": "anchorset.callshape/v1",
+      "endpoint": "https://api.example.com/v1/messages/batches",
+      "apiVersion": "2026-01-01",
+      "betaFlags": [],
+      "thinkingMode": "off",
+      "thinkingBudgetTokens": "NOT_SENT",
+      "effort": "NOT_SENT",
+      "toolChoice": "named",
+      "toolChoiceName": "grade",
+      "strictTools": true,
+      "parallelToolUse": "NOT_SENT",
+      "temperature": "NOT_SENT",
+      "topP": "NOT_SENT",
+      "topK": "NOT_SENT",
+      "frequencyPenalty": "NOT_SENT",
+      "presencePenalty": "NOT_SENT",
+      "samplingSeed": "NOT_SENT",
+      "maxOutputTokens": 256,
+      "stopSequences": "NOT_SENT",
+      "responseFormat": {
+        "kind": "tool",
+        "name": "grade"
+      },
+      "contextPolicy": "none",
+      "stream": false,
+      "timeoutMs": 60000,
+      "extras": {}
+    }
+  },
+  "cases": [
+    {
+      "id": "q01",
+      "klass": "reply_quality",
+      "input": {
+        "message": "How long do refunds usually take to show up?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q02",
+      "klass": "reply_quality",
+      "input": {
+        "message": "I returned the jacket a month ago and still have not seen the refund."
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q03",
+      "klass": "reply_quality",
+      "input": {
+        "message": "Can I return an item I bought on sale?"
+      },
+      "expect": "4"
+    },
+    {
+      "id": "q04",
+      "klass": "reply_quality",
+      "input": {
+        "message": "Do you refund the shipping cost?"
+      },
+      "expect": "4"
+    }
+  ],
+  "draws": [
+    {
+      "caseId": "q01",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "4a9ca11da02bb414cd95159fad1b96e8628602e346e28503b3d1eaef38477d7f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f776822e285a03e6fc8936168087ac228128420f3bf17fd0b91a7aa0029ab9cf",
+          "calls": [
+            {
+              "role": "system",
+              "requestHash": "278fdfc303735e14b558c425b3fce1d0b367e339d1f2678adb18fbf87f030635",
+              "sentAt": "2026-01-15T08:50:00Z",
+              "servedModel": "example-model-a-2026-01-15",
+              "receivedAt": "2026-01-15T08:50:02Z",
+              "usage": {
+                "inputTokensTotal": 120,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 0,
+                "outputTokens": 40
+              },
+              "serving": {}
+            },
+            {
+              "role": "judge",
+              "requestHash": "58a61206b8cda9316f14ed9a1cc730aba01ee44a3ad02e44d787778d227b2515",
+              "submission": "batch-jan",
+              "sentAt": "2026-01-15T09:00:00Z",
+              "servedModel": "example-judge-2026-02-01",
+              "receivedAt": "UNKNOWN",
+              "usage": {
+                "inputTokensTotal": 900,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 800,
+                "outputTokens": 12
+              },
+              "serving": {
+                "example.service_tier": "standard",
+                "example.speed": "NOT_RETURNED"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "q01",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "4a9ca11da02bb414cd95159fad1b96e8628602e346e28503b3d1eaef38477d7f",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "f776822e285a03e6fc8936168087ac228128420f3bf17fd0b91a7aa0029ab9cf",
+          "calls": [
+            {
+              "role": "system",
+              "requestHash": "278fdfc303735e14b558c425b3fce1d0b367e339d1f2678adb18fbf87f030635",
+              "sentAt": "2026-01-15T08:50:00Z",
+              "servedModel": "example-model-a-2026-01-15",
+              "receivedAt": "2026-01-15T08:50:02Z",
+              "usage": {
+                "inputTokensTotal": 120,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 0,
+                "outputTokens": 40
+              },
+              "serving": {}
+            },
+            {
+              "role": "judge",
+              "requestHash": "58a61206b8cda9316f14ed9a1cc730aba01ee44a3ad02e44d787778d227b2515",
+              "submission": "batch-jan",
+              "sentAt": "2026-01-15T09:00:00Z",
+              "servedModel": "example-judge-2026-02-01",
+              "receivedAt": "UNKNOWN",
+              "usage": {
+                "inputTokensTotal": 900,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 800,
+                "outputTokens": 12
+              },
+              "serving": {
+                "example.service_tier": "standard",
+                "example.speed": "NOT_RETURNED"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "q02",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "4bd4841b99f5fade18c33a76ecf73d14f6ab86f1c9db67fe84834f1a995bed64",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "b4529feaa72c19ef5a5d42fc5d2e08c7588207592e9f9265b1545220964721b8",
+          "calls": [
+            {
+              "role": "system",
+              "requestHash": "e9a644b6adbe73477f0912579176835cb6d9fa8a97f63ceef03b71d7658479aa",
+              "sentAt": "2026-01-15T08:50:00Z",
+              "servedModel": "example-model-a-2026-01-15",
+              "receivedAt": "2026-01-15T08:50:02Z",
+              "usage": {
+                "inputTokensTotal": 120,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 0,
+                "outputTokens": 40
+              },
+              "serving": {}
+            },
+            {
+              "role": "judge",
+              "requestHash": "27114be345f08db87653c98d4de43f394f79b8e1fb1aecba46e214396b4fa55d",
+              "submission": "batch-jan",
+              "sentAt": "2026-01-15T09:00:00Z",
+              "servedModel": "example-judge-2026-02-01",
+              "receivedAt": "UNKNOWN",
+              "usage": {
+                "inputTokensTotal": 900,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 800,
+                "outputTokens": 12
+              },
+              "serving": {
+                "example.service_tier": "standard",
+                "example.speed": "NOT_RETURNED"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "q02",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "4bd4841b99f5fade18c33a76ecf73d14f6ab86f1c9db67fe84834f1a995bed64",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "b4529feaa72c19ef5a5d42fc5d2e08c7588207592e9f9265b1545220964721b8",
+          "calls": [
+            {
+              "role": "system",
+              "requestHash": "e9a644b6adbe73477f0912579176835cb6d9fa8a97f63ceef03b71d7658479aa",
+              "sentAt": "2026-01-15T08:50:00Z",
+              "servedModel": "example-model-a-2026-01-15",
+              "receivedAt": "2026-01-15T08:50:02Z",
+              "usage": {
+                "inputTokensTotal": 120,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 0,
+                "outputTokens": 40
+              },
+              "serving": {}
+            },
+            {
+              "role": "judge",
+              "requestHash": "27114be345f08db87653c98d4de43f394f79b8e1fb1aecba46e214396b4fa55d",
+              "submission": "batch-jan",
+              "sentAt": "2026-01-15T09:00:00Z",
+              "servedModel": "example-judge-2026-02-01",
+              "receivedAt": "UNKNOWN",
+              "usage": {
+                "inputTokensTotal": 900,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 800,
+                "outputTokens": 12
+              },
+              "serving": {
+                "example.service_tier": "standard",
+                "example.speed": "NOT_RETURNED"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "q03",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "3f93701b3cae8378ced5d1de53f49394588e4be04831925d5c9faa458c046592",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "e2d6d5bfdf4538e3fc3bb559ca4053e96d50d858226d94b23161472c063e53bd",
+          "calls": [
+            {
+              "role": "system",
+              "requestHash": "2aef9e73ccd72ebf449ca8014ac8d054a3c920776e565f3e25c6df1ecadb5a7f",
+              "sentAt": "2026-01-15T08:50:00Z",
+              "servedModel": "example-model-a-2026-01-15",
+              "receivedAt": "2026-01-15T08:50:02Z",
+              "usage": {
+                "inputTokensTotal": 120,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 0,
+                "outputTokens": 40
+              },
+              "serving": {}
+            },
+            {
+              "role": "judge",
+              "requestHash": "7de2db1f0ee3237abc6cd61cc2818f174f35b153e806edd07d3599e17aa5f126",
+              "submission": "batch-jan",
+              "sentAt": "2026-01-15T09:00:00Z",
+              "servedModel": "example-judge-2026-02-01",
+              "receivedAt": "UNKNOWN",
+              "usage": {
+                "inputTokensTotal": 900,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 800,
+                "outputTokens": 12
+              },
+              "serving": {
+                "example.service_tier": "standard",
+                "example.speed": "NOT_RETURNED"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "q03",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "3f93701b3cae8378ced5d1de53f49394588e4be04831925d5c9faa458c046592",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "e2d6d5bfdf4538e3fc3bb559ca4053e96d50d858226d94b23161472c063e53bd",
+          "calls": [
+            {
+              "role": "system",
+              "requestHash": "2aef9e73ccd72ebf449ca8014ac8d054a3c920776e565f3e25c6df1ecadb5a7f",
+              "sentAt": "2026-01-15T08:50:00Z",
+              "servedModel": "example-model-a-2026-01-15",
+              "receivedAt": "2026-01-15T08:50:02Z",
+              "usage": {
+                "inputTokensTotal": 120,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 0,
+                "outputTokens": 40
+              },
+              "serving": {}
+            },
+            {
+              "role": "judge",
+              "requestHash": "7de2db1f0ee3237abc6cd61cc2818f174f35b153e806edd07d3599e17aa5f126",
+              "submission": "batch-jan",
+              "sentAt": "2026-01-15T09:00:00Z",
+              "servedModel": "example-judge-2026-02-01",
+              "receivedAt": "UNKNOWN",
+              "usage": {
+                "inputTokensTotal": 900,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 800,
+                "outputTokens": 12
+              },
+              "serving": {
+                "example.service_tier": "standard",
+                "example.speed": "NOT_RETURNED"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "q04",
+      "drawIndex": 0,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "9792882a15b4c0be0ad2813489f3fe5e0dff491e132ceac41378c7547c07c5d9",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "13815cfb8e42dc829dda2bd907082911ff255700f6f62dd3c0d4e9c5e96ea58e",
+          "calls": [
+            {
+              "role": "system",
+              "requestHash": "ca7a7f707a98a75815b4106d72502d76c9bc148bbc442a5c6b068a1ef55a73aa",
+              "sentAt": "2026-01-15T08:50:00Z",
+              "servedModel": "example-model-a-2026-01-15",
+              "receivedAt": "2026-01-15T08:50:02Z",
+              "usage": {
+                "inputTokensTotal": 120,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 0,
+                "outputTokens": 40
+              },
+              "serving": {}
+            },
+            {
+              "role": "judge",
+              "requestHash": "15486c473b13a0b77855f7bde24f9fcdeb598d0c1982378907bfbc48de0ed82e",
+              "submission": "batch-jan",
+              "sentAt": "2026-01-15T09:00:00Z",
+              "servedModel": "example-judge-2026-02-01",
+              "receivedAt": "UNKNOWN",
+              "usage": {
+                "inputTokensTotal": 900,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 800,
+                "outputTokens": 12
+              },
+              "serving": {
+                "example.service_tier": "standard",
+                "example.speed": "NOT_RETURNED"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "caseId": "q04",
+      "drawIndex": 1,
+      "attempts": [
+        {
+          "kind": "graded",
+          "label": "4",
+          "outputHash": "9792882a15b4c0be0ad2813489f3fe5e0dff491e132ceac41378c7547c07c5d9",
+          "systemStop": "end",
+          "judgeStop": "tool-use",
+          "packetHash": "13815cfb8e42dc829dda2bd907082911ff255700f6f62dd3c0d4e9c5e96ea58e",
+          "calls": [
+            {
+              "role": "system",
+              "requestHash": "ca7a7f707a98a75815b4106d72502d76c9bc148bbc442a5c6b068a1ef55a73aa",
+              "sentAt": "2026-01-15T08:50:00Z",
+              "servedModel": "example-model-a-2026-01-15",
+              "receivedAt": "2026-01-15T08:50:02Z",
+              "usage": {
+                "inputTokensTotal": 120,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 0,
+                "outputTokens": 40
+              },
+              "serving": {}
+            },
+            {
+              "role": "judge",
+              "requestHash": "15486c473b13a0b77855f7bde24f9fcdeb598d0c1982378907bfbc48de0ed82e",
+              "submission": "batch-jan",
+              "sentAt": "2026-01-15T09:00:00Z",
+              "servedModel": "example-judge-2026-02-01",
+              "receivedAt": "UNKNOWN",
+              "usage": {
+                "inputTokensTotal": 900,
+                "cacheReadTokens": 0,
+                "cacheWriteTokens": 800,
+                "outputTokens": 12
+              },
+              "serving": {
+                "example.service_tier": "standard",
+                "example.speed": "NOT_RETURNED"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "packetBasis": "recorded",
+  "conditions": {
+    "system": {
+      "concurrency": 4,
+      "servingKeys": [],
+      "submissions": []
+    },
+    "judge": {
+      "concurrency": "UNKNOWN",
+      "servingKeys": [
+        "example.service_tier",
+        "example.speed"
+      ],
+      "submissions": [
+        {
+          "id": "batch-jan",
+          "kind": "provider-batch",
+          "size": 8,
+          "sharedWith": [],
+          "submittedAt": "2026-01-15T09:00:00Z",
+          "endedAt": "2026-01-15T09:41:00Z",
+          "recordedAt": "2026-01-15T09:45:00Z"
+        }
+      ]
+    }
+  }
+}

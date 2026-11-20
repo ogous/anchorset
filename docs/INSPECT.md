@@ -69,7 +69,7 @@ of `OPENAI_BASE_URL`, `OPENAI_API_BASE_URL`, `OPENAI_API_HOST` and `OPENAI_HOST`
 
 ```bash
 python3 --version
-python3 -m venv .anchorset-grade && .anchorset-grade/bin/pip install inspect_ai==0.3.286
+python3 -m venv .anchorset-grade && .anchorset-grade/bin/pip install inspect_ai==0.3.286 agent-client-protocol==0.12.1
 PY=.anchorset-grade/bin/python
 OUT="$(mktemp -d)"
 cp -R examples/importers/inspect "$OUT/in"

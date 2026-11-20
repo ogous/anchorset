@@ -121,7 +121,8 @@ jobs:
         with:
           python-version: '3.13'
       - run: npm ci
-      - run: pip install "inspect_ai==${{ matrix.inspect }}"
+      # The listed inspect_ai releases import acp.helpers, which agent-client-protocol 1.0.0 dropped; they do not bound it.
+      - run: pip install "inspect_ai==${{ matrix.inspect }}" "agent-client-protocol==0.12.1"
       - run: npm install --global "promptfoo@${{ matrix.promptfoo }}"
       - name: The recording grader's self-test
         run: python examples/importers/inspect/selftest.py
